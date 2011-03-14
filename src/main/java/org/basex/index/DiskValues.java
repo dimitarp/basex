@@ -70,7 +70,7 @@ public final class DiskValues implements Index {
     final IndexStats stats = new IndexStats(data);
     for(int m = 0; m < size; ++m) {
       final int oc = idxl.readNum(idxr.read5(m * 5L));
-      if(stats.adding(oc)) stats.add(data.text(idxl.readNum(), text));
+      if(stats.adding(oc)) stats.add(data.text(data.pre(idxl.readNum()), text));
     }
     stats.print(tb);
     return tb.finish();
@@ -80,8 +80,8 @@ public final class DiskValues implements Index {
   public IndexIterator iter(final IndexToken tok) {
     if(tok instanceof RangeToken) return idRange((RangeToken) tok);
 
-    final int id = cache.id(tok.get());
-    if(id > 0) return iter(cache.size(id), cache.pointer(id));
+    final int h = cache.id(tok.get());
+    if(h > 0) return iter(cache.size(h), cache.pointer(h));
 
     final long pos = get(tok.get());
     return pos == 0 ? IndexIterator.EMPTY : iter(idxl.readNum(pos), idxl.pos());
@@ -129,8 +129,7 @@ public final class DiskValues implements Index {
     for(int l = 0, v = 0; l < s; ++l) {
       v += idxl.readNum(p);
       p = idxl.pos();
-      // [DP] get the pre value from the mapping:
-      pres.add(v);
+      pres.add(data.pre(v));
     }
     return iter(pres.sort());
   }
@@ -153,17 +152,14 @@ public final class DiskValues implements Index {
     for(int l = 0; l < size; ++l) {
       final int ds = idxl.readNum(idxr.read5(l * 5L));
       int id = idxl.readNum();
-      // [DP] get the pre value from the mapping:
-      int pre = id;
+      final int pre = data.pre(id);
       final double v = data.textDbl(pre, text);
 
       if(v >= min && v <= max) {
         // value is in range
         for(int d = 0; d < ds; ++d) {
-          pres.add(pre);
+          pres.add(data.pre(id));
           id += idxl.readNum();
-          // [DP] get the pre value from the mapping:
-          pre = id;
         }
       } else if(simple && v > max && data.textLen(pre, text) == len) {
         // if limits are integers, if min, max and current value have the same
@@ -176,18 +172,18 @@ public final class DiskValues implements Index {
   }
 
   /**
-   * Returns an iterator for the specified id list.
-   * @param ids id list
+   * Returns an iterator for the specified pre list.
+   * @param pres pre list
    * @return iterator
    */
-  private IndexIterator iter(final IntList ids) {
+  private IndexIterator iter(final IntList pres) {
     return new IndexIterator() {
       int p = -1;
 
       @Override
-      public boolean more() { return ++p < ids.size(); }
+      public boolean more() { return ++p < pres.size(); }
       @Override
-      public int next() { return ids.get(p); }
+      public int next() { return pres.get(p); }
       @Override
       public double score() { return -1; }
     };
