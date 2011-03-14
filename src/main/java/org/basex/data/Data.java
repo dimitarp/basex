@@ -169,31 +169,31 @@ public abstract class Data {
   public abstract void setIndex(IndexType type, Index ind);
 
   /**
-   * Returns the indexed id references for the specified token.
+   * Returns the indexed pre references for the specified token.
    * @param token index token reference
-   * @return id array
+   * @return pre array
    */
-  public final synchronized IndexIterator ids(final IndexToken token) {
+  public final synchronized IndexIterator iter(final IndexToken token) {
     switch(token.type()) {
-      case TEXT:      return txtindex.ids(token);
-      case ATTRIBUTE: return atvindex.ids(token);
-      case FULLTEXT:  return ftxindex.ids(token);
+      case TEXT:      return txtindex.iter(token);
+      case ATTRIBUTE: return atvindex.iter(token);
+      case FULLTEXT:  return ftxindex.iter(token);
       default:  return null;
     }
   }
 
   /**
-   * Returns the number of indexed id references for the specified token.
+   * Returns the number of indexed pre references for the specified token.
    * @param token text to be found
-   * @return id array
+   * @return number of pres
    */
-  public final synchronized int nrIDs(final IndexToken token) {
+  public final synchronized int count(final IndexToken token) {
     // token too long.. no results can be expected
     if(token.get().length > MAXLEN) return Integer.MAX_VALUE;
     switch(token.type()) {
-      case TEXT:      return txtindex.nrIDs(token);
-      case ATTRIBUTE: return atvindex.nrIDs(token);
-      case FULLTEXT:  return ftxindex.nrIDs(token);
+      case TEXT:      return txtindex.count(token);
+      case ATTRIBUTE: return atvindex.count(token);
+      case FULLTEXT:  return ftxindex.count(token);
       default:  return Integer.MAX_VALUE;
     }
   }

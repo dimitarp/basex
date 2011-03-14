@@ -12,8 +12,8 @@ import org.basex.util.Performance;
 import org.basex.util.TokenBuilder;
 
 /**
- * This class provides access to attribute values and text contents
- * stored on disk.
+ * This class provides access to attribute values and text contents stored on
+ * disk.
  *
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
@@ -77,7 +77,7 @@ public final class DiskValues implements Index {
   }
 
   @Override
-  public IndexIterator ids(final IndexToken tok) {
+  public IndexIterator iter(final IndexToken tok) {
     if(tok instanceof RangeToken) return idRange((RangeToken) tok);
 
     final int id = cache.id(tok.get());
@@ -88,25 +88,27 @@ public final class DiskValues implements Index {
   }
 
   @Override
-  public int nrIDs(final IndexToken it) {
+  public int count(final IndexToken it) {
     if(it instanceof RangeToken) return idRange((RangeToken) it).size();
     final byte[] tok = it.get();
-    final int id = cache.id(tok);
-    if(id > 0) return cache.size(id);
+    final int h = cache.id(tok);
+    if(h > 0) return cache.size(h);
 
+    // get the start position of the hit ids within the file:
     final long pos = get(tok);
     if(pos == 0) return 0;
-    final int numPre =  idxl.readNum(pos);
-    cache.add(it.get(), numPre, pos + Num.len(numPre));
+    // the first number is the number of hits:
+    final int num = idxl.readNum(pos);
+    cache.add(tok, num, pos + Num.len(num));
 
-    return numPre;
+    return num;
   }
 
   /**
-   * Returns next pre values.
-   * @return compressed pre values
+   * Returns next id values.
+   * @return compressed id values
    */
-  byte[] nextPres() {
+  byte[] nextIDs() {
     if(idxr.pos() >= idxr.length()) return EMPTY;
     final int s = idxl.read4();
     final long v = idxr.read5(idxr.pos());
@@ -116,24 +118,25 @@ public final class DiskValues implements Index {
   /**
    * Iterator method.
    * @param s number of pre values
-   * @param ps offset
-   * @return iterator
+   * @param ps offset to start from
+   * @return iterator over the sorted selected pre values
    */
   private IndexIterator iter(final int s, final long ps) {
-    final IntList ids = new IntList(s);
+    final IntList pres = new IntList(s);
     long p = ps;
     for(int l = 0, v = 0; l < s; ++l) {
       v += idxl.readNum(p);
       p = idxl.pos();
-      ids.add(v);
+      // [DP] get the pre value from the mapping:
+      pres.add(v);
     }
-    return iter(ids);
+    return iter(pres.sort());
   }
 
   /**
    * Performs a range query. All index values must be numeric.
    * @param tok index term
-   * @return results
+   * @return iterator over the sorted selected pre values
    */
   private IndexIterator idRange(final RangeToken tok) {
     final double min = tok.min;
@@ -144,17 +147,21 @@ public final class DiskValues implements Index {
     final boolean simple = len != 0 && min > 0 && (long) min == min &&
       token(min).length == len;
 
-    final IntList ids = new IntList();
+    final IntList pres = new IntList();
     for(int l = 0; l < size; ++l) {
       final int ds = idxl.readNum(idxr.read5(l * 5L));
-      int pre = idxl.readNum();
+      int id = idxl.readNum();
+      // [DP] get the pre value from the mapping:
+      int pre = id;
       final double v = data.textDbl(pre, text);
 
       if(v >= min && v <= max) {
         // value is in range
         for(int d = 0; d < ds; ++d) {
-          ids.add(pre);
-          pre += idxl.readNum();
+          pres.add(pre);
+          id += idxl.readNum();
+          // [DP] get the pre value from the mapping:
+          pre = id;
         }
       } else if(simple && v > max && data.textLen(pre, text) == len) {
         // if limits are integers, if min, max and current value have the same
@@ -163,7 +170,7 @@ public final class DiskValues implements Index {
         break;
       }
     }
-    return iter(ids.sort());
+    return iter(pres.sort());
   }
 
   /**
@@ -196,10 +203,10 @@ public final class DiskValues implements Index {
       final int m = l + h >>> 1;
       final long pos = idxr.read5(m * 5L);
       idxl.readNum(pos);
-      final int pre = idxl.readNum();
+      final int id = idxl.readNum();
       byte[] txt = ctext[m];
       if(ctext[m] == null) {
-        txt = data.text(pre, text);
+        txt = data.text(id, text);
         ctext[m] = txt;
       }
       final int d = diff(txt, key);

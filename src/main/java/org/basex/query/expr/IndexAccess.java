@@ -87,7 +87,7 @@ public final class IndexAccess extends Single {
     final byte kind = ind == IndexType.TEXT ? Data.TEXT : Data.ATTR;
     final boolean mem = data instanceof MemData;
     return new AxisIter() {
-      final IndexIterator ii = data.ids(new ValuesToken(ind, val));
+      final IndexIterator ii = data.iter(new ValuesToken(ind, val));
 
       @Override
       public ANode next() {

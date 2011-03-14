@@ -52,7 +52,7 @@ public final class DataAccess {
 
   /**
    * Returns the current file position.
-   * @return text as byte array
+   * @return position in the file
    */
   public long pos() {
     return bm.current().pos + off;
