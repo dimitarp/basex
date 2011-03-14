@@ -630,6 +630,8 @@ public abstract class Data {
       if(kind(p) == DOC) --meta.ndocs;
     }
 
+    // delete node and descendants from ID -> PRE map:
+    deleteIDs(pre, s);
     // delete node from table structure and reduce document size
     table.delete(pre, s);
     updateDist(p, -s);
@@ -904,7 +906,11 @@ public abstract class Data {
    * @param pre insert position
    */
   public final void insert(final int pre) {
-    table.insert(pre, buffer());
+    final byte[] t = buffer();
+    table.insert(pre, t);
+
+    // add the entries to the ID -> PRE mapping:
+    insertIDs(pre, t.length >>> IO.NODEPOWER);
   }
 
   /**
@@ -1029,6 +1035,20 @@ public abstract class Data {
    */
   protected abstract long index(final byte[] value, final int pre,
       final boolean text);
+
+  /**
+   * Delete ids from PRE -> ID map.
+   * @param pre first pre
+   * @param s number of subsequent deleted records
+   */
+  protected abstract void deleteIDs(final int pre, final int s);
+
+  /**
+   * Insert ids into PRE -> ID map.
+   * @param pre first pre
+   * @param s number of subsequent inserted records
+   */
+  protected abstract void insertIDs(final int pre, final int s);
 
   /**
    * Returns a string representation of the specified table range.

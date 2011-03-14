@@ -33,6 +33,8 @@ public final class DiskData extends Data {
   private DataAccess values;
   /** Text compressor. */
   private final Compress comp;
+  /** ID -> PRE mapping. */
+  public MapTree idmap;
 
   /**
    * Default constructor.
@@ -62,7 +64,7 @@ public final class DiskData extends Data {
       init();
       if(meta.textindex) txtindex = new DiskValues(this, true);
       if(meta.attrindex) atvindex = new DiskValues(this, false);
-      if(meta.ftindex)   ftxindex = FTIndex.get(this, meta.wildcards);
+      if(meta.ftindex) ftxindex = FTIndex.get(this, meta.wildcards);
     } catch(final IOException ex) {
       throw ex;
     } finally {
@@ -98,6 +100,9 @@ public final class DiskData extends Data {
     texts = new DataAccess(meta.file(DATATXT));
     values = new DataAccess(meta.file(DATAATV));
     super.init();
+    // [DP] check if and when the ID -> PRE mapping is available
+    // [DP] restore it from disk
+    idmap = new MapTree(meta.lastid);
   }
 
   /**
@@ -270,5 +275,17 @@ public final class DiskData extends Data {
     final long off = da.length();
     da.writeBytes(off, txt);
     return off;
+  }
+
+  @Override
+  protected void deleteIDs(final int pre, final int s) {
+    final int n = pre + s;
+    for(int i = pre; i < n; i++) idmap.delete(id(i), i);
+  }
+
+  @Override
+  protected void insertIDs(final int pre, final int s) {
+    final int n = pre + s;
+    for(int i = pre; i < n; i++) idmap.insert(id(i), i);
   }
 }
