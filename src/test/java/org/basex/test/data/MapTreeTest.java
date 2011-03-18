@@ -18,7 +18,63 @@ public class MapTreeTest {
     m.delete(2, 2);
     m.insert(3, 2);
 
-    assertEquals("Wrong PRE value of ID=1", 1, m.pre(1));
-    assertEquals("Wrong PRE value of ID=3", 2, m.pre(3));
+    assertPre(m, 1, 1);
+    assertPre(m, 3, 2);
+  }
+
+  /** Test 2. */
+  @Test
+  public void test2() {
+    final MapTree m = new MapTree(2);
+    m.delete(2, 2);
+    m.insert(3, 2);
+
+    m.insert(4, 2);
+
+    m.delete(4, 2);
+    m.insert(5, 2);
+
+    m.insert(6, 2);
+
+    m.delete(6, 2);
+    m.insert(7, 2);
+
+    assertPre(m, 1, 1);
+    assertPre(m, 7, 2);
+    assertPre(m, 5, 3);
+    assertPre(m, 3, 4);
+  }
+
+  /** Test 3. */
+  @Test
+  public void test3() {
+    final MapTree m = new MapTree(2);
+    m.delete(2, 2);
+    m.insert(3, 2);
+
+    m.delete(3, 2);
+    m.insert(4, 2);
+
+    m.delete(4, 2);
+    m.insert(5, 2);
+
+    m.delete(5, 2);
+    m.insert(6, 2);
+
+    m.delete(6, 2);
+    m.insert(7, 2);
+
+    assertPre(m, 1, 1);
+    assertPre(m, 7, 2);
+  }
+
+  /**
+   * Compare the actual PRE value with the expected.
+   * @param m ID -> PRE mapping
+   * @param id id to check
+   * @param pre expected PRE value
+   */
+  private void assertPre(final MapTree m, final int id, final int pre) {
+    assertEquals("Wrong PRE value for ID=" + id, pre, m.pre(id));
   }
 }
