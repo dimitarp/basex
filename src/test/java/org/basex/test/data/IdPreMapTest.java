@@ -32,10 +32,10 @@ public final class IdPreMapTest {
   private static final String[] QUERIES = new String[] {
       "insert node <e/> as first into //b",
       "insert node <f/> as first into //c",
-      "delete //e",
+ "delete //e",
       "insert node <e a='test'><f/><g/><h>text</h><i/></e> as first into /a",
       "delete //e",
-      "replace node //d with <f r='t'></f>",
+ "replace node //d with <f r='t'></f>",
       "insert node <d><g/><h/><i/><j/><k/><l/><m/><n/></d> as first into //a"};
 
   /**
@@ -79,7 +79,7 @@ public final class IdPreMapTest {
    */
   private static void test(final String... qs) throws BaseXException {
     checkMapping(-1, "");
-    for(int i = 0; i < 50; i++) {
+    for(int i = 0; i < 80; i++) {
       for(final String q : qs) {
         new XQuery(q).execute(context);
         checkMapping(i, q);
