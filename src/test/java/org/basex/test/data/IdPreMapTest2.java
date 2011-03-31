@@ -90,8 +90,8 @@ public class IdPreMapTest2 {
     int id = BASEID;
     for(int i = 0; i < ITERATIONS; i++) m.insert(RANDOM.nextInt(++id), id, 1);
     final Performance p = new Performance();
-    for(int pre = 0; pre <= id; pre++) m.pre(id);
-    System.err.println(ITERATIONS + " records found in: " + p);
+    for(int i = 0; i <= id; i++) m.pre(i);
+    System.err.println(id + " records found in: " + p);
   }
 
   /**
