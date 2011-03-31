@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import org.basex.data.IdPreMap;
+import org.basex.util.IntList;
 import org.basex.util.Performance;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,41 +16,92 @@ import org.junit.Test;
  * @author Dimitar Popov
  */
 public class IdPreMapTest2 {
-
+  /** Number of update operations to execute in each test. */
+  private static final int ITERATIONS = 10000;
   /** Initial number of records. */
-  private static final int BASEID = 7;
+  private static final int BASEID = 70000;
   /** Random number generator. */
   private static final Random RANDOM = new Random();
   /** ID -> PRE map to compare to. */
   private DummyIdPreMap basemap;
   /** ID -> PRE map to test. */
   private IdPreMap testedmap;
+  /** Sequence of inserted PRE values. */
+  private IntList insertedpres;
 
   /** Set-up method. */
   @Before
   public void setUp() {
-    final int[] map = new int[BASEID];
+    final int[] map = new int[BASEID + 1];
     for(int i = 0; i < map.length; i++) map[i] = i;
     basemap = new DummyIdPreMap(map);
-    testedmap = new IdPreMap(map.length);
+    testedmap = new IdPreMap(BASEID);
+    insertedpres = new IntList();
   }
 
-  /** Test 1. */
+  /** Insert correctness: insert values at random positions. */
   @Test
-  public void test1() {
-    int id = BASEID;
-
-    final Performance p = new Performance();
-    for(int i = 0; i < 100000; i++)
+  public void testInsertCorrectness() {
+    for(int i = 0, id = BASEID; i < ITERATIONS; i++)
       insert(RANDOM.nextInt(++id), id);
-    System.err.println("Insert time: " + p);
-
     check();
-    System.err.println("Check time: " + p);
   }
 
+  /** Insert performance: insert at random positions. */
+  @Test
+  public void testInsertPerformance() {
+    testInsertPerformance(testedmap);
+  }
+
+  /** Search performance: insert at random positions and the search. */
+  @Test
+  public void testSearchPerformance() {
+    testSearchPerformance(testedmap);
+  }
+
+  /** Dummy insert performance: insert at random positions. */
+  @Test
+  public void testInsertPerformanceDummy() {
+    testInsertPerformance(basemap);
+  }
+
+  /** Dummy search performance: insert at random positions and the search. */
+  @Test
+  public void testSearchPerformanceDummy() {
+    testSearchPerformance(basemap);
+  }
+
+  /**
+   * Insert performance: insert at random positions.
+   * @param m tested map
+   */
+  private static void testInsertPerformance(final IdPreMap m) {
+    final Performance p = new Performance();
+    for(int i = 0, id = BASEID; i < ITERATIONS; i++)
+      m.insert(RANDOM.nextInt(++id), id, 1);
+    System.err.println(ITERATIONS + " records inserted in: " + p);
+  }
+
+  /**
+   * Search performance: insert at random positions and then search.
+   * @param m tested map
+   */
+  private static void testSearchPerformance(final IdPreMap m) {
+    int id = BASEID;
+    for(int i = 0; i < ITERATIONS; i++) m.insert(RANDOM.nextInt(++id), id, 1);
+    final Performance p = new Performance();
+    for(int pre = 0; pre <= id; pre++) m.pre(id);
+    System.err.println(ITERATIONS + " records found in: " + p);
+  }
+
+  /**
+   * Insert a &lt;pre, id&gt; pair in {@link #basemap} and {@link #testedmap}.
+   * @param pre pre value
+   * @param id id value
+   */
   private void insert(final int pre, final int id) {
-    basemap.insert(pre, id);
+    insertedpres.add(pre);
+    basemap.insert(pre, id, 1);
     testedmap.insert(pre, id, 1);
   }
 
@@ -57,7 +109,9 @@ public class IdPreMapTest2 {
   private void check() {
     for(int pre = 0; pre < basemap.size(); pre++) {
       final int id = basemap.id(pre);
-      assertEquals("Wrong PRE for " + id, pre, testedmap.pre(id));
+      final int p = testedmap.pre(id);
+      if(pre != p) fail("Wrong PRE for ID = " + id + ": expected " + pre
+          + ", actual " + p + "\nInserted PREs: " + insertedpres);
     }
   }
 }
@@ -66,44 +120,41 @@ public class IdPreMapTest2 {
  * Dummy implementation of ID -> PRE map: very slow, but simple and correct.
  * @author Dimitar Popov
  */
-class DummyIdPreMap {
+class DummyIdPreMap extends IdPreMap {
   /** ID list. */
-  final ArrayList<Integer> ids;
+  private final ArrayList<Integer> ids;
 
   /**
    * Constructor.
    * @param i initial list of ids.
    */
   public DummyIdPreMap(final int[] i) {
+    super(i.length - 1);
     ids = new ArrayList<Integer>(i.length);
     for(int k = 0; k < i.length; k++) ids.add(i[k]);
   }
 
-  /**
-   * Insert new record.
-   * @param pre record PRE
-   * @param id record ID
-   */
-  public void insert(final int pre, final int id) {
+  @Override
+  public void insert(final int pre, final int id, final int c) {
     ids.add(pre, id);
   }
 
-  /**
-   * Delete a record.
-   * @param pre record PRE
-   * @return deleted record ID
-   */
-  public int delete(final int pre) {
+  @Override
+  public int delete(final int pre, final int c) {
     return ids.remove(pre);
   }
 
-  /**
-   * PRE of the record with a given ID.
-   * @param id record ID
-   * @return record PRE
-   */
+  @Override
   public int pre(final int id) {
     return ids.indexOf(id);
+  }
+
+  /**
+   * Size of the map.
+   * @return number of stored records
+   */
+  public int size() {
+    return ids.size();
   }
 
   /**
@@ -113,13 +164,5 @@ class DummyIdPreMap {
    */
   public int id(final int pre) {
     return ids.get(pre);
-  }
-
-  /**
-   * Size of the map.
-   * @return number of stored records
-   */
-  public int size() {
-    return ids.size();
   }
 }
