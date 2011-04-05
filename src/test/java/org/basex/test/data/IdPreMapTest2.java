@@ -12,14 +12,16 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * ID -> PRE map test.
+ * ID -> PRE mapping test.
+ *
+ * @author BaseX Team 2005-11, BSD License
  * @author Dimitar Popov
  */
 public class IdPreMapTest2 {
   /** Number of update operations to execute in each test. */
   private static final int ITERATIONS = 10000;
   /** Initial number of records. */
-  private static final int BASEID = 70000;
+  private static final int BASEID = 10000;
   /** Random number generator. */
   private static final Random RANDOM = new Random();
   /** ID -> PRE map to compare to. */
@@ -28,46 +30,100 @@ public class IdPreMapTest2 {
   private IdPreMap testedmap;
   /** Sequence of inserted PRE values. */
   private IntList insertedpres;
+  /** Sequence of deleted PRE values. */
+  private IntList deletedpres;
 
   /** Set-up method. */
   @Before
   public void setUp() {
     final int[] map = new int[BASEID + 1];
-    for(int i = 0; i < map.length; i++) map[i] = i;
+    for(int i = 0; i < map.length; ++i) map[i] = i;
     basemap = new DummyIdPreMap(map);
     testedmap = new IdPreMap(BASEID);
-    insertedpres = new IntList();
+    insertedpres = new IntList(ITERATIONS);
+    deletedpres = new IntList(ITERATIONS);
   }
 
   /** Insert correctness: insert values at random positions. */
   @Test
   public void testInsertCorrectness() {
-    for(int i = 0, id = BASEID; i < ITERATIONS; i++)
-      insert(RANDOM.nextInt(++id), id);
+    final int n = BASEID + ITERATIONS;
+    for(int id = BASEID + 1; id <= n; ++id) {
+      insert(RANDOM.nextInt(id), id);
+      check();
+    }
+  }
+
+  /** Delete correctness: delete values at random positions. */
+  @Test
+  public void testDeleteCorrectness() {
+    // for(int id = BASEID; id > 0; --id) {
+    // delete(RANDOM.nextInt(id));
+    // check();
+    // }
+    delete(12); System.err.println(testedmap);
+    delete(1); System.err.println(testedmap);
+    delete(2); System.err.println(testedmap);
+    delete(7); System.err.println(testedmap);
+    delete(2); System.err.println(testedmap);
+    delete(1); System.err.println(testedmap);
+    delete(4); System.err.println(testedmap);
+    delete(3); System.err.println(testedmap);
+    delete(2); System.err.println(testedmap);
+    delete(2); System.err.println(testedmap);
+  }
+
+  /** Correctness: randomly insert/delete value at random positions. */
+  // @Test
+  public void testInsertDeleteCorrectness() {
+    for(int i = 0, id = BASEID + 1; i < ITERATIONS; ++i) {
+      // can't delete if all records have been deleted:
+      if(RANDOM.nextBoolean() || id == 0) insert(RANDOM.nextInt(id), id++);
+      else delete(RANDOM.nextInt(id--));
+      check();
+    }
     check();
   }
 
   /** Insert performance: insert at random positions. */
   @Test
   public void testInsertPerformance() {
+    System.err.print("Tested mapping: ");
     testInsertPerformance(testedmap);
+  }
+
+  /** Delete performance: delete at random positions. */
+  @Test
+  public void testDeletePerformance() {
+    System.err.print("Tested mapping: ");
+    testDeletePerformance(testedmap, basemap);
   }
 
   /** Search performance: insert at random positions and the search. */
   @Test
   public void testSearchPerformance() {
+    System.err.print("Tested mapping: ");
     testSearchPerformance(testedmap);
   }
 
   /** Dummy insert performance: insert at random positions. */
   @Test
   public void testInsertPerformanceDummy() {
+    System.err.print("Dummy mapping: ");
     testInsertPerformance(basemap);
+  }
+
+  /** Dummy delete performance: delete at random positions. */
+  @Test
+  public void testDeletePerformanceDummy() {
+    System.err.print("Dummy mapping: ");
+    testDeletePerformance(basemap, basemap.copy());
   }
 
   /** Dummy search performance: insert at random positions and the search. */
   @Test
   public void testSearchPerformanceDummy() {
+    System.err.print("Dummy mapping: ");
     testSearchPerformance(basemap);
   }
 
@@ -76,10 +132,36 @@ public class IdPreMapTest2 {
    * @param m tested map
    */
   private static void testInsertPerformance(final IdPreMap m) {
+    // prepare <pre, id> pairs:
+    final int[][] d = new int[ITERATIONS][2];
+    for(int i = 0, id = BASEID + 1; i < d.length; ++id, ++i) {
+      d[i][0] = RANDOM.nextInt(id);
+      d[i][1] = id;
+    }
+    // perform the actual test:
     final Performance p = new Performance();
-    for(int i = 0, id = BASEID; i < ITERATIONS; i++)
-      m.insert(RANDOM.nextInt(++id), id, 1);
-    System.err.println(ITERATIONS + " records inserted in: " + p);
+    for(int i = 0; i < d.length; ++i) m.insert(d[i][0], d[i][1], 1);
+    System.err.println(d.length + " records inserted in: " + p);
+  }
+
+  /**
+   * Delete performance: delete at random positions.
+   * @param m tested map
+   * @param b base map
+   */
+  private static void testDeletePerformance(final IdPreMap m,
+      final DummyIdPreMap b) {
+    // prepare <pre, id> pairs:
+    final int[][] d = new int[BASEID + 1][2];
+    for(int i = 0, id = BASEID + 1; i < d.length; --id, ++i) {
+      d[i][0] = RANDOM.nextInt(id);
+      d[i][1] = b.id(d[i][0]);
+      b.delete(d[i][0], d[i][1], -1);
+    }
+    // perform the test:
+    final Performance p = new Performance();
+    for(int i = 0; i < d.length; i++) m.delete(d[i][0], d[i][1], -1);
+    System.err.println(d.length + " records deleted in: " + p);
   }
 
   /**
@@ -87,11 +169,12 @@ public class IdPreMapTest2 {
    * @param m tested map
    */
   private static void testSearchPerformance(final IdPreMap m) {
-    int id = BASEID;
-    for(int i = 0; i < ITERATIONS; i++) m.insert(RANDOM.nextInt(++id), id, 1);
+    final int n = BASEID + ITERATIONS;
+    for(int id = BASEID + 1; id <= n; ++id) m.insert(RANDOM.nextInt(id), id, 1);
+
     final Performance p = new Performance();
-    for(int i = 0; i <= id; i++) m.pre(i);
-    System.err.println(id + " records found in: " + p);
+    for(int i = 0; i < n; ++i) m.pre(i);
+    System.err.println(n + " records found in: " + p);
   }
 
   /**
@@ -101,8 +184,18 @@ public class IdPreMapTest2 {
    */
   private void insert(final int pre, final int id) {
     insertedpres.add(pre);
-    basemap.insert(pre, id, 1);
     testedmap.insert(pre, id, 1);
+    basemap.insert(pre, id, 1);
+  }
+
+  /**
+   * Delete a &lt;pre, id&gt; pair from {@link #basemap} and {@link #testedmap}.
+   * @param pre pre value
+   */
+  private void delete(final int pre) {
+    deletedpres.add(pre);
+    testedmap.delete(pre, basemap.id(pre), -1);
+    basemap.delete(pre, basemap.id(pre), -1);
   }
 
   /** Check the two mappings. */
@@ -111,7 +204,8 @@ public class IdPreMapTest2 {
       final int id = basemap.id(pre);
       final int p = testedmap.pre(id);
       if(pre != p) fail("Wrong PRE for ID = " + id + ": expected " + pre
-          + ", actual " + p + "\nInserted PREs: " + insertedpres);
+          + ", actual " + p + "\nInserted PREs: " + insertedpres
+          + "\nDelete PREs: " + deletedpres);
     }
   }
 }
@@ -140,8 +234,8 @@ class DummyIdPreMap extends IdPreMap {
   }
 
   @Override
-  public int delete(final int pre, final int c) {
-    return ids.remove(pre);
+  public void delete(final int pre, final int id, final int c) {
+    ids.remove(pre);
   }
 
   @Override
@@ -164,5 +258,15 @@ class DummyIdPreMap extends IdPreMap {
    */
   public int id(final int pre) {
     return ids.get(pre);
+  }
+
+  /**
+   * Create a copy of the current object.
+   * @return deep copy of the object
+   */
+  public DummyIdPreMap copy() {
+    final int[] a = new int[ids.size()];
+    for(int i = size() - 1; i >= 0; --i) a[i] = ids.get(i).intValue();
+    return new DummyIdPreMap(a);
   }
 }
