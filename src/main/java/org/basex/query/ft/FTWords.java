@@ -163,7 +163,7 @@ public final class FTWords extends FTExpr {
               if(ftt.opt.sw != null && ftt.opt.sw.id(token) != 0) {
                 ++d;
               } else {
-                final FTIndexIterator ir = (FTIndexIterator) data.iter(lex);
+                final FTIndexIterator ir = (FTIndexIterator) data.ids(lex);
                 if(ia == null) {
                   ia = ir;
                 } else {
@@ -344,9 +344,8 @@ public final class FTWords extends FTExpr {
             if(w == '{' || w == '\\' || w == '.' && ++d > 1) return false;
           }
         }
-
         // reduce number of expected results to favor full-text index requests
-        ic.costs += ic.data.count(ft) + 3 >> 2;
+        ic.costs += ic.data.nrIDs(ft) + 3 >> 2;
       }
     }
     return true;

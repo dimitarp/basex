@@ -82,7 +82,7 @@ final class FTFuzzy extends FTIndex {
   }
 
   @Override
-  public synchronized int count(final IndexToken ind) {
+  public synchronized int nrIDs(final IndexToken ind) {
     // skip result count for queries which stretch over multiple index entries
     final FTLexer lex = (FTLexer) ind;
     if(lex.ftOpt().is(FZ)) return Math.max(1, data.meta.size / 10);
@@ -103,7 +103,7 @@ final class FTFuzzy extends FTIndex {
   }
 
   @Override
-  public synchronized IndexIterator iter(final IndexToken ind) {
+  public synchronized IndexIterator ids(final IndexToken ind) {
     final FTLexer lex = (FTLexer) ind;
     final byte[] tok = lex.get();
 

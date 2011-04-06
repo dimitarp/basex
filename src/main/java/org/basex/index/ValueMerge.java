@@ -48,7 +48,7 @@ final class ValueMerge {
    * @throws IOException I/O exception
    */
   void next() throws IOException {
-    pre = v.nextIDs();
+    pre = v.nextPres();
     if(pre.length != 0) {
       token = di.readBytes();
     } else {

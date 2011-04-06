@@ -95,12 +95,6 @@ public final class MemData extends Data {
 
   @Override
   protected long index(final byte[] txt, final int pre, final boolean text) {
-    return ((MemValues) (text ? txtindex : atvindex)).index(txt, id(pre));
+    return ((MemValues) (text ? txtindex : atvindex)).index(txt, pre);
   }
-
-  @Override
-  protected void deleteIDs(final int pre, final int s) { }
-
-  @Override
-  protected void insertIDs(final int pre, final int s) { }
 }
