@@ -108,23 +108,32 @@ public class IdPreMap {
         i = -i;
         oid = pre - incs.get(i - 1);
         inc += incs.get(i - 1);
+        // shift pres and incs to make room for the new record:
         for(int k = pres.size(); k > i; --k) {
           pres.set(pres.get(k - 1) + c, k);
           incs.set(incs.get(k - 1) + c, k);
         }
-
         pres.set(pre, i);
         incs.set(inc, i);
+
         ids.add(id, i);
         oids.add(oid, i);
       } else {
-        // if next record is pres[i] + c, then remove this one
-        // else if(pre == size) remove this on
-        // else keep this one but set ids[i] = id(pre + 1);
-        if(i > 0) {
-          oid = oids.get(i - 1);
-          inc += incs.get(i - 1);
+        if(pres.get(i + 1) == pre + c) {
+          pres.remove(i);
+          incs.remove(i);
+          ids.remove(i);
+          oids.remove(i);
+        } else {
+          // else if(pre == size) remove this one
+          // else keep this one but set ids[i] = id(pre + 1);
+          if(i > 0) {
+            oid = oids.get(i - 1);
+            inc += incs.get(i - 1);
+          }
+
         }
+        // apply the correction to all subsequent records:
         for(int k = pres.size(); k >= i; --k) {
           pres.set(pres.get(k) + c, k);
           incs.set(incs.get(k) + c, k);
@@ -133,6 +142,7 @@ public class IdPreMap {
     } else {
       pres.set(pre, i);
       incs.set(inc, i);
+
       ids.add(id, i);
       oids.add(oid, i);
     }
