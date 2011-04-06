@@ -46,7 +46,8 @@ public class IdPreMap {
   public int pre(final int id) {
     if(id < pres.get(0)) return id;
     if(id > baseid) return idindex.get(id - baseid - 1);
-    return id + incs.get(searchlast(oids, id));
+    final int i = oids.binarySearchLast(id);
+    return id + incs.get(i < 0 ? -i - 1 : i);
   }
 
   /**
@@ -71,7 +72,6 @@ public class IdPreMap {
         oid = oids.get(i);
         inc += incs.get(i - 1);
       }
-      // [DP] shifting can be implemented in IntList?
       for(int k = pres.size(); k > i; --k) {
         pres.set(pres.get(k - 1) + c, k);
         incs.set(incs.get(k - 1) + c, k);
@@ -108,45 +108,41 @@ public class IdPreMap {
         i = -i;
         oid = pre - incs.get(i - 1);
         inc += incs.get(i - 1);
+        for(int k = pres.size(); k > i; --k) {
+          pres.set(pres.get(k - 1) + c, k);
+          incs.set(incs.get(k - 1) + c, k);
+        }
+
+        pres.set(pre, i);
+        incs.set(inc, i);
+        ids.add(id, i);
+        oids.add(oid, i);
       } else {
-        while(i < pres.size() && pres.get(i) == pre) i++;
+        // if next record is pres[i] + c, then remove this one
+        // else if(pre == size) remove this on
+        // else keep this one but set ids[i] = id(pre + 1);
         if(i > 0) {
           oid = oids.get(i - 1);
           inc += incs.get(i - 1);
         }
+        for(int k = pres.size(); k >= i; --k) {
+          pres.set(pres.get(k) + c, k);
+          incs.set(incs.get(k) + c, k);
+        }
       }
-      // [DP] shifting can be implemented in IntList?
-      for(int k = pres.size(); k > i; --k) {
-        pres.set(pres.get(k - 1) + c, k);
-        incs.set(incs.get(k - 1) + c, k);
-      }
+    } else {
+      pres.set(pre, i);
+      incs.set(inc, i);
+      ids.add(id, i);
+      oids.add(oid, i);
     }
 
-    pres.set(pre, i);
-    incs.set(inc, i);
-    ids.add(id, i);
-    oids.add(oid, i);
-
     // [DP] correction can be optimized?
-    // for(int k = idindex.size() - 1; k >= 0; --k) {
-    // final int p = idindex.get(k);
-    // if(p >= pre) idindex.set(p + c, k);
-    // }
-    // idindex.add(pre);
-  }
-
-  /**
-   * Binary search for a key in a list. If there are several hits the last one
-   * is returned.
-   * @param list sorted list
-   * @param key key to search for
-   * @return index of the found hit or where the key ought to be inserted
-   */
-  private static int searchlast(final IntListExt list, final int key) {
-    int i = list.binarySearch(key);
-    if(i < 0) return -i - 1;
-    while(++i < list.size() && list.get(i) == key);
-    return i - 1;
+    for(int k = idindex.size() - 1; k >= 0; --k) {
+      final int p = idindex.get(k);
+      if(p >= pre) idindex.set(p + c, k);
+    }
+    if(id > baseid) idindex.remove(id - baseid - 1);
   }
 
   @Override
@@ -225,5 +221,20 @@ class IntListExt extends IntList {
       else return mid;
     }
     return -low;
+  }
+
+  /**
+   * Binary search for a key in a list. If there are several hits the last one
+   * is returned.
+   * @param e key to search for
+   * @return index of the found hit or where the key ought to be inserted
+   */
+  public int binarySearchLast(final int e) {
+    int i = this.binarySearch(e);
+    if(i >= 0) {
+      while(++i < size && list[i] == e);
+      return i - 1;
+    }
+    return i;
   }
 }
