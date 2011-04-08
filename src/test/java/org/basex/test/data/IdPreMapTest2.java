@@ -55,9 +55,6 @@ public class IdPreMapTest2 {
       insert(RANDOM.nextInt(id), id);
       check();
     }
-//    insert(2, 8);
-//    insert(6, 9);
-//    insert(0, 10);
   }
 
   /** Delete correctness: delete values at random positions. */
@@ -67,17 +64,6 @@ public class IdPreMapTest2 {
       delete(RANDOM.nextInt(id));
       check();
     }
-
-//     delete(12); check();
-//     delete(1); check();
-//     delete(2); check();
-//     delete(7); check();
-//     delete(2); check();
-//     delete(1); check();
-//     delete(4); check();
-//     delete(3); check();
-//     delete(2); check();
-//     delete(2); check();
   }
 
   /** Delete correctness: delete values at random positions. */
@@ -90,26 +76,6 @@ public class IdPreMapTest2 {
       delete(RANDOM.nextInt(id));
       check();
     }
-
-//    insert(3, 8); check();
-//    insert(1, 9); check();
-//    insert(9, 10); check();
-//    delete(8); check();
-
-//    insert(7, 8); check();
-//    insert(7, 9); check();
-//    insert(3, 10); check();
-//    delete(9); check();
-    // delete(12); System.err.println(testedmap);
-    // delete(1); System.err.println(testedmap);
-    // delete(2); System.err.println(testedmap);
-    // delete(7); System.err.println(testedmap);
-    // delete(2); System.err.println(testedmap);
-    // delete(1); System.err.println(testedmap);
-    // delete(4); System.err.println(testedmap);
-    // delete(3); System.err.println(testedmap);
-    // delete(2); System.err.println(testedmap);
-    // delete(2); System.err.println(testedmap);
   }
 
   /** Correctness: randomly insert/delete value at random positions. */
