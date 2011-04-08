@@ -20,8 +20,6 @@ public class IdPreMap {
   private final IntListExt incs;
   /** ID values for the PRE, before inserting/deleting a record. */
   private final IntListExt oids;
-  /** ID index for fast search of PRE values. */
-  // private final IntListExt idindex;
 
   /**
    * Constructor.
@@ -34,8 +32,6 @@ public class IdPreMap {
     ids = new IntListExt(5);
     incs = new IntListExt(5);
     oids = new IntListExt(5);
-
-    //idindex = new IntListExt(5);
   }
 
   /**
@@ -45,7 +41,6 @@ public class IdPreMap {
    */
   public int pre(final int id) {
     if(id < pres.get(0)) return id;
-    //if(id > baseid) return idindex.get(id - baseid - 1);
     if(id > baseid) return pres.get(ids.indexOf(id));
     final int i = oids.sortedLastIndexOf(id);
     return id + incs.get(i < 0 ? -i - 2 : i);
@@ -58,7 +53,6 @@ public class IdPreMap {
    * @param c number of inserted records
    */
   public void insert(final int pre, final int id, final int c) {
-
     int i = 0;
     int inc = c;
     int oid = pre;
@@ -67,7 +61,7 @@ public class IdPreMap {
       i = pres.sortedIndexOf(pre);
       if(i < 0) {
         i = -i - 1;
-        if(i > 0) {
+        if(i != 0) {
           oid = pre - incs.get(i - 1);
           inc += incs.get(i - 1);
         }
@@ -75,23 +69,20 @@ public class IdPreMap {
         oid = oids.get(i);
         inc += incs.get(i - 1);
       }
-      for(int k = pres.size(); k > i; --k) {
-        pres.set(pres.get(k - 1) + c, k);
-        incs.set(incs.get(k - 1) + c, k);
+      pres.add(pre, i);
+      incs.add(inc, i);
+      ids.add(id, i);
+      oids.add(oid, i);
+      for(int k = pres.size() - 1; k > i; --k) {
+        pres.inc(k, c);
+        incs.inc(k, c);
       }
+    } else {
+      pres.set(pre, i);
+      incs.set(inc, i);
+      ids.set(id, i);
+      oids.set(oid, i);
     }
-
-    pres.set(pre, i);
-    incs.set(inc, i);
-    ids.add(id, i);
-    oids.add(oid, i);
-
-    // [DP] correction can be optimized?
-//    for(int k = idindex.size() - 1; k >= 0; --k) {
-//      final int p = idindex.get(k);
-//      if(p >= pre) idindex.set(p + c, k);
-//    }
-//    idindex.add(pre);
   }
 
   /**
@@ -109,70 +100,44 @@ public class IdPreMap {
       i = pres.sortedIndexOf(pre);
       if(i < 0) {
         i = -i - 1;
+        // the next entry will be the same after the correction:
         if(i < pres.size() && pres.get(i) + c == pre) {
-          inc += incs.get(i);
-          pres.set(pre, i);
-          incs.set(inc, i);
-          //ids.set(id, i);
-          // apply the correction to all subsequent records:
-          for(int k = pres.size() - 1; k > i; --k) {
-            pres.set(pres.get(k) + c, k);
-            incs.set(incs.get(k) + c, k);
-          }
+          // re-use the next record:
+          pres.inc(i, c);
+          incs.inc(i, c);
         } else {
-          if(i > 0) {
+          if(i != 0) {
             oid = pre - incs.get(i - 1);
             inc += incs.get(i - 1);
           }
-          // shift pres and incs to make room for the new record:
-          for(int k = pres.size(); k > i; --k) {
-            pres.set(pres.get(k - 1) + c, k);
-            incs.set(incs.get(k - 1) + c, k);
-          }
-          pres.set(pre, i);
-          incs.set(inc, i);
-
+          pres.add(pre, i);
+          incs.add(inc, i);
           ids.add(id, i);
           oids.add(oid, i);
         }
       } else {
+        // the next entry will be the same after the correction:
         if(i + 1 < pres.size() && pres.get(i + 1) + c == pre) {
           pres.remove(i);
           incs.remove(i);
           ids.remove(i);
           oids.remove(i);
-        } else {
-          // else if(pre == size) remove this one
-          // else keep this one but set ids[i] = id(pre + 1);
-//          if(i > 0) {
-//            oid = oids.get(i - 1);
-//            inc += incs.get(i - 1);
-//          }
+
+          pres.inc(i, c);
         }
-        inc += incs.get(i);
-        pres.set(pre, i);
-        incs.set(inc, i);
-        //ids.set(id, i);
-        // apply the correction to all subsequent records:
-        for(int k = pres.size() - 1; k > i; --k) {
-          pres.set(pres.get(k) + c, k);
-          incs.set(incs.get(k) + c, k);
-        }
+        incs.inc(i, c);
+      }
+      // apply the correction to all subsequent records:
+      for(int k = pres.size() - 1; k > i; --k) {
+        pres.inc(k, c);
+        incs.inc(k, c);
       }
     } else {
       pres.set(pre, i);
       incs.set(inc, i);
-
-      ids.add(id, i);
-      oids.add(oid, i);
+      ids.set(id, i);
+      oids.set(oid, i);
     }
-
-    // [DP] correction can be optimized?
-//    for(int k = idindex.size() - 1; k >= 0; --k) {
-//      final int p = idindex.get(k);
-//      if(p >= pre) idindex.set(p + c, k);
-//    }
-//    if(id > baseid) idindex.remove(id - baseid - 1);
   }
 
   @Override
@@ -257,5 +222,24 @@ class IntListExt extends IntList {
   public int indexOf(final int e) {
     for(int i = 0; i < size; ++i) if(list[i] == e) return i;
     return -1;
+  }
+
+  /**
+   * Increment the value of the element at the specified index.
+   * @param i index of the element
+   * @param c increment value
+   */
+  public void inc(final int i, final int c) {
+    list[i] += c;
+  }
+
+  /**
+   * Increment the values within an interval.
+   * @param from start index (inclusive)
+   * @param to end index (exclusive)
+   * @param c increment value
+   */
+  public void inc(final int from, final int to, final int c) {
+    for(int i = from; i < to; ++i) list[i] += c;
   }
 }
