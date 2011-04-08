@@ -77,7 +77,7 @@ public final class DiskValues implements Index {
   }
 
   @Override
-  public IndexIterator ids(final IndexToken tok) {
+  public IndexIterator iter(final IndexToken tok) {
     if(tok instanceof RangeToken) return idRange((RangeToken) tok);
 
     final int id = cache.id(tok.get());
@@ -88,7 +88,7 @@ public final class DiskValues implements Index {
   }
 
   @Override
-  public int nrIDs(final IndexToken it) {
+  public int count(final IndexToken it) {
     if(it instanceof RangeToken) return idRange((RangeToken) it).size();
     if(it.get().length > MAXLEN) return Integer.MAX_VALUE;
 
