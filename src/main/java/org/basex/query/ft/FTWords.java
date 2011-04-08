@@ -163,7 +163,7 @@ public final class FTWords extends FTExpr {
               if(ftt.opt.sw != null && ftt.opt.sw.id(token) != 0) {
                 ++d;
               } else {
-                final FTIndexIterator ir = (FTIndexIterator) data.ids(lex);
+                final FTIndexIterator ir = (FTIndexIterator) data.iter(lex);
                 if(ia == null) {
                   ia = ir;
                 } else {
@@ -345,7 +345,7 @@ public final class FTWords extends FTExpr {
           }
         }
         // reduce number of expected results to favor full-text index requests
-        ic.costs += ic.data.nrIDs(ft) + 3 >> 2;
+        ic.costs += ic.data.count(ft) + 3 >> 2;
       }
     }
     return true;
