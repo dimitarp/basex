@@ -31,9 +31,11 @@ public final class IdPreMapTest {
   /** Test queries. */
   private static final String[] QUERIES = new String[] {
       "insert node <e/> as first into //b",
-      "insert node <f/> as first into //c", "delete //e",
+      "insert node <f/> as first into //c",
+      "delete //e",
       "insert node <e a='test'><f/><g/><h>text</h><i/></e> as first into /a",
-      "delete //e", "replace node //d with <f r='t'></f>",
+      "delete //e",
+      "replace node //d with <f r='t'></f>",
       "insert node <d><g/><h/><i/><j/><k/><l/><m/><n/></d> as first into //a"};
 
   /**

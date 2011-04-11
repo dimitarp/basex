@@ -40,7 +40,7 @@ public class IdPreMap {
    * @return PRE
    */
   public int pre(final int id) {
-    if(id < pres.get(0)) return id;
+    if(id < pres.get(0) || pres.size() == 0) return id;
     if(id > baseid) return pres.get(ids.indexOf(id));
     final int i = oids.sortedLastIndexOf(id);
     return id + incs.get(i < 0 ? -i - 2 : i);

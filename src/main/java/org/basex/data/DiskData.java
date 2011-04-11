@@ -283,7 +283,7 @@ public final class DiskData extends Data {
   @Override
   protected void deleteIDs(final int pre, final int s) {
     final int n = pre + s;
-    for(int i = pre; i < n; i++) idmap.delete(id(i), i);
+    for(int i = pre; i < n; ++i) idmap.delete(id(i), pre);
   }
 
   @Override
