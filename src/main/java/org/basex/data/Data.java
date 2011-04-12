@@ -103,6 +103,8 @@ public abstract class Data {
   protected Index atvindex;
   /** Full-text index instance. */
   protected Index ftxindex;
+  /** ID->PRE mapping. */
+  public IdPreMap idmap;
 
   /**
    * Dissolves the references to often used tag names and attributes.
@@ -486,7 +488,7 @@ public abstract class Data {
   public final void rename(final int pre, final int kind, final byte[] name,
       final byte[] uri) {
 
-    meta.update();
+    update();
     if(kind == PI) {
       text(pre, trim(concat(name, SPACE, atom(pre))), true);
     } else {
@@ -514,7 +516,7 @@ public abstract class Data {
    * @param value value to be updated (tag name, text, comment, pi)
    */
   public final void replace(final int pre, final int kind, final byte[] value) {
-    meta.update();
+    update();
     text(pre, kind == PI ? trim(concat(name(pre, kind), SPACE, value)) : value,
         kind != ATTR);
   }
@@ -596,7 +598,7 @@ public abstract class Data {
    * @param pre pre value of the node to delete
    */
   public final void delete(final int pre) {
-    meta.update();
+    update();
 
     // size of the subtree to delete
     int k = kind(pre);
@@ -653,7 +655,7 @@ public abstract class Data {
    * @param data data instance to copy from
    */
   public final void insertAttr(final int pre, final int par, final Data data) {
-    meta.update();
+    update();
     insert(pre, par, data);
     attSize(par, ELEM, attSize(par, ELEM) + data.meta.size);
   }
@@ -666,7 +668,7 @@ public abstract class Data {
    * @param data data instance to copy from
    */
   public final void insert(final int ipre, final int ipar, final Data data) {
-    meta.update();
+    update();
 
     final int[] preStack = new int[IO.MAXHEIGHT];
     int l = 0;
@@ -916,12 +918,12 @@ public abstract class Data {
   /**
    * Adds a document entry to the internal update buffer.
    * @param pre pre value
-   * @param size node size
-   * @param value document name
+   * @param s node size
+   * @param vl document name
    */
-  public final void doc(final int pre, final int size, final byte[] value) {
-    final int i = ++meta.lastid;
-    final long v = index(value, pre, true);
+  public final void doc(final int pre, final int s, final byte[] vl) {
+    final int i = newID();
+    final long v = index(vl, pre, i, true);
     s(DOC); s(0); s(0); s(v >> 32);
     s(v >> 24); s(v >> 16); s(v >> 8); s(v);
     s(size >> 24); s(size >> 16); s(size >> 8); s(size);
@@ -930,42 +932,42 @@ public abstract class Data {
 
   /**
    * Adds an element entry to the internal update buffer.
-   * @param dist parent distance
-   * @param name tag name index
-   * @param asize number of attributes
-   * @param size node size
-   * @param uri namespace uri reference
+   * @param d parent distance
+   * @param tn tag name index
+   * @param as number of attributes
+   * @param s node size
+   * @param u namespace uri reference
    * @param ne namespace flag
    */
-  public final void elem(final int dist, final int name, final int asize,
-      final int size, final int uri, final boolean ne) {
+  public final void elem(final int d, final int tn, final int as,
+      final int s, final int u, final boolean ne) {
 
     // build and insert new entry
-    final int i = ++meta.lastid;
+    final int i = newID();
     final int n = ne ? 1 << 7 : 0;
-    s(Math.min(IO.MAXATTS, asize) << 3 | ELEM);
-    s(n | (byte) (name >> 8)); s(name); s(uri);
-    s(dist >> 24); s(dist >> 16); s(dist >> 8); s(dist);
-    s(size >> 24); s(size >> 16); s(size >> 8); s(size);
+    s(Math.min(IO.MAXATTS, as) << 3 | ELEM);
+    s(n | (byte) (tn >> 8)); s(tn); s(u);
+    s(d >> 24); s(d >> 16); s(d >> 8); s(d);
+    s(s >> 24); s(s >> 16); s(s >> 8); s(s);
     s(i >> 24); s(i >> 16); s(i >> 8); s(i);
   }
 
   /**
    * Adds a text entry to the internal update buffer.
    * @param pre insert position
-   * @param dist parent distance
-   * @param value string value
-   * @param kind node kind
+   * @param d parent distance
+   * @param vl tag name or text node
+   * @param k node kind
    */
-  public final void text(final int pre, final int dist, final byte[] value,
-      final int kind) {
+  public final void text(final int pre, final int d, final byte[] vl,
+      final int k) {
 
     // build and insert new entry
     final int i = newID();
-    final long v = index(value, pre, true);
+    final long v = index(vl, pre, i, true);
     s(kind); s(0); s(0); s(v >> 32);
     s(v >> 24); s(v >> 16); s(v >> 8); s(v);
-    s(dist >> 24); s(dist >> 16); s(dist >> 8); s(dist);
+    s(d >> 24); s(d >> 16); s(d >> 8); s(d);
     s(i >> 24); s(i >> 16); s(i >> 8); s(i);
   }
 
@@ -982,8 +984,8 @@ public abstract class Data {
       final byte[] value, final int uri, final boolean ne) {
 
     // add attribute to text storage
-    final long v = index(value, pre, false);
     final int i = newID();
+    final long v = index(vl, pre, i, false);
     final int n = ne ? 1 << 7 : 0;
     s(Math.min(IO.MAXATTS, dist) << 3 | ATTR);
     s(n | (byte) (name >> 8)); s(name); s(v >> 32);
@@ -1004,7 +1006,7 @@ public abstract class Data {
    * Generates a new id.
    * @return id
    */
-  private int newID() {
+  protected int newID() {
     return ++meta.lastid;
   }
 
@@ -1030,33 +1032,56 @@ public abstract class Data {
    * Indexes a text and returns the reference.
    * @param value text to be indexed
    * @param pre pre value
+   * @param id id value
    * @param text text/attribute flag
    * @return reference
    */
-  protected abstract long index(final byte[] value, final int pre,
+  protected abstract long index(final byte[] value, final int pre, final int id,
       final boolean text);
 
   /**
-   * Delete record from PRE -> ID map.
+   * Remove a text from index.
+   * @param pre pre value
+   * @param text text/attribute flag
+   */
+  protected abstract void indexRemove(final int pre, final boolean text);
+
+  /**
+   * Delete record from ID -> PRE map.
    * @param pre first pre
    * @param s number of subsequent deleted records
    */
-  protected abstract void deleteIDs(final int pre, final int s);
+  protected final void deleteIDs(final int pre, final int s) {
+    final int n = pre + s;
+    // only pre is always deleted, since pre + 1 -> pre after a delete:
+    for(int i = pre; i < n; ++i) idmap.delete(pre, id(i), -1);
+  }
 
   /**
-   * Insert ids into PRE -> ID map.
+   * Insert ids into ID -> PRE map.
    * @param pre first pre
    * @param s number of subsequent inserted records
    */
-  protected abstract void insertIDs(final int pre, final int s);
+  protected final void insertIDs(final int pre, final int s) {
+    final int n = pre + s;
+    for(int i = pre; i < n; i++) idmap.insert(i, id(i), 1);
+  }
+
+  /** Calls {@link MetaData#update()}. Inheriting classes can override. */
+  protected void update() {
+    meta.update();
+    meta.invalidateIndexes();
+  }
 
   /**
    * Returns a string representation of the specified table range. Can be called
    * for debugging.
+   * @param s start pre value
+   * @param e end pre value
    * @return table
    */
-  public final String toString(final int start, final int end) {
-    return string(InfoStorage.table(this, start, end));
+  public final String toString(final int s, final int e) {
+    return string(InfoStorage.table(this, s, e));
   }
 
   @Override

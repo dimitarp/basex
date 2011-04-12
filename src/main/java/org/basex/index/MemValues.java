@@ -1,6 +1,8 @@
 package org.basex.index;
 
 import java.util.Arrays;
+
+import org.basex.data.IdPreMap;
 import org.basex.util.Array;
 import org.basex.util.TokenSet;
 import org.basex.util.Token;
@@ -15,9 +17,19 @@ import org.basex.util.Util;
  */
 public final class MemValues extends TokenSet implements Index {
   /** IDs. */
-  int[][] ids = new int[CAP][];
+  private int[][] ids = new int[CAP][];
   /** ID array lengths. */
-  int[] len = new int[CAP];
+  private int[] len = new int[CAP];
+  /** ID->PRE mapping. */
+  private final IdPreMap idmap;
+
+  /**
+   * Constructor.
+   * @param m id->pre mapping
+   */
+  public MemValues(final IdPreMap m) {
+    idmap = m;
+  }
 
   /**
    * Indexes the specified keys and values.
@@ -39,17 +51,35 @@ public final class MemValues extends TokenSet implements Index {
     return i;
   }
 
+  /**
+   * Remove record from the index.
+   * @param key record key
+   * @param id record id
+   */
+  public void indexRemove(final byte[] key, final int id) {
+    final int i = id(key);
+    if(i == 0 || len[i] == 0) return;
+
+    int p = -1;
+    while(++p < len[i]) if(ids[i][p] == id) break;
+
+    // if not the last element, we need to shift:
+    if(p < len[i] - 1) Array.move(ids[i], p + 1, -1, len[i] - (p + 1));
+    len[i]--;
+  }
+
   @Override
   public IndexIterator iter(final IndexToken tok) {
     final int i = id(tok.get());
     if(i == 0) return IndexIterator.EMPTY;
+    final int[] pres = idmap.pre(ids[i], 0, len[i]);
 
     return new IndexIterator() {
       int p = -1;
       @Override
-      public boolean more() { return ++p < len[i]; }
+      public boolean more() { return ++p < pres.length; }
       @Override
-      public int next() { return ids[i][p]; }
+      public int next() { return pres[p]; }
       @Override
       public double score() { return -1; }
     };

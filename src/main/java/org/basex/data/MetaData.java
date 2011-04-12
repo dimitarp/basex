@@ -193,13 +193,16 @@ public final class MetaData {
    */
   void update() {
     time = System.currentTimeMillis();
-    uptodate = false;
     dirty = true;
-    // reset of flags should be skipped as soon as id/pre mapping is supported
+    paths.update();
+  }
+
+  /** Invalidate indexes. */
+  void invalidateIndexes() {
+    uptodate = false;
     textindex = false;
     attrindex = false;
     ftindex = false;
-    paths.update();
   }
 
   /**
@@ -248,6 +251,7 @@ public final class MetaData {
     if(!istorage.equals(ISTORAGE)) {
       oldindex = true;
       update();
+      invalidateIndexes();
     }
   }
 

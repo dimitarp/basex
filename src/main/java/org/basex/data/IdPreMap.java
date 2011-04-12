@@ -1,6 +1,8 @@
 package org.basex.data;
 
 import java.util.Arrays;
+
+import org.basex.util.BitArray;
 import org.basex.util.IntList;
 
 /**
@@ -16,11 +18,13 @@ public class IdPreMap {
   /** PRE values of the inserted/deleted IDs. */
   private final IntListExt pres;
   /** Inserted ID values. */
-  private final IntListExt ids;
+  private final IntListExt nids;
   /** Increments showing how the PRE values have been modified. */
   private final IntListExt incs;
   /** ID values for the PRE, before inserting/deleting a record. */
   private final IntListExt oids;
+  /** Delete IDs. */
+  private final BitArray deletedids;
 
   /**
    * Constructor.
@@ -30,21 +34,53 @@ public class IdPreMap {
     baseid = id;
 
     pres = new IntListExt(5);
-    ids = new IntListExt(5);
+    nids = new IntListExt(5);
     incs = new IntListExt(5);
     oids = new IntListExt(5);
+
+    deletedids = new BitArray();
   }
 
   /**
    * Find the PRE value of a given ID.
    * @param id ID
-   * @return PRE
+   * @return PRE or -1 if the I
    */
   public int pre(final int id) {
-    if(id < pres.get(0) || pres.size() == 0) return id;
-    if(id > baseid) return pres.get(ids.indexOf(id));
+    // no updates or id is not affected by updates:
+    if(pres.size() == 0 || id < pres.get(0)) return id;
+    // the id was deleted:
+    if(deletedids.get(id)) return -1;
+    // id was inserted by update:
+    if(id > baseid) return pres.get(nids.indexOf(id));
+    // id is affected by updates:
     final int i = oids.sortedLastIndexOf(id);
     return id + incs.get(i < 0 ? -i - 2 : i);
+  }
+
+  /**
+   * Find the PRE values of a given list of IDs.
+   * @param ids IDs
+   * @return a sorted array of PRE values
+   */
+  public int[] pre(final int[] ids) {
+    return pre(ids, 0, ids.length);
+  }
+
+  /**
+   * Find the PRE values of a given list of IDs.
+   * @param ids IDs
+   * @param off start position in ids (inclusive)
+   * @param len number of ids
+   * @return a sorted array of PRE values
+   */
+  public int[] pre(final int[] ids, final int off, final int len) {
+    final IntList p = new IntList(ids.length);
+    for(int i = off; i < len; ++i) {
+      final int pre = pre(ids[i]);
+      if(pre >= 0) p.add(pre);
+    }
+    return p.sort().toArray();
   }
 
   /**
@@ -72,7 +108,7 @@ public class IdPreMap {
       }
       pres.add(pre, i);
       incs.add(inc, i);
-      ids.add(id, i);
+      nids.add(id, i);
       oids.add(oid, i);
       for(int k = pres.size() - 1; k > i; --k) {
         pres.inc(k, c);
@@ -81,7 +117,7 @@ public class IdPreMap {
     } else {
       pres.set(pre, i);
       incs.set(inc, i);
-      ids.set(id, i);
+      nids.set(id, i);
       oids.set(oid, i);
     }
   }
@@ -93,6 +129,8 @@ public class IdPreMap {
    * @param c number of deleted records
    */
   public void delete(final int pre, final int id, final int c) {
+    deletedids.set(id);
+
     int i = 0;
     int inc = c;
     int oid = pre;
@@ -113,7 +151,7 @@ public class IdPreMap {
           }
           pres.add(pre, i);
           incs.add(inc, i);
-          ids.add(id, i);
+          nids.add(-1, i);
           oids.add(oid, i);
         }
       } else {
@@ -121,7 +159,7 @@ public class IdPreMap {
         if(i + 1 < pres.size() && pres.get(i + 1) + c == pre) {
           pres.remove(i);
           incs.remove(i);
-          ids.remove(i);
+          nids.remove(i);
           oids.remove(i);
 
           pres.inc(i, c);
@@ -136,7 +174,7 @@ public class IdPreMap {
     } else {
       pres.set(pre, i);
       incs.set(inc, i);
-      ids.set(id, i);
+      nids.set(-1, i);
       oids.set(oid, i);
     }
   }
@@ -150,7 +188,7 @@ public class IdPreMap {
       b.append('\n');
       b.append(pres.get(i));
       b.append(", ");
-      b.append(ids.get(i));
+      b.append(nids.get(i));
       b.append(", ");
       b.append(incs.get(i));
       b.append(", ");

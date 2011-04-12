@@ -29,9 +29,10 @@ public final class MemData extends Data {
       final PathSummary s, final Prop pr) {
 
     meta = new MetaData("", pr);
+    idmap = new IdPreMap(meta.lastid);
     table = new TableMemAccess(meta, null, 16);
-    txtindex = new MemValues();
-    atvindex = new MemValues();
+    txtindex = new MemValues(idmap);
+    atvindex = new MemValues(idmap);
     tags = tag;
     atts = att;
     ns = n;
@@ -90,17 +91,23 @@ public final class MemData extends Data {
 
   @Override
   public void text(final int pre, final byte[] val, final boolean txt) {
-    textOff(pre, index(val, meta.size, txt));
+    textOff(pre, index(val, pre, id(pre), txt));
   }
 
   @Override
-  protected long index(final byte[] txt, final int pre, final boolean text) {
-    return ((MemValues) (text ? txtindex : atvindex)).index(txt, pre);
+  protected long index(final byte[] txt, final int pre, final int id,
+      final boolean text) {
+    return ((MemValues) (text ? txtindex : atvindex)).index(txt, id);
   }
 
   @Override
-  protected void deleteIDs(final int pre, final int s) { }
+  protected void indexRemove(final int pre, final boolean text) {
+    ((MemValues) (text ? txtindex : atvindex)).
+      indexRemove(text(pre, text), id(pre));
+  }
 
   @Override
-  protected void insertIDs(final int pre, final int s) { }
+  protected void update() {
+    meta.update();
+  }
 }
