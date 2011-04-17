@@ -21,11 +21,11 @@ public class IdPreMapTest2 {
   /** Verbose flag. */
   private static final boolean VERBOSE = false;
   /** Number of update operations to execute in each test. */
-  private static final int ITERATIONS = 7;
+  private static final int ITERATIONS = 7000;
   /** Initial number of records. */
-  private static final int BASEID = 5;
+  private static final int BASEID = 5000;
   /** Maximal number of bulk inserted/deleted records. */
-  private static final int BULKCOUNT = 3;
+  private static final int BULKCOUNT = 300;
   /** Random number generator. */
   private static final Random RANDOM = new Random();
   /** ID -> PRE map to compare to. */
@@ -60,23 +60,24 @@ public class IdPreMapTest2 {
    */
   @Test
   public void testBulkInsertCorrectness() {
-    // final int n = BASEID + ITERATIONS;
-    // int id = BASEID + 1;
-    // while(id <= n) {
-    // final int c = RANDOM.nextInt(BULKCOUNT) + 2;
-    // insert(RANDOM.nextInt(id), id, c);
-    // check();
-    // id += c;
-    // }
+    for(int i = 0, id = BASEID + 1; i < ITERATIONS; i++) {
+      final int c = RANDOM.nextInt(BULKCOUNT) + 2;
+      insert(RANDOM.nextInt(id), id, c);
+      check();
+      id += c;
+    }
 
     // insert(5, 6, 2);
     // insert(4, 8, 2);
 
-    insert(1, 6, 2);
-    insert(2, 8, 2);
-    insert(5, 10, 2);
+    // insert(1, 6, 2);
+    // insert(2, 8, 2);
+    // insert(5, 10, 2);
 
-    check();
+    // insert(5, 6, 3);
+    // insert(4, 9, 2);
+    // insert(9, 11, 3);
+    // check();
   }
 
   /** Insert correctness: insert values at random positions. */
