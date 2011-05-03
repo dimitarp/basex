@@ -52,7 +52,19 @@ public class IdPreMap {
     // the id was deleted:
     if(deletedids.get(id)) return -1;
     // id was inserted by update:
-    if(id > baseid) return pres.get(nids.indexOf(id));
+    if(id > baseid) {
+      final int s = nids.size();
+      for(int i = 0; i < s; ++i) {
+        final int cid = nids.get(i);
+        if(id == cid) return pres.get(i);
+        if(id > cid) {
+          final int c = i == 0 ? incs.get(i) : incs.get(i) - incs.get(i - 1);
+          // the id is in the interval:
+          if(id < cid + c) return pres.get(i) + id - cid;
+        }
+      }
+      return -1;
+    }
     // id is affected by updates:
     final int i = oids.sortedLastIndexOf(id);
     return id + incs.get(i < 0 ? -i - 2 : i);
@@ -99,6 +111,19 @@ public class IdPreMap {
       if(i < 0) {
         i = -i - 1;
         if(i != 0) {
+          // check if inserting into an existing id interval:
+          final int pc = incs.get(i - 1) - (i - 1 == 0 ? 0 : incs.get(i - 2));
+          final int prevpre = pres.get(i - 1);
+          if(pre < prevpre + pc) {
+            // split the id interval:
+            final int s = pre - prevpre;
+            pres.add(pre, i);
+            nids.add(nids.get(i - 1) + s, i);
+            incs.add(incs.get(i - 1), i);
+            oids.add(oids.get(i - 1), i);
+
+            incs.inc(i - 1, s - pc);
+          }
           oid = pre - incs.get(i - 1);
           inc += incs.get(i - 1);
         }
@@ -196,6 +221,14 @@ public class IdPreMap {
     }
 
     return b.toString();
+  }
+
+  /**
+   * Size of the mapping table (only for debugging purposes!).
+   * @return number of rows in the table
+   */
+  public int size() {
+    return pres.size();
   }
 }
 
