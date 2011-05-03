@@ -33,8 +33,6 @@ public class IdPreMapTest2 {
   private IdPreMap testedmap;
   /** Sequence of inserted PRE values. */
   private IntList insertedpres;
-  /** Sequence of deleted PRE values. */
-  private IntList deletedpres;
 
   /** Set-up method. */
   @Before
