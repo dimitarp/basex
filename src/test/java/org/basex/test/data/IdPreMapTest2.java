@@ -24,7 +24,7 @@ public class IdPreMapTest2 {
   /** Number of update operations to execute in each test. */
   private static final int ITERATIONS = 300;
   /** Initial number of records. */
-  private static final int BASEID = 10000;
+  private static final int BASEID = 7;
   /** Random number generator. */
   private static final Random RANDOM = new Random();
   /** ID -> PRE map to compare to. */
@@ -60,24 +60,46 @@ public class IdPreMapTest2 {
   /** Delete correctness: delete values at random positions. */
   @Test
   public void testDeleteCorrectness() {
-    // for(int id = BASEID; id > 0; --id) {
-    // delete(RANDOM.nextInt(id));
-    // check();
-    // }
-    delete(12); System.err.println(testedmap);
-    delete(1); System.err.println(testedmap);
-    delete(2); System.err.println(testedmap);
-    delete(7); System.err.println(testedmap);
-    delete(2); System.err.println(testedmap);
-    delete(1); System.err.println(testedmap);
-    delete(4); System.err.println(testedmap);
-    delete(3); System.err.println(testedmap);
-    delete(2); System.err.println(testedmap);
-    delete(2); System.err.println(testedmap);
+    for(int id = BASEID + 1; id > 0; --id) {
+      delete(RANDOM.nextInt(id));
+      check();
+    }
+    // delete(12); System.err.println(testedmap);
+    // delete(1); System.err.println(testedmap);
+    // delete(2); System.err.println(testedmap);
+    // delete(7); System.err.println(testedmap);
+    // delete(2); System.err.println(testedmap);
+    // delete(1); System.err.println(testedmap);
+    // delete(4); System.err.println(testedmap);
+    // delete(3); System.err.println(testedmap);
+    // delete(2); System.err.println(testedmap);
+    // delete(2); System.err.println(testedmap);
+  }
+
+  /** Delete correctness: delete values at random positions. */
+  @Test
+  public void testDeleteCorrectness2() {
+    final int n = BASEID + ITERATIONS;
+    for(int id = BASEID + 1; id <= n; ++id) insert(RANDOM.nextInt(id), id);
+
+    for(int id = n; id > 0; --id) {
+      delete(RANDOM.nextInt(id));
+      check();
+    }
+    // delete(12); System.err.println(testedmap);
+    // delete(1); System.err.println(testedmap);
+    // delete(2); System.err.println(testedmap);
+    // delete(7); System.err.println(testedmap);
+    // delete(2); System.err.println(testedmap);
+    // delete(1); System.err.println(testedmap);
+    // delete(4); System.err.println(testedmap);
+    // delete(3); System.err.println(testedmap);
+    // delete(2); System.err.println(testedmap);
+    // delete(2); System.err.println(testedmap);
   }
 
   /** Correctness: randomly insert/delete value at random positions. */
-  // @Test
+  @Test
   public void testInsertDeleteCorrectness() {
     for(int i = 0, id = BASEID + 1; i < ITERATIONS; ++i) {
       // can't delete if all records have been deleted:
