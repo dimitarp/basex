@@ -21,6 +21,8 @@ public class IdPreMap {
   private final IntListExt incs;
   /** ID values for the PRE, before inserting/deleting a record. */
   private final IntListExt oids;
+  /** ID index for fast search of PRE values. */
+  private final IntListExt idindex;
 
   /**
    * Constructor.
@@ -33,6 +35,8 @@ public class IdPreMap {
     ids = new IntListExt(5);
     incs = new IntListExt(5);
     oids = new IntListExt(5);
+
+    idindex = new IntListExt(5);
   }
 
   /**
@@ -41,10 +45,9 @@ public class IdPreMap {
    * @return PRE
    */
   public int pre(final int id) {
-    if(id < pres.get(0) || pres.size() == 0) return id;
-    if(id > baseid) return pres.get(ids.indexOf(id));
-    final int i = oids.sortedLastIndexOf(id);
-    return id + incs.get(i < 0 ? -i - 2 : i);
+    if(id < pres.get(0)) return id;
+    if(id > baseid) return idindex.get(id - baseid - 1);
+    return id + incs.get(searchlast(oids, id));
   }
 
   /**
@@ -59,24 +62,19 @@ public class IdPreMap {
     int oid = pre;
 
     if(pres.size() > 0) {
-      i = pres.sortedIndexOf(pre);
+      i = pres.binarySearch(pre);
       if(i < 0) {
-        i = -i - 1;
-        if(i != 0) {
-          oid = pre - incs.get(i - 1);
-          inc += incs.get(i - 1);
-        }
+        i = -i;
+        oid = pre - incs.get(i - 1);
+        inc += incs.get(i - 1);
       } else if(i > 0) {
         oid = oids.get(i);
         inc += incs.get(i - 1);
       }
-      pres.add(pre, i);
-      incs.add(inc, i);
-      ids.add(id, i);
-      oids.add(oid, i);
-      for(int k = pres.size() - 1; k > i; --k) {
-        pres.inc(k, c);
-        incs.inc(k, c);
+      // [DP] shifting can be implemented in IntList?
+      for(int k = pres.size(); k > i; --k) {
+        pres.set(pres.get(k - 1) + c, k);
+        incs.set(incs.get(k - 1) + c, k);
       }
     } else {
       pres.set(pre, i);
@@ -84,6 +82,18 @@ public class IdPreMap {
       ids.set(id, i);
       oids.set(oid, i);
     }
+
+    pres.set(pre, i);
+    incs.set(inc, i);
+    ids.add(id, i);
+    oids.add(oid, i);
+
+    // [DP] correction can be optimized?
+    for(int k = idindex.size() - 1; k >= 0; --k) {
+      final int p = idindex.get(k);
+      if(p >= pre) idindex.set(p + c, k);
+    }
+    idindex.add(pre);
   }
 
   /**
@@ -98,47 +108,49 @@ public class IdPreMap {
     int oid = pre;
 
     if(pres.size() > 0) {
-      i = pres.sortedIndexOf(pre);
+      i = pres.binarySearch(pre);
       if(i < 0) {
-        i = -i - 1;
-        // the next entry will be the same after the correction:
-        if(i < pres.size() && pres.get(i) + c == pre) {
-          // re-use the next record:
-          pres.inc(i, c);
-          incs.inc(i, c);
-        } else {
-          if(i != 0) {
-            oid = pre - incs.get(i - 1);
-            inc += incs.get(i - 1);
-          }
-          pres.add(pre, i);
-          incs.add(inc, i);
-          ids.add(id, i);
-          oids.add(oid, i);
-        }
+        i = -i;
+        oid = pre - incs.get(i - 1);
+        inc += incs.get(i - 1);
       } else {
-        // the next entry will be the same after the correction:
-        if(i + 1 < pres.size() && pres.get(i + 1) + c == pre) {
-          pres.remove(i);
-          incs.remove(i);
-          ids.remove(i);
-          oids.remove(i);
-
-          pres.inc(i, c);
+        while(i < pres.size() && pres.get(i) == pre) i++;
+        if(i > 0) {
+          oid = oids.get(i - 1);
+          inc += incs.get(i - 1);
         }
-        incs.inc(i, c);
       }
-      // apply the correction to all subsequent records:
-      for(int k = pres.size() - 1; k > i; --k) {
-        pres.inc(k, c);
-        incs.inc(k, c);
+      // [DP] shifting can be implemented in IntList?
+      for(int k = pres.size(); k > i; --k) {
+        pres.set(pres.get(k - 1) + c, k);
+        incs.set(incs.get(k - 1) + c, k);
       }
-    } else {
-      pres.set(pre, i);
-      incs.set(inc, i);
-      ids.set(id, i);
-      oids.set(oid, i);
     }
+
+    pres.set(pre, i);
+    incs.set(inc, i);
+    ids.add(id, i);
+    oids.add(oid, i);
+
+    // [DP] correction can be optimized?
+    // for(int k = idindex.size() - 1; k >= 0; --k) {
+    // final int p = idindex.get(k);
+    // if(p >= pre) idindex.set(p + c, k);
+    // }
+    // idindex.add(pre);
+  }
+
+  /**
+   * Binary search for a key in a list. If there are several hits the last one
+   * is returned.
+   * @param e key to search for
+   * @return index of the found hit or where the key ought to be inserted
+   */
+  private static int searchlast(final IntListExt list, final int key) {
+    int i = list.binarySearch(key);
+    if(i < 0) return -i - 1;
+    while(++i < list.size() && list.get(i) == key);
+    return i - 1;
   }
 
   @Override
@@ -201,46 +213,21 @@ class IntListExt extends IntList {
   }
 
   /**
-   * Binary search for a key in a list. If there are several hits the last one
-   * is returned.
+   * Perform binary search for a key in the list.
    * @param e key to search for
-   * @return index of the found hit or where the key ought to be inserted
+   * @return <li>positive index in the list where the key is found <li>negative
+   *         index in the list where the key ought to be inserted
    */
-  public int sortedLastIndexOf(final int e) {
-    int i = this.sortedIndexOf(e);
-    if(i >= 0) {
-      while(++i < size && list[i] == e);
-      return i - 1;
+  public int binarySearch(final int e) {
+    int low = 0;
+    int high = size - 1;
+    while(low <= high) {
+      int mid = (low + high) >>> 1;
+      int val = list[mid];
+      if(val < e) low = mid + 1;
+      else if(val > e) high = mid - 1;
+      else return mid;
     }
-    return i;
-  }
-
-  /**
-   * Search for a key in the list.
-   * @param e key to search for
-   * @return index of the found hit or -1 if the key is not found
-   */
-  public int indexOf(final int e) {
-    for(int i = 0; i < size; ++i) if(list[i] == e) return i;
-    return -1;
-  }
-
-  /**
-   * Increment the value of the element at the specified index.
-   * @param i index of the element
-   * @param c increment value
-   */
-  public void inc(final int i, final int c) {
-    list[i] += c;
-  }
-
-  /**
-   * Increment the values within an interval.
-   * @param from start index (inclusive)
-   * @param to end index (exclusive)
-   * @param c increment value
-   */
-  public void inc(final int from, final int to, final int c) {
-    for(int i = from; i < to; ++i) list[i] += c;
+    return -low;
   }
 }

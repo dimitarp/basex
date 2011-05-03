@@ -24,7 +24,7 @@ public class IdPreMapTest2 {
   /** Number of update operations to execute in each test. */
   private static final int ITERATIONS = 300;
   /** Initial number of records. */
-  private static final int BASEID = 700;
+  private static final int BASEID = 10000;
   /** Random number generator. */
   private static final Random RANDOM = new Random();
   /** ID -> PRE map to compare to. */
@@ -33,6 +33,8 @@ public class IdPreMapTest2 {
   private IdPreMap testedmap;
   /** Sequence of inserted PRE values. */
   private IntList insertedpres;
+  /** Sequence of deleted PRE values. */
+  private IntList deletedpres;
 
   /** Set-up method. */
   @Before
@@ -58,33 +60,32 @@ public class IdPreMapTest2 {
   /** Delete correctness: delete values at random positions. */
   @Test
   public void testDeleteCorrectness() {
-    for(int id = BASEID + 1; id > 0; --id) {
-      delete(RANDOM.nextInt(id));
-      check();
-    }
-  }
-
-  /** Delete correctness: delete values at random positions. */
-  @Test
-  public void testDeleteCorrectness2() {
-    final int n = BASEID + ITERATIONS;
-    for(int id = BASEID + 1; id <= n; ++id) insert(RANDOM.nextInt(id), id);
-
-    for(int id = n; id > 0; --id) {
-      delete(RANDOM.nextInt(id));
-      check();
-    }
+    // for(int id = BASEID; id > 0; --id) {
+    // delete(RANDOM.nextInt(id));
+    // check();
+    // }
+    delete(12); System.err.println(testedmap);
+    delete(1); System.err.println(testedmap);
+    delete(2); System.err.println(testedmap);
+    delete(7); System.err.println(testedmap);
+    delete(2); System.err.println(testedmap);
+    delete(1); System.err.println(testedmap);
+    delete(4); System.err.println(testedmap);
+    delete(3); System.err.println(testedmap);
+    delete(2); System.err.println(testedmap);
+    delete(2); System.err.println(testedmap);
   }
 
   /** Correctness: randomly insert/delete value at random positions. */
-  @Test
+  // @Test
   public void testInsertDeleteCorrectness() {
-    for(int i = 0, cnt = BASEID + 1, id = BASEID + 1; i < ITERATIONS; ++i) {
+    for(int i = 0, id = BASEID + 1; i < ITERATIONS; ++i) {
       // can't delete if all records have been deleted:
-      if(RANDOM.nextBoolean() || id == 0) insert(RANDOM.nextInt(cnt++), id++);
-      else delete(RANDOM.nextInt(cnt--));
+      if(RANDOM.nextBoolean() || id == 0) insert(RANDOM.nextInt(id), id++);
+      else delete(RANDOM.nextInt(id--));
       check();
     }
+    check();
   }
 
   /** Insert performance: insert at random positions. */
@@ -143,7 +144,7 @@ public class IdPreMapTest2 {
     // perform the actual test:
     final Performance p = new Performance();
     for(int i = 0; i < d.length; ++i) m.insert(d[i][0], d[i][1], 1);
-    if(VERBOSE) Util.errln(d.length + " records inserted in: " + p);
+    System.err.println(d.length + " records inserted in: " + p);
   }
 
   /**
@@ -162,8 +163,8 @@ public class IdPreMapTest2 {
     }
     // perform the test:
     final Performance p = new Performance();
-    for(final int[] dd : d) m.delete(dd[0], dd[1], -1);
-    if(VERBOSE) Util.errln(d.length + " records deleted in: " + p);
+    for(int i = 0; i < d.length; i++) m.delete(d[i][0], d[i][1], -1);
+    System.err.println(d.length + " records deleted in: " + p);
   }
 
   /**
