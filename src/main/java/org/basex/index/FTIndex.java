@@ -63,6 +63,7 @@ public abstract class FTIndex implements Index {
     final IntList vals = new IntList();
     for(int c = 0, lp = 0; c < s;) {
       if(lp == 0) {
+        // [DP] get pre values from the mapping:
         if(scm > 0) vals.add(da.readNum());
         lp = da.readNum();
         vals.add(lp);
@@ -70,6 +71,7 @@ public abstract class FTIndex implements Index {
       final int pr = lp;
       vals.add(da.readNum());
       while(++c < s) {
+        // [DP] get pre values from the mapping:
         lp = da.readNum();
         vals.add(lp);
         if(lp != pr) break;

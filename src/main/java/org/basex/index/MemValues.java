@@ -40,7 +40,7 @@ public final class MemValues extends TokenSet implements Index {
   }
 
   @Override
-  public IndexIterator ids(final IndexToken tok) {
+  public IndexIterator iter(final IndexToken tok) {
     final int i = id(tok.get());
     if(i == 0) return IndexIterator.EMPTY;
 
@@ -56,8 +56,8 @@ public final class MemValues extends TokenSet implements Index {
   }
 
   @Override
-  public int nrIDs(final IndexToken it) {
-    return ids(it).size();
+  public int count(final IndexToken it) {
+    return iter(it).size();
   }
 
   @Override

@@ -66,6 +66,7 @@ public final class ValueBuilder extends IndexBuilder {
     final int k = text ? Data.TEXT : Data.ATTR;
 
     for(pre = 0; pre < size; ++pre) {
+      // try to write on every 4096 entries:
       if((pre & 0x0FFF) == 0) {
         check();
         // check if main memory is exhausted
@@ -77,7 +78,7 @@ public final class ValueBuilder extends IndexBuilder {
       }
       // skip too long tokens
       if(data.kind(pre) == k && data.textLen(pre, text) <= MAXLEN)
-        index.index(data.text(pre, text), pre);
+        index.index(data.text(pre, text), data.id(pre));
     }
 
     if(csize == 0) {
