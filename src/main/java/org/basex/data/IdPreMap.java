@@ -22,7 +22,7 @@ public class IdPreMap {
   /** ID values for the PRE, before inserting/deleting a record. */
   private final IntListExt oids;
   /** ID index for fast search of PRE values. */
-  private final IntListExt idindex;
+  // private final IntListExt idindex;
 
   /**
    * Constructor.
@@ -36,7 +36,7 @@ public class IdPreMap {
     incs = new IntListExt(5);
     oids = new IntListExt(5);
 
-    idindex = new IntListExt(5);
+    //idindex = new IntListExt(5);
   }
 
   /**
@@ -46,9 +46,10 @@ public class IdPreMap {
    */
   public int pre(final int id) {
     if(id < pres.get(0)) return id;
-    if(id > baseid) return idindex.get(id - baseid - 1);
-    final int i = oids.binarySearchLast(id);
-    return id + incs.get(i < 0 ? -i - 1 : i);
+    //if(id > baseid) return idindex.get(id - baseid - 1);
+    if(id > baseid) return pres.get(ids.indexOf(id));
+    final int i = oids.sortedLastIndexOf(id);
+    return id + incs.get(i < 0 ? -i - 2 : i);
   }
 
   /**
@@ -63,11 +64,13 @@ public class IdPreMap {
     int oid = pre;
 
     if(pres.size() > 0) {
-      i = pres.binarySearch(pre);
+      i = pres.sortedIndexOf(pre);
       if(i < 0) {
-        i = -i;
-        oid = pre - incs.get(i - 1);
-        inc += incs.get(i - 1);
+        i = -i - 1;
+        if(i > 0) {
+          oid = pre - incs.get(i - 1);
+          inc += incs.get(i - 1);
+        }
       } else if(i > 0) {
         oid = oids.get(i);
         inc += incs.get(i - 1);
@@ -89,11 +92,11 @@ public class IdPreMap {
     oids.add(oid, i);
 
     // [DP] correction can be optimized?
-    for(int k = idindex.size() - 1; k >= 0; --k) {
-      final int p = idindex.get(k);
-      if(p >= pre) idindex.set(p + c, k);
-    }
-    idindex.add(pre);
+//    for(int k = idindex.size() - 1; k >= 0; --k) {
+//      final int p = idindex.get(k);
+//      if(p >= pre) idindex.set(p + c, k);
+//    }
+//    idindex.add(pre);
   }
 
   /**
@@ -108,23 +111,37 @@ public class IdPreMap {
     int oid = pre;
 
     if(pres.size() > 0) {
-      i = pres.binarySearch(pre);
+      i = pres.sortedIndexOf(pre);
       if(i < 0) {
-        i = -i;
-        oid = pre - incs.get(i - 1);
-        inc += incs.get(i - 1);
-        // shift pres and incs to make room for the new record:
-        for(int k = pres.size(); k > i; --k) {
-          pres.set(pres.get(k - 1) + c, k);
-          incs.set(incs.get(k - 1) + c, k);
-        }
-        pres.set(pre, i);
-        incs.set(inc, i);
+        i = -i - 1;
+        if(i < pres.size() && pres.get(i) + c == pre) {
+          inc += incs.get(i);
+          pres.set(pre, i);
+          incs.set(inc, i);
+          //ids.set(id, i);
+          // apply the correction to all subsequent records:
+          for(int k = pres.size() - 1; k > i; --k) {
+            pres.set(pres.get(k) + c, k);
+            incs.set(incs.get(k) + c, k);
+          }
+        } else {
+          if(i > 0) {
+            oid = pre - incs.get(i - 1);
+            inc += incs.get(i - 1);
+          }
+          // shift pres and incs to make room for the new record:
+          for(int k = pres.size(); k > i; --k) {
+            pres.set(pres.get(k - 1) + c, k);
+            incs.set(incs.get(k - 1) + c, k);
+          }
+          pres.set(pre, i);
+          incs.set(inc, i);
 
-        ids.add(id, i);
-        oids.add(oid, i);
+          ids.add(id, i);
+          oids.add(oid, i);
+        }
       } else {
-        if(pres.get(i + 1) == pre + c) {
+        if(i + 1 < pres.size() && pres.get(i + 1) + c == pre) {
           pres.remove(i);
           incs.remove(i);
           ids.remove(i);
@@ -132,14 +149,17 @@ public class IdPreMap {
         } else {
           // else if(pre == size) remove this one
           // else keep this one but set ids[i] = id(pre + 1);
-          if(i > 0) {
-            oid = oids.get(i - 1);
-            inc += incs.get(i - 1);
-          }
-
+//          if(i > 0) {
+//            oid = oids.get(i - 1);
+//            inc += incs.get(i - 1);
+//          }
         }
+        inc += incs.get(i);
+        pres.set(pre, i);
+        incs.set(inc, i);
+        //ids.set(id, i);
         // apply the correction to all subsequent records:
-        for(int k = pres.size(); k >= i; --k) {
+        for(int k = pres.size() - 1; k > i; --k) {
           pres.set(pres.get(k) + c, k);
           incs.set(incs.get(k) + c, k);
         }
@@ -153,11 +173,11 @@ public class IdPreMap {
     }
 
     // [DP] correction can be optimized?
-    for(int k = idindex.size() - 1; k >= 0; --k) {
-      final int p = idindex.get(k);
-      if(p >= pre) idindex.set(p + c, k);
-    }
-    if(id > baseid) idindex.remove(id - baseid - 1);
+//    for(int k = idindex.size() - 1; k >= 0; --k) {
+//      final int p = idindex.get(k);
+//      if(p >= pre) idindex.set(p + c, k);
+//    }
+//    if(id > baseid) idindex.remove(id - baseid - 1);
   }
 
   @Override
@@ -220,36 +240,27 @@ class IntListExt extends IntList {
   }
 
   /**
-   * Perform binary search for a key in the list.
-   * @param e key to search for
-   * @return <li>positive index in the list where the key is found <li>negative
-   *         index in the list where the key ought to be inserted
-   */
-  public int binarySearch(final int e) {
-    int low = 0;
-    int high = size - 1;
-    while(low <= high) {
-      int mid = (low + high) >>> 1;
-      int val = list[mid];
-      if(val < e) low = mid + 1;
-      else if(val > e) high = mid - 1;
-      else return mid;
-    }
-    return -low;
-  }
-
-  /**
    * Binary search for a key in a list. If there are several hits the last one
    * is returned.
    * @param e key to search for
    * @return index of the found hit or where the key ought to be inserted
    */
-  public int binarySearchLast(final int e) {
-    int i = this.binarySearch(e);
+  public int sortedLastIndexOf(final int e) {
+    int i = this.sortedIndexOf(e);
     if(i >= 0) {
       while(++i < size && list[i] == e);
       return i - 1;
     }
     return i;
+  }
+
+  /**
+   * Search for a key in the list.
+   * @param e key to search for
+   * @return index of the found hit or -1 if the key is not found
+   */
+  public int indexOf(final int e) {
+    for(int i = 0; i < size; ++i) if(list[i] == e) return i;
+    return -1;
   }
 }
