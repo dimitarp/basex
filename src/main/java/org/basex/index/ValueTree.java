@@ -8,9 +8,8 @@ import org.basex.util.Token;
 import org.basex.util.TokenList;
 
 /**
- * This class indexes tokens in a balanced binary red-black tree, including
- * their pre values. An iterator returns all compressed pre values in a sorted
- * manner.
+ * This class indexes tokens in a balanced binary tree, including their pre
+ * values. An iterator returns all compressed pre values in a sorted manner.
  *
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen

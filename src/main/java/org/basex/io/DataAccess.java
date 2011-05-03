@@ -55,7 +55,7 @@ public final class DataAccess {
 
   /**
    * Returns the current file position.
-   * @return position in the file
+   * @return text as byte array
    */
   public long pos() {
     return buffer(false).pos + off;
