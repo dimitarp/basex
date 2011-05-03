@@ -200,10 +200,15 @@ public final class DiskValues implements Index {
     while(l <= h) {
       final int m = l + h >>> 1;
       final long pos = idxr.read5(m * 5L);
+      // [DP]: number of hits:
       idxl.readNum(pos);
       final int id = idxl.readNum();
+      if(id < 0)
+      ; // [DP] next
       byte[] txt = ctext[m];
       if(ctext[m] == null) {
+        // [DP]: ID -> PRE
+        // [DP]: PRE < 0?
         txt = data.text(id, text);
         ctext[m] = txt;
       }
