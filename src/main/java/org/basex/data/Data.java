@@ -1052,9 +1052,7 @@ public abstract class Data {
    * @param s number of subsequent deleted records
    */
   protected final void deleteIDs(final int pre, final int s) {
-    final int n = pre + s;
-    // only pre is always deleted, since pre + 1 -> pre after a delete:
-    for(int i = pre; i < n; ++i) idmap.delete(pre, id(i), -1);
+    idmap.delete(pre, id(pre), -s);
   }
 
   /**
@@ -1063,8 +1061,7 @@ public abstract class Data {
    * @param s number of subsequent inserted records
    */
   protected final void insertIDs(final int pre, final int s) {
-    final int n = pre + s;
-    for(int i = pre; i < n; i++) idmap.insert(i, id(i), 1);
+    idmap.insert(pre, id(pre), s);
   }
 
   /** Calls {@link MetaData#update()}. Inheriting classes can override. */
