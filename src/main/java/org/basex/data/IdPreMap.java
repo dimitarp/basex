@@ -3,6 +3,7 @@ package org.basex.data;
 import java.util.Arrays;
 
 import org.basex.util.Array;
+import org.basex.util.BitArray;
 import org.basex.util.IntList;
 
 /**
@@ -10,7 +11,6 @@ import org.basex.util.IntList;
  *
  * @author BaseX Team 2005-11, BSD License
  * @author Dimitar Popov
- * [DP] support deleted IDs
  */
 public class IdPreMap {
   /** Base ID value. */
@@ -25,6 +25,9 @@ public class IdPreMap {
   private int[] incs;
   /** ID values for the PRE, before inserting/deleting a record. */
   private int[] oids;
+
+  /** Deleted IDs. */
+  private final BitArray delids;
 
   /** Number of records in the table. */
   private int rows;
@@ -51,17 +54,21 @@ public class IdPreMap {
     incs = new int[pres.length];
     oids = new int[pres.length];
 
+    delids = new BitArray();
+
     idix = new int[pres.length][];
   }
 
   /**
    * Find the PRE value of a given ID.
    * @param id ID
-   * @return PRE or -1 if the I
+   * @return PRE or -1 if the ID is already deleted
    */
   public int pre(final int id) {
     // no updates or id is not affected by updates:
     if(rows == 0 || id < pres[0]) return id;
+    // record was deleted:
+    if(delids.get(id)) return -1;
     // id was inserted by update:
     if(id > baseid) {
       // int i = sortedIndexOf(idix, 0, id);
@@ -166,18 +173,23 @@ public class IdPreMap {
   /**
    * Delete a record.
    * @param pre record PRE
-   * @param id deleted record ID
+   * @param ids deleted record IDs
    * @param c number of deleted records
    */
-  public void delete(final int pre, final int id, final int c) {
-    if(rows == 0 && pre == id && id == baseid) {
+  public void delete(final int pre, final int[] ids, final int c) {
+    if(ids.length == 0) return;
+    // store the deleted ids:
+    for(int i = 0; i < ids.length; ++i) delids.set(ids[i]);
+
+    int oid = ids[0];
+    // if nothing has been modified and we delete from the end, nothing to do:
+    if(rows == 0 && pre == oid && oid == baseid) {
       baseid += c;
       return;
     }
 
     int i = 0;
     int inc = c;
-    int oid = id;
 
     if(rows > 0) {
       final int pre1 = pre;
@@ -237,7 +249,7 @@ public class IdPreMap {
             pres[i1] = pre;
           } else if(pre2 < min2 - 1) {
             // add a new entry at i1
-            add(i1, pre, -1, -1, i1 > 0 ? incs[i1 - 1] + c : c, id);
+            add(i1, pre, -1, -1, i1 > 0 ? incs[i1 - 1] + c : c, oid);
           }
         } else if(min1 < pre1 && pre1 <= max1) {
           if(max2 < pre2) {

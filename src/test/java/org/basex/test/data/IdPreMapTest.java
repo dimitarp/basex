@@ -7,7 +7,6 @@ import org.basex.core.Context;
 import org.basex.core.cmd.CreateDB;
 import org.basex.core.cmd.DropDB;
 import org.basex.core.cmd.XQuery;
-import org.basex.data.DiskData;
 import org.basex.util.Util;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -97,9 +96,9 @@ public final class IdPreMapTest {
     for(int pre = 0; pre < context.data.meta.size; ++pre) {
       final int id = context.data.id(pre);
       assertEquals("Wrong PRE value for ID " + id + ":", pre,
-          context.data.pre(id));
+          context.data.preold(id));
       assertEquals("Wrong PRE value for ID " + id + " in map ([" + i + "] " + q
-          + "):", pre, ((DiskData) context.data).idmap.pre(id));
+          + "):", pre, context.data.pre(id));
     }
   }
 }

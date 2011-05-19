@@ -53,8 +53,8 @@ public abstract class IdPreMapBulkTestBase {
    */
   protected final void delete(final int pre, final int c) {
     ops.add(new int[] { pre, basemap.id(pre), c});
-    testedmap.delete(pre, basemap.id(pre), c);
-    basemap.delete(pre, basemap.id(pre), c);
+    testedmap.delete(pre, basemap.ids(pre, -c), c);
+    basemap.delete(pre, basemap.ids(pre, -c), c);
   }
 
   /** Check the two mappings. */
@@ -92,7 +92,7 @@ public abstract class IdPreMapBulkTestBase {
    */
   protected static class DummyIdPreMap extends IdPreMap {
     /** ID list. */
-    private final ArrayList<Integer> ids;
+    private final ArrayList<Integer> idlist;
 
     /**
      * Constructor.
@@ -100,23 +100,23 @@ public abstract class IdPreMapBulkTestBase {
      */
     public DummyIdPreMap(final int[] i) {
       super(i.length - 1);
-      ids = new ArrayList<Integer>(i.length);
-      for(int k = 0; k < i.length; ++k) ids.add(i[k]);
+      idlist = new ArrayList<Integer>(i.length);
+      for(int k = 0; k < i.length; ++k) idlist.add(i[k]);
     }
 
     @Override
     public void insert(final int pre, final int id, final int c) {
-      for(int i = 0; i < c; ++i) ids.add(pre + i, id + i);
+      for(int i = 0; i < c; ++i) idlist.add(pre + i, id + i);
     }
 
     @Override
-    public void delete(final int pre, final int id, final int c) {
-      for(int i = 0; i < -c; ++i) ids.remove(pre);
+    public void delete(final int pre, final int[] ids, final int c) {
+      for(int i = 0; i < -c; ++i) idlist.remove(pre);
     }
 
     @Override
     public int pre(final int id) {
-      return ids.indexOf(id);
+      return idlist.indexOf(id);
     }
 
     /**
@@ -125,7 +125,7 @@ public abstract class IdPreMapBulkTestBase {
      */
     @Override
     public int size() {
-      return ids.size();
+      return idlist.size();
     }
 
     /**
@@ -134,7 +134,19 @@ public abstract class IdPreMapBulkTestBase {
      * @return record ID
      */
     public int id(final int pre) {
-      return ids.get(pre);
+      return idlist.get(pre);
+    }
+
+    /**
+     * Returns a set of unique node ids.
+     * @param pre first pre value
+     * @param s number of records
+     * @return node ids
+     */
+    public final int[] ids(final int pre, final int s) {
+      final int[] ids = new int[s];
+      for(int i = 0; i < s; ++i) ids[i] = id(pre + i);
+      return ids;
     }
 
     /**
@@ -142,8 +154,8 @@ public abstract class IdPreMapBulkTestBase {
      * @return deep copy of the object
      */
     public DummyIdPreMap copy() {
-      final int[] a = new int[ids.size()];
-      for(int i = size() - 1; i >= 0; --i) a[i] = ids.get(i).intValue();
+      final int[] a = new int[idlist.size()];
+      for(int i = size() - 1; i >= 0; --i) a[i] = idlist.get(i).intValue();
       return new DummyIdPreMap(a);
     }
 
@@ -151,10 +163,10 @@ public abstract class IdPreMapBulkTestBase {
     public String toString() {
       final StringBuilder spres = new StringBuilder();
       final StringBuilder sids = new StringBuilder();
-      for(int i = 0; i < ids.size(); ++i) {
+      for(int i = 0; i < idlist.size(); ++i) {
         spres.append(i);
         spres.append(' ');
-        sids.append(ids.get(i));
+        sids.append(idlist.get(i));
         sids.append(' ');
       }
       return spres.append('\n').append(sids).toString();

@@ -123,14 +123,15 @@ public final class DiskValues implements Index {
    * @return iterator
    */
   private IndexIterator iter(final int s, final long ps) {
-    final IntList ids = new IntList(s);
+    final IntList pres = new IntList(s);
     long p = ps;
     for(int l = 0, v = 0; l < s; ++l) {
       v += idxl.readNum(p);
       p = idxl.pos();
-      ids.add(v);
+      final int pre = data.pre(v);
+      if(pre >= 0) pres.add(pre);
     }
-    return iter(ids);
+    return iter(pres.sort());
   }
 
   /**
@@ -147,26 +148,30 @@ public final class DiskValues implements Index {
     final boolean simple = len != 0 && min > 0 && (long) min == min &&
       token(min).length == len;
 
-    final IntList ids = new IntList();
+    final IntList pres = new IntList();
     for(int l = 0; l < size; ++l) {
       final int ds = idxl.readNum(idxr.read5(l * 5L));
-      int pre = idxl.readNum();
-      final double v = data.textDbl(pre, text);
+      int id = idxl.readNum();
+      int pre = data.pre(id);
+      if(pre >= 0) {
+        final double v = data.textDbl(pre, text);
 
-      if(v >= min && v <= max) {
-        // value is in range
-        for(int d = 0; d < ds; ++d) {
-          ids.add(pre);
-          pre += idxl.readNum();
+        if(v >= min && v <= max) {
+          // value is in range
+          for(int d = 0; d < ds; ++d) {
+            pre = data.pre(id);
+            if(pre >= 0) pres.add(pre);
+            id += idxl.readNum();
+          }
+        } else if(simple && v > max && data.textLen(pre, text) == len) {
+          // if limits are integers, if min, max and current value have the same
+          // string length, and if current value is larger than max, test can be
+          // skipped, as all remaining values will be bigger
+          break;
         }
-      } else if(simple && v > max && data.textLen(pre, text) == len) {
-        // if limits are integers, if min, max and current value have the same
-        // string length, and if current value is larger than max, test can be
-        // skipped, as all remaining values will be bigger
-        break;
       }
     }
-    return iter(ids.sort());
+    return iter(pres.sort());
   }
 
   /**
@@ -218,4 +223,5 @@ public final class DiskValues implements Index {
     idxl.close();
     idxr.close();
   }
+  // [DP] implement insert + invalidate cache
 }

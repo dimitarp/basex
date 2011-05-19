@@ -101,12 +101,6 @@ public final class MemData extends Data {
   }
 
   @Override
-  protected void indexRemove(final int pre, final boolean text) {
-    ((MemValues) (text ? txtindex : atvindex)).
-      indexRemove(text(pre, text), id(pre));
-  }
-
-  @Override
   protected void update() {
     meta.update();
   }

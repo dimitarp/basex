@@ -56,7 +56,7 @@ public final class MemValues extends TokenSet implements Index {
    * @param key record key
    * @param id record id
    */
-  public void indexRemove(final byte[] key, final int id) {
+  public void indexDelete(final byte[] key, final int id) {
     final int i = id(key);
     if(i == 0 || len[i] == 0) return;
 

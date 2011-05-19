@@ -104,7 +104,7 @@ public abstract class Data {
   /** Full-text index instance. */
   protected Index ftxindex;
   /** ID->PRE mapping. */
-  public IdPreMap idmap;
+  protected IdPreMap idmap;
 
   /**
    * Dissolves the references to often used tag names and attributes.
@@ -275,7 +275,7 @@ public abstract class Data {
    * @param id unique node id
    * @return pre value or -1 if id was not found
    */
-  public final int pre(final int id) {
+  public final int preold(final int id) {
     // find pre value in table
     for(int p = Math.max(0, id); p < meta.size; ++p)
       if(id == id(p)) return p;
@@ -287,12 +287,33 @@ public abstract class Data {
   }
 
   /**
+   * Returns a pre value.
+   * @param id unique node id
+   * @return pre value or -1 if id was not found
+   */
+  public final int pre(final int id) {
+    return idmap.pre(id);
+  }
+
+  /**
    * Returns a unique node id.
    * @param pre pre value
    * @return node id
    */
   public final int id(final int pre) {
     return table.read4(pre, 12);
+  }
+
+  /**
+   * Returns a set of unique node ids.
+   * @param pre first pre value
+   * @param s number of records
+   * @return node ids
+   */
+  public final int[] ids(final int pre, final int s) {
+    final int[] ids = new int[s];
+    for(int i = 0; i < s; ++i) ids[i] = id(pre + i);
+    return ids;
   }
 
   /**
@@ -633,7 +654,7 @@ public abstract class Data {
     }
 
     // delete node and descendants from ID -> PRE map:
-    deleteIDs(pre, s);
+    idmap.delete(pre, ids(pre, s), -s);
     // delete node from table structure and reduce document size
     table.delete(pre, s);
     updateDist(p, -s);
@@ -912,7 +933,7 @@ public abstract class Data {
     table.insert(pre, t);
 
     // add the entries to the ID -> PRE mapping:
-    insertIDs(pre, t.length >>> IO.NODEPOWER);
+    idmap.insert(pre, id(pre), t.length >>> IO.NODEPOWER);
   }
 
   /**
@@ -1038,31 +1059,6 @@ public abstract class Data {
    */
   protected abstract long index(final byte[] value, final int pre, final int id,
       final boolean text);
-
-  /**
-   * Remove a text from index.
-   * @param pre pre value
-   * @param text text/attribute flag
-   */
-  protected abstract void indexRemove(final int pre, final boolean text);
-
-  /**
-   * Delete record from ID -> PRE map.
-   * @param pre first pre
-   * @param s number of subsequent deleted records
-   */
-  protected final void deleteIDs(final int pre, final int s) {
-    idmap.delete(pre, id(pre), -s);
-  }
-
-  /**
-   * Insert ids into ID -> PRE map.
-   * @param pre first pre
-   * @param s number of subsequent inserted records
-   */
-  protected final void insertIDs(final int pre, final int s) {
-    idmap.insert(pre, id(pre), s);
-  }
 
   /** Calls {@link MetaData#update()}. Inheriting classes can override. */
   protected void update() {
