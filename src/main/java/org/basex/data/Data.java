@@ -589,6 +589,10 @@ public abstract class Data {
           break;
       }
     }
+    // update ID -> PRE map:
+    idmap.delete(rpre, ids(rpre, rsize), -rsize);
+    idmap.insert(rpre, meta.lastid - dsize + 1, dsize);
+    // update table:
     table.replace(rpre, buffer(), rsize);
     buffer(1);
 

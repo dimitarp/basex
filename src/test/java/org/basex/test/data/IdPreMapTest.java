@@ -21,6 +21,8 @@ import org.junit.Test;
  * @author Dimitar Popov
  */
 public final class IdPreMapTest {
+  /** Number of times to execute the query set. */
+  private static final int ITER = 80;
   /** Database context. */
   private static Context context;
 
@@ -78,7 +80,7 @@ public final class IdPreMapTest {
    */
   private static void test(final String... qs) throws BaseXException {
     checkMapping(-1, "");
-    for(int i = 0; i < 80; i++) {
+    for(int i = 0; i < ITER; i++) {
       for(final String q : qs) {
         new XQuery(q).execute(context);
         checkMapping(i, q);
