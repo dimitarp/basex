@@ -203,8 +203,13 @@ public final class DiskValues implements Index {
     while(l <= h) {
       final int m = l + h >>> 1;
       final long pos = idxr.read5(m * 5L);
-      idxl.readNum(pos);
-      final int pre = idxl.readNum();
+      int cnt = idxl.readNum(pos);
+      int pre;
+      do {
+        // [DP] what if all pre == -1?
+        pre = data.pre(idxl.readNum());
+      } while(pre < 0 && --cnt > 0);
+
       byte[] txt = ctext[m];
       if(ctext[m] == null) {
         txt = data.text(pre, text);
@@ -223,5 +228,20 @@ public final class DiskValues implements Index {
     idxl.close();
     idxr.close();
   }
-  // [DP] implement insert + invalidate cache
+
+  /**
+   * Add a text entry to the index.
+   * @param txt text to index
+   * @param pre pre value
+   * @param id id value
+   */
+  public void index(final byte[] txt, final int pre, final int id) {
+    // [DP] Index updates: implement insert + invalidate cache
+    // - if txt exists:
+    // -- 1. add id to the list of ids in the index node
+    // -- 2. if txt is cached: add id to the cache entry
+    // - else: create a new index node with the id
+    // - increment size
+    // - resize ctext
+  }
 }

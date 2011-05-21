@@ -98,7 +98,7 @@ public final class DiskData extends Data {
     texts = new DataAccess(meta.file(DATATXT));
     values = new DataAccess(meta.file(DATAATV));
     super.init();
-    // [DP] check if the ID -> PRE mapping is available
+    // [DP] ID->PRE mapping: check if the ID -> PRE mapping is available
     // restore ID -> PRE mapping from disk
     idmap = new IdPreMap(meta.lastid);
   }
@@ -235,8 +235,9 @@ public final class DiskData extends Data {
   // UPDATE OPERATIONS ========================================================
   @Override
   protected void text(final int pre, final byte[] val, final boolean txt) {
-    // [DP] update indexes
+    // [DP] Index updates: update indexes
     final long v = Token.toSimpleInt(val);
+    // integer values are stored directly into the table:
     if(v != Integer.MIN_VALUE) {
       textOff(pre, v | IO.OFFNUM);
     } else {
@@ -271,8 +272,15 @@ public final class DiskData extends Data {
   @Override
   protected long index(final byte[] txt, final int pre, final int id,
       final boolean text) {
-    // [DP] update the existing indexes
-    final DataAccess da = text ? texts : values;
+    // [DP] Full-text index updates: update the existing indexes
+    final DataAccess da;
+    if(text) {
+      da = texts;
+      ((DiskValues) txtindex).index(txt, pre, id);
+    } else {
+      da = values;
+      ((DiskValues) atvindex).index(txt, pre, id);
+    }
     final long off = da.length();
     da.writeBytes(off, txt);
     return off;
@@ -281,7 +289,7 @@ public final class DiskData extends Data {
   @Override
   protected void update() {
     meta.update();
-    // [DP] remove index invalidation
+    // [DP] Index updates: remove index invalidation
     // meta.invalidateIndexes();
   }
 }
