@@ -88,19 +88,19 @@ public final class DiskValues implements Index {
   }
 
   @Override
-  public int count(final IndexToken tok) {
-    if(tok instanceof RangeToken) return idRange((RangeToken) tok).size();
+  public int count(final IndexToken it) {
+    if(it instanceof RangeToken) return idRange((RangeToken) it).size();
     if(it.get().length > MAXLEN) return Integer.MAX_VALUE;
 
     final byte[] tok = it.get();
     final int id = cache.id(tok);
     if(id > 0) return cache.size(id);
 
-    final long pos = get(tok.get());
+    final long pos = get(tok);
     if(pos == 0) return 0;
     // the first number is the number of hits:
     final int num = idxl.readNum(pos);
-    cache.add(tok.get(), num, pos + Num.len(num));
+    cache.add(it.get(), num, pos + Num.len(num));
 
     return num;
   }

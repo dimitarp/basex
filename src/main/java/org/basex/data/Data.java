@@ -943,12 +943,12 @@ public abstract class Data {
   /**
    * Adds a document entry to the internal update buffer.
    * @param pre pre value
-   * @param s node size
-   * @param vl document name
+   * @param size node size
+   * @param value document name
    */
-  public final void doc(final int pre, final int s, final byte[] vl) {
+  public final void doc(final int pre, final int size, final byte[] value) {
     final int i = newID();
-    final long v = index(vl, pre, i, true);
+    final long v = index(value, pre, i, true);
     s(DOC); s(0); s(0); s(v >> 32);
     s(v >> 24); s(v >> 16); s(v >> 8); s(v);
     s(size >> 24); s(size >> 16); s(size >> 8); s(size);
@@ -957,42 +957,42 @@ public abstract class Data {
 
   /**
    * Adds an element entry to the internal update buffer.
-   * @param d parent distance
-   * @param tn tag name index
-   * @param as number of attributes
-   * @param s node size
-   * @param u namespace uri reference
+   * @param dist parent distance
+   * @param name tag name index
+   * @param asize number of attributes
+   * @param size node size
+   * @param uri namespace uri reference
    * @param ne namespace flag
    */
-  public final void elem(final int d, final int tn, final int as,
-      final int s, final int u, final boolean ne) {
+  public final void elem(final int dist, final int name, final int asize,
+      final int size, final int uri, final boolean ne) {
 
     // build and insert new entry
     final int i = newID();
     final int n = ne ? 1 << 7 : 0;
-    s(Math.min(IO.MAXATTS, as) << 3 | ELEM);
-    s(n | (byte) (tn >> 8)); s(tn); s(u);
-    s(d >> 24); s(d >> 16); s(d >> 8); s(d);
-    s(s >> 24); s(s >> 16); s(s >> 8); s(s);
+    s(Math.min(IO.MAXATTS, asize) << 3 | ELEM);
+    s(n | (byte) (name >> 8)); s(name); s(uri);
+    s(dist >> 24); s(dist >> 16); s(dist >> 8); s(dist);
+    s(size >> 24); s(size >> 16); s(size >> 8); s(size);
     s(i >> 24); s(i >> 16); s(i >> 8); s(i);
   }
 
   /**
    * Adds a text entry to the internal update buffer.
    * @param pre insert position
-   * @param d parent distance
-   * @param vl tag name or text node
-   * @param k node kind
+   * @param dist parent distance
+   * @param value string value
+   * @param kind node kind
    */
-  public final void text(final int pre, final int d, final byte[] vl,
-      final int k) {
+  public final void text(final int pre, final int dist, final byte[] value,
+      final int kind) {
 
     // build and insert new entry
     final int i = newID();
-    final long v = index(vl, pre, i, true);
+    final long v = index(value, pre, i, true);
     s(kind); s(0); s(0); s(v >> 32);
     s(v >> 24); s(v >> 16); s(v >> 8); s(v);
-    s(d >> 24); s(d >> 16); s(d >> 8); s(d);
+    s(dist >> 24); s(dist >> 16); s(dist >> 8); s(dist);
     s(i >> 24); s(i >> 16); s(i >> 8); s(i);
   }
 
@@ -1010,7 +1010,7 @@ public abstract class Data {
 
     // add attribute to text storage
     final int i = newID();
-    final long v = index(vl, pre, i, false);
+    final long v = index(value, pre, i, false);
     final int n = ne ? 1 << 7 : 0;
     s(Math.min(IO.MAXATTS, dist) << 3 | ATTR);
     s(n | (byte) (name >> 8)); s(name); s(v >> 32);
@@ -1073,12 +1073,12 @@ public abstract class Data {
   /**
    * Returns a string representation of the specified table range. Can be called
    * for debugging.
-   * @param s start pre value
-   * @param e end pre value
+   * @param start start pre value
+   * @param end end pre value
    * @return table
    */
-  public final String toString(final int s, final int e) {
-    return string(InfoStorage.table(this, s, e));
+  public final String toString(final int start, final int end) {
+    return string(InfoStorage.table(this, start, end));
   }
 
   @Override
