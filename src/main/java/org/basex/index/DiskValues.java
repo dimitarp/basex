@@ -201,14 +201,48 @@ public final class DiskValues implements Index {
   private long get(final byte[] key) {
     int l = 0, h = size - 1;
     while(l <= h) {
-      final int m = l + h >>> 1;
-      final long pos = idxr.read5(m * 5L);
+      int m = l + h >>> 1;
+      long pos = idxr.read5(m * 5L);
       int cnt = idxl.readNum(pos);
       int pre;
+      // try to find non-negative pre in the id list
       do {
-        // [DP] what if all pre == -1?
         pre = data.pre(idxl.readNum());
       } while(pre < 0 && --cnt > 0);
+
+      if(pre < 0) {
+        // try to find the next non-negative pre to the left
+        for(int i = m - 1; i >= l; --i) {
+          pos = idxr.read5(i * 5L);
+          cnt = idxl.readNum(pos);
+          // try to find non-negative pre in the id list
+          do {
+            pre = data.pre(idxl.readNum());
+          } while(pre < 0 && --cnt > 0);
+          if(pre >= 0) {
+            m = i;
+            break;
+          }
+        }
+      }
+
+      if(pre < 0) {
+        // try to find the next non-negative pre to the right
+        for(int i = m + 1; i <= h; ++i) {
+          pos = idxr.read5(i * 5L);
+          cnt = idxl.readNum(pos);
+          // try to find non-negative pre in the id list
+          do {
+            pre = data.pre(idxl.readNum());
+          } while(pre < 0 && --cnt > 0);
+          if(pre >= 0) {
+            m = i;
+            break;
+          }
+        }
+      }
+
+      if(pre < 0) break;
 
       byte[] txt = ctext[m];
       if(ctext[m] == null) {
@@ -243,5 +277,6 @@ public final class DiskValues implements Index {
     // - else: create a new index node with the id
     // - increment size
     // - resize ctext
+
   }
 }

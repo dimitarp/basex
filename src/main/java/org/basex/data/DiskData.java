@@ -273,6 +273,7 @@ public final class DiskData extends Data {
   protected long index(final byte[] txt, final int pre, final int id,
       final boolean text) {
     // [DP] Full-text index updates: update the existing indexes
+    meta.invalidateIndexes();
     final DataAccess da;
     if(text) {
       da = texts;
