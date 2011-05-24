@@ -239,6 +239,7 @@ public final class DiskData extends Data {
     final long v = Token.toSimpleInt(val);
     // integer values are stored directly into the table:
     if(v != Integer.MIN_VALUE) {
+      // integer values are stored directly into the table
       textOff(pre, v | IO.OFFNUM);
     } else {
       final DataAccess da = txt ? texts : values;
