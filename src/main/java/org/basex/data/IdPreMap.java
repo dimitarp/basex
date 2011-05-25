@@ -172,16 +172,36 @@ public class IdPreMap {
 
   /**
    * Delete a record.
-   * @param pre record PRE
-   * @param ids deleted record IDs
+   * @param pre PRE value of the record
+   * @param id ID of the record
+   */
+  public void delete(final int pre, final int id) {
+    delete(pre, id, -1);
+  }
+
+  /**
+   * Delete records.
+   * @param pre PRE of the first record
+   * @param ids IDs of the deleted records
    * @param c number of deleted records
    */
   public void delete(final int pre, final int[] ids, final int c) {
     if(ids.length == 0) return;
     // store the deleted ids:
-    for(int i = 0; i < ids.length; ++i) delids.set(ids[i]);
+    for(int i = 1; i < ids.length; ++i) delids.set(ids[i]);
+    delete(pre, ids[0], c);
+  }
 
-    int oid = ids[0];
+  /**
+   * Delete records.
+   * @param pre PRE of the first record
+   * @param id ID of the first deleted record
+   * @param c number of deleted records
+   */
+  public void delete(final int pre, final int id, final int c) {
+    delids.set(id);
+
+    int oid = id;
     // if nothing has been modified and we delete from the end, nothing to do:
     if(rows == 0 && pre == oid && oid == baseid) {
       baseid += c;
