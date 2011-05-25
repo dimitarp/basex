@@ -43,7 +43,7 @@ public abstract class IndexIterator {
    * after this method has been called.
    * @return result number of results
    */
-  final int size() {
+  int size() {
     int c = 0;
     while(more()) ++c;
     return c;

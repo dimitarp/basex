@@ -71,18 +71,23 @@ public final class MemValues extends TokenSet implements Index {
   @Override
   public IndexIterator iter(final IndexToken tok) {
     final int i = id(tok.get());
-    if(i == 0) return IndexIterator.EMPTY;
-    final int[] pres = idmap.pre(ids[i], 0, len[i]);
-
-    return new IndexIterator() {
-      int p = -1;
-      @Override
-      public boolean more() { return ++p < pres.length; }
-      @Override
-      public int next() { return pres[p]; }
-      @Override
-      public double score() { return -1; }
-    };
+    if(i > 0) {
+      final int[] pres = idmap.pre(ids[i], 0, len[i]);
+      if(pres.length > 0) {
+        return new IndexIterator() {
+          int p = -1;
+          @Override
+          public boolean more() { return ++p < pres.length; }
+          @Override
+          public int next() { return pres[p]; }
+          @Override
+          public double score() { return -1; }
+          @Override
+          public int size() { return pres.length; }
+        };
+      }
+    }
+    return IndexIterator.EMPTY;
   }
 
   @Override
