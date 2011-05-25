@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import org.basex.data.Data;
 import org.basex.data.Serializer;
 import org.basex.data.PathNode;
+import org.basex.data.StatsKey;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.expr.Expr;
@@ -86,8 +87,11 @@ public class AxisStep extends Preds {
     final Data data = ctx.data();
     ctx.leaf = data != null &&
       test.test == Name.NAME && test.type != NodeType.ATT && axis.down &&
-      data.meta.uptodate && data.ns.size() == 0 &&
-      data.tags.stat(data.tags.id(((NameTest) test).ln)).leaf;
+      data.meta.uptodate && data.ns.size() == 0;
+    if(ctx.leaf) {
+      final StatsKey s = data.tags.stat(data.tags.id(((NameTest) test).ln));
+      ctx.leaf = s != null && s.leaf;
+    }
 
     // as predicates will not necessarily start from the document node,
     // the context item type is temporarily generalized
