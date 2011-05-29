@@ -1021,7 +1021,7 @@ public abstract class Data {
    * Generates a new id.
    * @return id
    */
-  protected int newID() {
+  private int newID() {
     return ++meta.lastid;
   }
 

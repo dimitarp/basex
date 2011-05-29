@@ -192,6 +192,8 @@ public final class MetaData {
     // update database timestamp
     time = System.currentTimeMillis();
     dirty = true;
+    docindex = false;
+    ftindex = false;
   }
 
   /** Invalidate indexes. */
@@ -199,7 +201,6 @@ public final class MetaData {
     uptodate = false;
     textindex = false;
     attrindex = false;
-    ftindex = false;
   }
 
   /**

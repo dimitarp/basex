@@ -363,8 +363,9 @@ public final class DiskValues implements Index {
       int v = idxl.readNum();
       if(unchanged) {
         if(id == cid + v) {
-          v += idxl.readNum();
           unchanged = false;
+          if(i == num - 1) break;
+          v += idxl.readNum();
         } else {
           cid += v;
         }

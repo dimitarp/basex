@@ -91,7 +91,7 @@ public final class TokenList extends ElementList implements Iterable<byte[]> {
    * @return element
    */
   public byte[] get(final int i) {
-    return list[i];
+    return i < list.length ? list[i] : null;
   }
 
   /**
