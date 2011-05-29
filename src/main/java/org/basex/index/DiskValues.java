@@ -105,19 +105,16 @@ public final class DiskValues implements Index {
     // the first number is the number of hits:
     final int num = idxl.readNum(pos);
     cache.add(it.get(), num, pos + Num.len(num));
-
     return num;
   }
 
   /**
-   * Returns next id values.
+   * Returns next id values. Called by the {@link ValueBuilder}.
    * @return compressed id values
    */
   byte[] nextIDs() {
-    if(idxr.pos() >= idxr.length()) return EMPTY;
-    final int s = idxl.read4();
-    final long v = idxr.read5(idxr.pos());
-    return idxl.readBytes(v, s);
+    return idxr.pos() >= idxr.length() ? EMPTY :
+      idxl.readBytes(idxr.read5(), idxl.read4());
   }
 
   /**
