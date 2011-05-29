@@ -128,6 +128,8 @@ public final class DiskData extends Data {
       table.flush();
       texts.flush();
       values.flush();
+      if(txtindex != null) ((DiskValues) txtindex).flush();
+      if(atvindex != null) ((DiskValues) atvindex).flush();
       write();
       meta.dirty = false;
     } catch(final IOException ex) {
@@ -235,9 +237,16 @@ public final class DiskData extends Data {
   // UPDATE OPERATIONS ========================================================
   @Override
   protected void text(final int pre, final byte[] val, final boolean txt) {
-    // [DP] Index updates: update indexes
+    // update indexes
+    final int id = id(pre);
+    final byte[] oldval = text(pre, txt);
+    final DiskValues index = (DiskValues) (txt ? txtindex : atvindex);
+    if(index != null) {
+      index.indexDelete(oldval, id);
+      index.index(val, id);
+    }
+
     final long v = Token.toSimpleInt(val);
-    // integer values are stored directly into the table:
     if(v != Integer.MIN_VALUE) {
       // integer values are stored directly into the table
       textOff(pre, v | IO.OFFNUM);
@@ -271,17 +280,15 @@ public final class DiskData extends Data {
   }
 
   @Override
-  protected long index(final byte[] txt, final int pre, final int id,
-      final boolean text) {
+  protected long index(final byte[] txt, final int id, final boolean text) {
     // [DP] Full-text index updates: update the existing indexes
-    meta.invalidateIndexes();
     final DataAccess da;
     if(text) {
       da = texts;
-      ((DiskValues) txtindex).index(txt, pre, id);
+      if(meta.textindex) ((DiskValues) txtindex).index(txt, id);
     } else {
       da = values;
-      ((DiskValues) atvindex).index(txt, pre, id);
+      if(meta.attrindex) ((DiskValues) atvindex).index(txt, id);
     }
     final long off = da.length();
     da.writeBytes(off, txt);
@@ -291,7 +298,5 @@ public final class DiskData extends Data {
   @Override
   protected void update() {
     meta.update();
-    // [DP] Index updates: remove index invalidation
-    // meta.invalidateIndexes();
   }
 }

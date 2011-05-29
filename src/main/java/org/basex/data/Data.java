@@ -566,7 +566,7 @@ public abstract class Data {
       switch(dkind) {
         case DOC:
           // add document
-          doc(pre, data.size(dpre, dkind), data.text(dpre, true));
+          doc(data.size(dpre, dkind), data.text(dpre, true));
           meta.ndocs++;
           break;
         case ELEM:
@@ -579,12 +579,12 @@ public abstract class Data {
         case COMM:
         case PI:
           // add text
-          text(pre, dis, data.text(dpre, true), dkind);
+          text(dis, data.text(dpre, true), dkind);
           break;
         case ATTR:
           // add attribute
           nm = data.name(dpre, dkind);
-          attr(pre, dis, atts.index(nm, null, false), data.text(dpre, false),
+          attr(dis, atts.index(nm, null, false), data.text(dpre, false),
               ns.uri(nm, false), false);
           break;
       }
@@ -668,7 +668,7 @@ public abstract class Data {
 
     // restore empty document node
     if(empty) {
-      doc(0, 1, EMPTY);
+      doc(1, EMPTY);
       table.set(0, buffer());
     }
   }
@@ -774,7 +774,7 @@ public abstract class Data {
       switch(mdk) {
         case DOC:
           // add document
-          doc(pre, data.size(mdpre, mdk), data.text(mdpre, true));
+          doc(data.size(mdpre, mdk), data.text(mdpre, true));
           meta.ndocs++;
           ns.open();
           preStack[l++] = pre;
@@ -808,7 +808,7 @@ public abstract class Data {
         case COMM:
         case PI:
           // add text
-          text(pre, dis, data.text(mdpre, true), mdk);
+          text(dis, data.text(mdpre, true), mdk);
           break;
         case ATTR:
           // add attribute
@@ -818,7 +818,7 @@ public abstract class Data {
                 data.ns.uri(data.uri(mdpre, mdk)));
             table.write2(ipar, 1, 1 << 15 | name(ipar));
           }
-          attr(pre, dis, atts.index(nm, null, false), data.text(mdpre, false),
+          attr(dis, atts.index(nm, null, false), data.text(mdpre, false),
               ns.uri(nm, false), false);
           break;
       }
@@ -942,13 +942,12 @@ public abstract class Data {
 
   /**
    * Adds a document entry to the internal update buffer.
-   * @param pre pre value
    * @param size node size
    * @param value document name
    */
-  public final void doc(final int pre, final int size, final byte[] value) {
+  public final void doc(final int size, final byte[] value) {
     final int i = newID();
-    final long v = index(value, pre, i, true);
+    final long v = index(value, i, true);
     s(DOC); s(0); s(0); s(v >> 32);
     s(v >> 24); s(v >> 16); s(v >> 8); s(v);
     s(size >> 24); s(size >> 16); s(size >> 8); s(size);
@@ -979,17 +978,15 @@ public abstract class Data {
 
   /**
    * Adds a text entry to the internal update buffer.
-   * @param pre insert position
    * @param dist parent distance
    * @param value string value
    * @param kind node kind
    */
-  public final void text(final int pre, final int dist, final byte[] value,
-      final int kind) {
+  public final void text(final int dist, final byte[] value, final int kind) {
 
     // build and insert new entry
     final int i = newID();
-    final long v = index(value, pre, i, true);
+    final long v = index(value, i, true);
     s(kind); s(0); s(0); s(v >> 32);
     s(v >> 24); s(v >> 16); s(v >> 8); s(v);
     s(dist >> 24); s(dist >> 16); s(dist >> 8); s(dist);
@@ -998,19 +995,18 @@ public abstract class Data {
 
   /**
    * Adds an attribute entry to the internal update buffer.
-   * @param pre pre value
    * @param dist parent distance
    * @param name attribute name
    * @param value attribute value
    * @param uri namespace uri reference
    * @param ne namespace flag
    */
-  public final void attr(final int pre, final int dist, final int name,
-      final byte[] value, final int uri, final boolean ne) {
+  public final void attr(final int dist, final int name, final byte[] value,
+      final int uri, final boolean ne) {
 
     // add attribute to text storage
     final int i = newID();
-    final long v = index(value, pre, i, false);
+    final long v = index(value, i, false);
     final int n = ne ? 1 << 7 : 0;
     s(Math.min(IO.MAXATTS, dist) << 3 | ATTR);
     s(n | (byte) (name >> 8)); s(name); s(v >> 32);
@@ -1056,12 +1052,11 @@ public abstract class Data {
   /**
    * Indexes a text and returns the reference.
    * @param value text to be indexed
-   * @param pre pre value
    * @param id id value
    * @param text text/attribute flag
    * @return reference
    */
-  protected abstract long index(final byte[] value, final int pre, final int id,
+  protected abstract long index(final byte[] value, final int id,
       final boolean text);
 
   /** Calls {@link MetaData#update()}. Inheriting classes can override. */

@@ -134,7 +134,7 @@ public final class DataBuilder {
    */
   private int addDoc(final ANode nd, final int pre) {
     final int ms = data.meta.size;
-    data.doc(ms, size(nd, false), nd.base());
+    data.doc(size(nd, false), nd.base());
     data.insert(ms);
     int p = pre + 1;
     final AxisIter ai = nd.children();
@@ -161,7 +161,7 @@ public final class DataBuilder {
     }
     final int n = data.atts.index(q.atom(), null, false);
     // attribute namespace flag is only set in main memory instance
-    data.attr(ms, pre - par, n, nd.atom(), u, ne);
+    data.attr(pre - par, n, nd.atom(), u, ne);
     data.insert(ms);
     return 1;
   }
@@ -207,7 +207,7 @@ public final class DataBuilder {
    */
   private int addText(final byte[] txt, final int dist) {
     final int ms = data.meta.size;
-    data.text(ms, dist, txt, Data.TEXT);
+    data.text(dist, txt, Data.TEXT);
     data.insert(ms);
     return 1;
   }
@@ -222,7 +222,7 @@ public final class DataBuilder {
   private int addPI(final ANode nd, final int pre, final int par) {
     final int ms = data.meta.size;
     final byte[] v = trim(concat(nd.nname(), SPACE, nd.atom()));
-    data.text(ms, pre - par, v, Data.PI);
+    data.text(pre - par, v, Data.PI);
     data.insert(ms);
     return 1;
   }
@@ -236,7 +236,7 @@ public final class DataBuilder {
    */
   private int addComm(final ANode nd, final int pre, final int par) {
     final int ms = data.meta.size;
-    data.text(ms, pre - par, nd.atom(), Data.COMM);
+    data.text(pre - par, nd.atom(), Data.COMM);
     data.insert(ms);
     return 1;
   }

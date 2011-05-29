@@ -41,6 +41,7 @@ public final class DataAccess {
    */
   public synchronized void flush() throws IOException {
     for(final Buffer b : bm.all()) if(b.dirty) writeBlock(b);
+    if(changed) file.setLength(len);
   }
 
   /**
@@ -49,7 +50,7 @@ public final class DataAccess {
    */
   public synchronized void close() throws IOException {
     flush();
-    if(changed) file.setLength(len);
+    // if(changed) file.setLength(len);
     file.close();
   }
 
@@ -246,6 +247,20 @@ public final class DataAccess {
   }
 
   /**
+   * Writes a 5-byte value to the specified position.
+   * @param p position in the file
+   * @param v value to be written
+   */
+  public void write5(final long p, final long v) {
+    cursor(p);
+    write((byte) (v >>> 32));
+    write((byte) (v >>> 24));
+    write((byte) (v >>> 16));
+    write((byte) (v >>> 8));
+    write((byte) v);
+  }
+
+  /**
    * Writes an integer value to the specified output stream.
    * @param p write position
    * @param v byte array to be appended
@@ -266,6 +281,27 @@ public final class DataAccess {
     write(v);
   }
 
+  /**
+   * Write a value to the file.
+   * @param p write position
+   * @param v value to be written
+   */
+  public void writeNum(final long p, final int v) {
+    cursor(p);
+    writeNum(v);
+  }
+
+  /**
+   * Appends values to the file.
+   * @param p write position
+   * @param v byte array to be appended
+   */
+  public void writeNums(final long p, final int[] v) {
+    cursor(p);
+    writeNum(v.length);
+    for(final int n : v) writeNum(n);
+  }
+
   // PRIVATE METHODS ==========================================================
 
   /**
@@ -283,7 +319,7 @@ public final class DataAccess {
    * Appends a value to the file and return it's offset.
    * @param v number to be appended
    */
-  private void writeNum(final int v) {
+  public void writeNum(final int v) {
     if(v < 0 || v > 0x3FFFFFFF) {
       write(0xC0); write(v >>> 24); write(v >>> 16); write(v >>> 8); write(v);
     } else if(v > 0x3FFF) {

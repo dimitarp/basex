@@ -78,6 +78,7 @@ public class IdPreMap {
       // return pres[i] + id - fids[i];
       // }
       // return pres[idix[i][1]];
+      // [DP] ID -> PRE mapping: optimize if performance is low
       for(int i = 0; i < rows; ++i) {
         if(fids[i] == id) return pres[i];
         if(fids[i] < id && id <= nids[i]) return pres[i] + id - fids[i];
@@ -208,6 +209,7 @@ public class IdPreMap {
       return;
     }
 
+    // [DP] Refactor!
     int i = 0;
     int inc = c;
 

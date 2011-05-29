@@ -45,7 +45,7 @@ public final class ReplaceElemContent extends Primitive {
       while(par + d.size(par, Data.ELEM) > pre) d.delete(pre);
       if(value.length > 0) {
         final MemData md = new MemData(n.data);
-        md.text(0, pre - par, value, Data.TEXT);
+        md.text(pre - par, value, Data.TEXT);
         md.insert(0);
         d.insert(pre, par, md);
       }

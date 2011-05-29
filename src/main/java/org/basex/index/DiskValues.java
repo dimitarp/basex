@@ -10,6 +10,7 @@ import org.basex.util.IntList;
 import org.basex.util.Num;
 import org.basex.util.Performance;
 import org.basex.util.TokenBuilder;
+import org.basex.util.TokenList;
 
 /**
  * This class provides access to attribute values and text contents
@@ -19,8 +20,8 @@ import org.basex.util.TokenBuilder;
  * @author Christian Gruen
  */
 public final class DiskValues implements Index {
-  /** Number of hash entries. */
-  private final int size;
+  /** Number of index entries. */
+  private int size;
   /** ID references. */
   private final DataAccess idxr;
   /** ID lists. */
@@ -32,7 +33,7 @@ public final class DiskValues implements Index {
   /** Cache tokens. */
   private final IndexCache cache = new IndexCache();
   /** Cached texts. Increases used memory, but speeds up repeated queries. */
-  private final byte[][] ctext;
+  private final TokenList ctext;
 
   /**
    * Constructor, initializing the index structure.
@@ -58,7 +59,7 @@ public final class DiskValues implements Index {
     idxl = new DataAccess(d.meta.file(pref + 'l'));
     idxr = new DataAccess(d.meta.file(pref + 'r'));
     size = idxl.read4();
-    ctext = new byte[size][];
+    ctext = new TokenList(size);
   }
 
   @Override
@@ -83,8 +84,10 @@ public final class DiskValues implements Index {
     final int id = cache.id(tok.get());
     if(id > 0) return iter(cache.size(id), cache.pointer(id));
 
-    final long pos = get(tok.get());
-    return pos == 0 ? IndexIterator.EMPTY : iter(idxl.readNum(pos), idxl.pos());
+    final int ix = get(tok.get());
+    if(ix < 0) return IndexIterator.EMPTY;
+    final long pos = idxr.read5(ix * 5L);
+    return iter(idxl.readNum(pos), idxl.pos());
   }
 
   @Override
@@ -96,8 +99,9 @@ public final class DiskValues implements Index {
     final int id = cache.id(tok);
     if(id > 0) return cache.size(id);
 
-    final long pos = get(tok);
-    if(pos == 0) return 0;
+    final int ix = get(tok);
+    if(ix < 0) return 0;
+    final long pos = idxr.read5(ix * 5L);
     // the first number is the number of hits:
     final int num = idxl.readNum(pos);
     cache.add(it.get(), num, pos + Num.len(num));
@@ -193,32 +197,38 @@ public final class DiskValues implements Index {
   }
 
   /**
-   * Returns the id offset for the specified token,
-   * or {@code 0} if the token is not found.
-   * @param key token to be found
-   * @return id offset
+   * Get the pre value of the first non-deleted id from the id-list at the
+   * specified position.
+   * @param pos position of the id-list in {@link #idxl}
+   * @return {@code -1} if the id-list contains only deleted ids
    */
-  private long get(final byte[] key) {
+  private int firstpre(final long pos) {
+    final int num = idxl.readNum(pos);
+    for(int i = 0, v = 0; i < num; ++i) {
+      v += idxl.readNum();
+      final int pre = data.pre(v);
+      if(pre >= 0) return pre;
+    }
+    return -1;
+  }
+
+  /**
+   * Binary search for key in the {@link #idxr}.
+   * @param key token to be found
+   * @return if the key is found: index of the key
+   *         else: -(insertion point - 1)
+   */
+  private int get(final byte[] key) {
+    // [DP] Refactor!
     int l = 0, h = size - 1;
     while(l <= h) {
       int m = l + h >>> 1;
-      long pos = idxr.read5(m * 5L);
-      int cnt = idxl.readNum(pos);
-      int pre;
-      // try to find non-negative pre in the id list
-      do {
-        pre = data.pre(idxl.readNum());
-      } while(pre < 0 && --cnt > 0);
+      int pre = firstpre(idxr.read5(m * 5L));
 
       if(pre < 0) {
         // try to find the next non-negative pre to the left
         for(int i = m - 1; i >= l; --i) {
-          pos = idxr.read5(i * 5L);
-          cnt = idxl.readNum(pos);
-          // try to find non-negative pre in the id list
-          do {
-            pre = data.pre(idxl.readNum());
-          } while(pre < 0 && --cnt > 0);
+          pre = firstpre(idxr.read5(i * 5L));
           if(pre >= 0) {
             m = i;
             break;
@@ -229,12 +239,7 @@ public final class DiskValues implements Index {
       if(pre < 0) {
         // try to find the next non-negative pre to the right
         for(int i = m + 1; i <= h; ++i) {
-          pos = idxr.read5(i * 5L);
-          cnt = idxl.readNum(pos);
-          // try to find non-negative pre in the id list
-          do {
-            pre = data.pre(idxl.readNum());
-          } while(pre < 0 && --cnt > 0);
+          pre = firstpre(idxr.read5(i * 5L));
           if(pre >= 0) {
             m = i;
             break;
@@ -244,17 +249,26 @@ public final class DiskValues implements Index {
 
       if(pre < 0) break;
 
-      byte[] txt = ctext[m];
-      if(ctext[m] == null) {
+      byte[] txt = ctext.get(m);
+      if(txt == null) {
         txt = data.text(pre, text);
-        ctext[m] = txt;
+        ctext.set(txt, m);
       }
       final int d = diff(txt, key);
-      if(d == 0) return pos;
+      if(d == 0) return m;
       if(d < 0) l = m + 1;
       else h = m - 1;
     }
-    return 0;
+    return -(l + 1);
+  }
+
+  /**
+   * Flushes the buffered data.
+   * @throws IOException I/O exception
+   */
+  public void flush() throws IOException {
+    idxl.flush();
+    idxr.flush();
   }
 
   @Override
@@ -266,17 +280,104 @@ public final class DiskValues implements Index {
   /**
    * Add a text entry to the index.
    * @param txt text to index
-   * @param pre pre value
    * @param id id value
    */
-  public void index(final byte[] txt, final int pre, final int id) {
-    // [DP] Index updates: implement insert + invalidate cache
-    // - if txt exists:
-    // -- 1. add id to the list of ids in the index node
-    // -- 2. if txt is cached: add id to the cache entry
-    // - else: create a new index node with the id
-    // - increment size
-    // - resize ctext
+  public void index(final byte[] txt, final int id) {
+    // search for the key
+    int ix = get(txt);
+    if(ix < 0) {
+      // key does not exist, create a new entry with the id
+      ix = -(ix + 1);
 
+      // shift all entries with bigger keys to the right
+      for(int i = size; i > ix; --i)
+        idxr.write5(i * 5L, idxr.read5((i - 1) * 5L));
+
+      final long newpos = idxl.length();
+      idxl.writeNums(idxl.length(), new int[] { id});
+      idxr.write5(ix * 5L, newpos);
+
+      // [DP] should the entry be added to the cache?
+      ++size;
+      ctext.add(txt, ix);
+    } else {
+      // add id to the list of ids in the index node
+      // read the position of the id-list in idxl
+      final long pos = idxr.read5(ix * 5L);
+      // read the number of ids in the list
+      final int num = idxl.readNum(pos);
+
+      final IntList ids = new IntList(num + 1);
+      boolean added = false;
+      int cid = 0;
+      // read all elements from the list: the first is a text node id; then
+      // next value is the difference between the id and the previous id
+      for(int i = 0; i < num; ++i) {
+        int v = idxl.readNum();
+        if(id < cid + v) {
+          // add the difference between the previous id and the new id
+          ids.add(id - cid);
+          // decrement the difference to the next id
+          v -= id - cid;
+          cid = id;
+          added = true;
+        }
+        // add the next id only if it hasn't been deleted
+        if(data.pre(cid + v) >= 0) {
+          ids.add(v);
+          cid += v;
+        }
+      }
+
+      if(!added) ids.add(id - cid);
+
+      final long newpos = idxl.length();
+      idxl.writeNums(idxl.length(), ids.toArray());
+      idxr.write5(ix * 5L, newpos);
+
+      // check if txt is cached and update the cache entry
+      final int cacheid = cache.id(txt);
+      if(cacheid > 0)
+        cache.update(cacheid, ids.size(), newpos + Num.len(ids.size()));
+    }
+  }
+
+  /**
+   * Remove record from the index.
+   * @param txt record key
+   * @param id record id
+   */
+  public void indexDelete(final byte[] txt, final int id) {
+    final int ix = get(txt);
+    if(ix < 0) return;
+
+    // read the position of the id-list in idxl
+    final long pos = idxr.read5(ix * 5L);
+
+    // read the number of ids in the list
+    final int num = idxl.readNum(pos);
+    final IntList ids = new IntList(num);
+    boolean unchanged = true;
+    int cid = 0;
+    for(int i = 0; i < num || id < cid; ++i) {
+      int v = idxl.readNum();
+      if(unchanged) {
+        if(id == cid + v) {
+          v += idxl.readNum();
+          unchanged = false;
+        } else {
+          cid += v;
+        }
+      }
+      ids.add(v);
+    }
+
+    if(!unchanged) {
+      idxl.writeNums(pos, ids.toArray());
+      // check if txt is cached and update the cache entry
+      final int cacheid = cache.id(txt);
+      if(cacheid > 0)
+        cache.update(cacheid, ids.size(), pos + Num.len(ids.size()));
+    }
   }
 }
