@@ -13,15 +13,15 @@ import org.basex.core.cmd.Set;
 @SuppressWarnings("all")
 public interface Commands {
   /** Create commands. */
-  enum CmdCreate { DATABASE, DB, INDEX, USER, BACKUP }
+  enum CmdCreate { DATABASE, DB, INDEX, USER, BACKUP, EVENT }
   /** Info commands. */
   enum CmdInfo { NULL, DATABASE, DB, INDEX, STORAGE }
   /** Drop commands. */
-  enum CmdDrop { DATABASE, DB, INDEX, USER, BACKUP }
+  enum CmdDrop { DATABASE, DB, INDEX, USER, BACKUP, EVENT }
   /** Optimize commands. */
   enum CmdOptimize { NULL, ALL }
   /** Show commands. */
-  enum CmdShow { DATABASES, SESSIONS, USERS, BACKUPS}
+  enum CmdShow { DATABASES, SESSIONS, USERS, BACKUPS, EVENTS }
   /** Permission commands. */
   enum CmdPerm { NONE, READ, WRITE, CREATE, ADMIN }
   /** Set commands. Should be synchronized with {@link Set#STRINGS}. */
@@ -41,8 +41,9 @@ public interface Commands {
     DROP(HELPDROP), EXIT(HELPEXIT), EXPORT(HELPEXPORT), FIND(HELPFIND),
     GET(HELPGET), GRANT(HELPGRANT), HELP(HELPHELP), INFO(HELPINFO),
     KILL(HELPKILL), LIST(HELPLIST), OPEN(HELPOPEN), OPTIMIZE(HELPOPTIMIZE),
-    PASSWORD(HELPPASSWORD), RESTORE(HELPRESTORE), RUN(HELPRUN), SET(HELPSET),
-    SHOW(HELPSHOW), XQUERY(HELPXQUERY);
+    PASSWORD(HELPPASSWORD), RENAME(HELPRENAME), REPLACE(HELPREPLACE),
+    RESTORE(HELPRESTORE), RUN(HELPRUN), SET(HELPSET), SHOW(HELPSHOW),
+    XQUERY(HELPXQUERY);
 
     /** Help texts. */
     private final String[] help;

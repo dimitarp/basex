@@ -82,13 +82,15 @@ public abstract class Data {
   /** Meta data. */
   public MetaData meta;
   /** Tag index. */
-  public Names tags;
+  public Names tagindex;
   /** Attribute name index. */
-  public Names atts;
+  public Names atnindex;
   /** Namespace index. */
   public Namespaces ns;
   /** Path summary. */
   public PathSummary pthindex;
+  /** Document index. */
+  public DocIndex docindex = new DocIndex();
 
   /** Index reference for a name attribute. */
   public int nameID;
@@ -112,17 +114,20 @@ public abstract class Data {
    */
   @SuppressWarnings("unused")
   public void init() throws IOException {
-    nameID = atts.id(DataText.NAME);
-    sizeID = atts.id(DataText.SIZE);
+    nameID = atnindex.id(DataText.NAME);
+    sizeID = atnindex.id(DataText.SIZE);
   }
 
   /**
    * Closes the current database.
    * @throws IOException I/O exception
    */
-  public final synchronized void close() throws IOException {
-    cls();
-  }
+  public abstract void close() throws IOException;
+
+  /**
+   * Flushes the table data.
+   */
+  public abstract void flush();
 
   /**
    * Checks if the database contains no documents.
@@ -140,17 +145,6 @@ public abstract class Data {
   public final boolean single() {
     return meta.size == size(0, DOC);
   }
-
-  /**
-   * Internal method to close the database.
-   * @throws IOException I/O exception
-   */
-  protected abstract void cls() throws IOException;
-
-  /**
-   * Flushes the table data.
-   */
-  public abstract void flush();
 
   /**
    * Closes the specified index.
@@ -200,7 +194,7 @@ public abstract class Data {
    * @return root nodes
    */
   public final int[] doc() {
-    return meta.paths.doc(this);
+    return docindex.doc(this);
   }
 
   /**
@@ -209,7 +203,7 @@ public abstract class Data {
    * @return root nodes
    */
   public final int[] doc(final String input) {
-    return meta.paths.doc(input, this);
+    return docindex.doc(input, this);
   }
 
   /**
@@ -219,8 +213,8 @@ public abstract class Data {
    */
   public final synchronized byte[] info(final IndexType type) {
     switch(type) {
-      case TAG:       return tags.info();
-      case ATTNAME:   return atts.info();
+      case TAG:       return tagindex.info();
+      case ATTNAME:   return atnindex.info();
       case TEXT:      return txtindex.info();
       case ATTRIBUTE: return atvindex.info();
       case FULLTEXT:  return ftxindex.info();
@@ -416,7 +410,7 @@ public abstract class Data {
       final int i = indexOf(name, ' ');
       return i == -1 ? name : substring(name, 0, i);
     }
-    return (kind == ELEM ? tags : atts).key(name(pre));
+    return (kind == ELEM ? tagindex : atnindex).key(name(pre));
   }
 
   /**
@@ -524,7 +518,7 @@ public abstract class Data {
       table.write1(pre, kind == ELEM ? 3 : 11, u);
       // write name reference
       table.write2(pre, 1, (nsFlag(pre) ? 1 << 15 : 0) |
-        (kind == ELEM ? tags : atts).index(name, null, false));
+        (kind == ELEM ? tagindex : atnindex).index(name, null, false));
       // write namespace flag
       table.write2(p, 1, (ne || nsFlag(p) ? 1 << 15 : 0) | name(p));
     }
@@ -572,7 +566,7 @@ public abstract class Data {
         case ELEM:
           // add element
           byte[] nm = data.name(dpre, dkind);
-          elem(dis, tags.index(nm, null, false), data.attSize(dpre, dkind),
+          elem(dis, tagindex.index(nm, null, false), data.attSize(dpre, dkind),
               data.size(dpre, dkind), ns.uri(nm, true), false);
           break;
         case TEXT:
@@ -584,7 +578,7 @@ public abstract class Data {
         case ATTR:
           // add attribute
           nm = data.name(dpre, dkind);
-          attr(dis, atts.index(nm, null, false), data.text(dpre, false),
+          attr(dis, atnindex.index(nm, null, false), data.text(dpre, false),
               ns.uri(nm, false), false);
           break;
       }
@@ -800,7 +794,7 @@ public abstract class Data {
           }
           ns.open();
           byte[] nm = data.name(mdpre, mdk);
-          elem(dis, tags.index(nm, null, false), data.attSize(mdpre, mdk),
+          elem(dis, tagindex.index(nm, null, false), data.attSize(mdpre, mdk),
               data.size(mdpre, mdk), ns.uri(nm, true), ne);
           preStack[l++] = pre;
           break;
@@ -818,7 +812,7 @@ public abstract class Data {
                 data.ns.uri(data.uri(mdpre, mdk)));
             table.write2(ipar, 1, 1 << 15 | name(ipar));
           }
-          attr(dis, atts.index(nm, null, false), data.text(mdpre, false),
+          attr(dis, atnindex.index(nm, null, false), data.text(mdpre, false),
               ns.uri(nm, false), false);
           break;
       }

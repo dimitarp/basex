@@ -89,7 +89,7 @@ public class AxisStep extends Preds {
       test.test == Name.NAME && test.type != NodeType.ATT && axis.down &&
       data.meta.uptodate && data.ns.size() == 0;
     if(ctx.leaf) {
-      final StatsKey s = data.tags.stat(data.tags.id(((NameTest) test).ln));
+      final StatsKey s = data.tagindex.stat(data.tagindex.id(((NameTest) test).ln));
       ctx.leaf = s != null && s.leaf;
     }
 
@@ -175,7 +175,7 @@ public class AxisStep extends Preds {
 
       if(test.test == Name.NAME) {
         // element test (*:ln)
-        name = data.tags.id(((NameTest) test).ln);
+        name = data.tagindex.id(((NameTest) test).ln);
       } else if(test.test != null && test.test != Name.ALL) {
         // skip namespace and standard tests
         return null;

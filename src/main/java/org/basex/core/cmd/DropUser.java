@@ -47,7 +47,7 @@ public final class DropUser extends AUser {
     // drop global user
     if(db == null) {
       for(final ServerProcess s : context.sessions) {
-        if(s.context.user.name.equals(user)) return !info(USERLOG, user);
+        if(s.user().name.equals(user)) return !info(USERLOG, user);
       }
       context.users.drop(context.users.get(user));
       return info(USERDROP, user);
@@ -59,6 +59,7 @@ public final class DropUser extends AUser {
       if(data.meta.users.remove(data.meta.users.get(user))) {
         info(USERDROPON, user, db);
       }
+      data.meta.dirty = true;
       data.flush();
       Close.close(data, context);
       return true;

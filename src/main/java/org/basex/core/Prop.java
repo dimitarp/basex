@@ -65,6 +65,8 @@ public final class Prop extends AProp {
   public static final Object[] PORT = { "PORT", 1984 };
   /** Client/server communication: port, used for starting the server. */
   public static final Object[] SERVERPORT = { "SERVERPORT", 1984 };
+  /** Client/server communication: port, used for sending events. */
+  public static final Object[] EVENTPORT = { "EVENTPORT", 1985 };
   /** Client/server communication: port, used for starting the JAX-RX server. */
   public static final Object[] JAXRXPORT = { "JAXRXPORT", 8984 };
 
@@ -147,6 +149,8 @@ public final class Prop extends AProp {
   public static final Object[] MAINMEM = { "MAINMEM", false };
   /** Path for filtering XML Documents. */
   public static final Object[] CREATEFILTER = { "CREATEFILTER", "*.xml" };
+  /** Flag for adding archives to a database. */
+  public static final Object[] ADDARCHIVES = { "ADDARCHIVES", true };
 
   /** Flag for creating a wildcard index. */
   public static final Object[] WILDCARDS = { "WILDCARDS", false };

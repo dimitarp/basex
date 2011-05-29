@@ -195,21 +195,22 @@ public interface Text {
 
   /** Command help. */
   String[] HELPCREATE = {
-    "[" + CmdCreate.DATABASE + "|" + CmdCreate.INDEX + "|" +
-    CmdCreate.USER + "|" + CmdCreate.BACKUP + "] [...]",
+    "[" + CmdCreate.BACKUP + "|" + CmdCreate.DATABASE + "|" + CmdCreate.EVENT +
+    "|" + CmdCreate.INDEX + "|" + CmdCreate.USER + "] [...]",
     lang("ch_create1"),
     lang("ch_create2") + NL +
     LI + CmdDrop.BACKUP + " [" + C_NAME + "]:" + NL +
       "  " + lang("ch_create4", C_NAME) + NL +
     LI + CmdCreate.DATABASE + " [" + C_NAME + "] ([" + C_INPUT + "]):"  + NL +
       "  " + lang("ch_create3", C_NAME, C_INPUT) + NL +
+    LI + CmdCreate.EVENT + " [" + C_NAME + "]: " + NL +
+      "  " + lang("ch_create9") + NL +
     LI + CmdCreate.INDEX + " [" + CmdIndex.TEXT + "|" + CmdIndex.ATTRIBUTE +
       "|" + CmdIndex.FULLTEXT + "|" + CmdIndex.PATH + "]:" + NL +
       "  " + lang("ch_create5") + NL +
     LI + CmdCreate.USER + " [" + C_NAME + "] ([" + C_PW + "]):" + NL +
       "  " + lang("ch_create8")
   };
-
   /** Command help. */
   String[] HELPCOPY = {
     "[" + C_NAME + "] [new" + C_NAME + "]", lang("ch_copy1"), lang("ch_copy2")
@@ -219,19 +220,16 @@ public interface Text {
   String[] HELPCHECK = {
     "[" + C_INPUT + "]", lang("ch_check1"), lang("ch_check2")
   };
-
   /** Command help. */
   String[] HELPADD = {
     "(" + AS + " [" + C_NAME + "]) (" + TO + " [" + C_TARGET + "]) [" +
     C_INPUT + "]",
     lang("ch_add1"), lang("ch_add2", C_INPUT, C_NAME, C_TARGET)
   };
-
   /** Command help. */
   String[] HELPDELETE = {
     "[" + C_PATH  + "]", lang("ch_delete1"), lang("ch_delete2")
   };
-
   /** Command help. */
   String[] HELPOPEN = {
     "[" + C_PATH + "]", lang("ch_open1"), lang("ch_open2", C_PATH)
@@ -258,14 +256,16 @@ public interface Text {
   };
   /** Command help. */
   String[] HELPDROP = {
-    "[" + CmdDrop.BACKUP + "|" + CmdDrop.DATABASE + "|" +
-    CmdDrop.INDEX + "|" + CmdDrop.USER + "] [...]",
+    "[" + CmdDrop.BACKUP + "|" + CmdDrop.DATABASE + "|" + "|" + CmdDrop.EVENT +
+      CmdDrop.INDEX + "|" + CmdDrop.USER + "] [...]",
     lang("ch_drop1"),
     lang("ch_drop2") + NL +
-    LI + CmdDrop.BACKUP + " [" + C_NAME + "]:" + NL + "  " +
-      lang("ch_drop24", C_NAME) + NL +
+    LI + CmdDrop.BACKUP + " [" + C_NAME + "]:" + NL +
+      "  " + lang("ch_drop24", C_NAME) + NL +
     LI + CmdDrop.DATABASE + " [" + C_NAME + "]:" + NL +
       "  " + lang("ch_drop21") + NL +
+    LI + CmdDrop.EVENT + " [" + C_NAME + "]:" + NL +
+      "  " + lang("ch_drop25", C_NAME) + NL +
     LI + CmdDrop.INDEX + " [" + CmdIndex.PATH + "|" + CmdIndex.TEXT + "|" +
       CmdIndex.ATTRIBUTE + "|" + CmdIndex.FULLTEXT + "]:" + NL +
       "  " + lang("ch_drop22") + NL +
@@ -297,10 +297,18 @@ public interface Text {
   String[] HELPCS = {
     "[" + C_QUERY + "]", lang("ch_cs1"), lang("ch_cs2")
   };
-
   /** Command help. */
   String[] HELPKILL = {
     "[" + C_NAME + "]", lang("ch_kill1"), lang("ch_kill2")
+  };
+  /** Command help. */
+  String[] HELPRENAME = {
+    "[" + C_PATH  + "] [newpath]", lang("ch_rename1"), lang("ch_rename2")
+  };
+  /** Command help. */
+  String[] HELPREPLACE = {
+    "[" + C_PATH  + "] [" + C_INPUT + "]",
+    lang("ch_replace1"), lang("ch_replace2")
   };
   /** Command help. */
   String[] HELPRESTORE = {
@@ -308,11 +316,12 @@ public interface Text {
   };
   /** Command help. */
   String[] HELPSHOW = {
-    "[" + CmdShow.DATABASES + "|" + CmdShow.SESSIONS + "|" +
-    CmdShow.USERS + "|" + CmdShow.BACKUPS + "]",
+    "[" + CmdShow.BACKUPS + "|" + CmdShow.DATABASES + "|" + CmdShow.EVENTS +
+    "|" + CmdShow.SESSIONS + "|" + CmdShow.USERS + "|" + "]",
     lang("ch_show1"),
     lang("ch_show21") + NL +
     LI + CmdShow.DATABASES + ": " + lang("ch_show22") + NL +
+    LI + CmdShow.EVENTS + ": " + lang("ch_show26") + NL +
     LI + CmdShow.SESSIONS + ": " + lang("ch_show23") + NL +
     LI + CmdShow.USERS + " (" + ON + " [database]): " + lang("ch_show24") + NL +
     LI + CmdShow.BACKUPS + ": " + lang("ch_show25")
@@ -335,7 +344,6 @@ public interface Text {
     LI + CmdCreate.USER  + " [" + C_NAME + "] ([" + C_PW + "]):" + NL +
     "  " + lang("ch_alterpw")
   };
-
   /** Command help. */
   String[] HELPSET = {
     "[option] ([value])",
@@ -351,12 +359,10 @@ public interface Text {
     LI + CmdSet.FTINDEX   + COLS + lang("ch_set31") + NL +
     LI + CmdSet.PATHINDEX + COLS + lang("ch_set32")
   };
-
   /** Command help. */
   String[] HELPGET = {
       "[option]", lang("ch_get1", "info"), lang("ch_get2", "option")
   };
-
   /** Command help. */
   String[] HELPPASSWORD = {
     "([" + C_PW + "])", lang("ch_password1"), lang("ch_password2")
@@ -433,6 +439,10 @@ public interface Text {
   String PATHADDED = lang("pc_added");
   /** Path deleted. */
   String PATHDELETED = lang("pc_deleted");
+  /** Path renamed. */
+  String PATHRENAMED = lang("pc_renamed");
+  /** Path replaced. */
+  String PATHREPLACED = lang("pc_replaced");
   /** Parse error. */
   String PARSEERR = lang("pc_err");
 
@@ -444,6 +454,8 @@ public interface Text {
   String DBWHICH = lang("pc_dbnf");
   /** Language not supported. */
   String LANGWHICH = lang("pc_langnf");
+  /** Points to a directory. */
+  String DIRERR = lang("pc_direrr");
 
   // DATABASE COMMANDS ========================================================
 
@@ -594,6 +606,8 @@ public interface Text {
   String SRVDATABASES = lang("ad_databases");
   /** Show sessions. */
   String SRVSESSIONS = lang("ad_sessions");
+  /** Show events. */
+  String SRVEVENTS = lang("ad_events");
   /** Permission needed. */
   String PERMNO = lang("ad_permno");
   /** Invalid permissions. */
@@ -624,6 +638,18 @@ public interface Text {
   String USERKILL = lang("ad_kill");
   /** User kills itself. */
   String USERKILLSELF = lang("ad_killself");
+  /** Event dropped. */
+  String EVENTDROP = lang("ad_eventdrop");
+  /** Event added. */
+  String EVENTCREATE = lang("ad_eventcreate");
+  /** Event not found. */
+  String EVENTNO = lang("ad_eventno");
+  /** Event already exists. */
+  String EVENTKNOWN = lang("ad_eventknown");
+  /** Watch Event. */
+  String EVENTWAT = lang("ad_eventatt");
+  /** Unwatch Event. */
+  String EVENTUNWAT = lang("ad_eventdet");
 
   // GENERAL COMMANDS =========================================================
 
