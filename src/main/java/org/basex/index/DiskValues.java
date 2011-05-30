@@ -70,8 +70,9 @@ public final class DiskValues implements Index {
     tb.add(SIZEDISK + Performance.format(l, true) + NL);
     final IndexStats stats = new IndexStats(data);
     for(int m = 0; m < size; ++m) {
-      final int oc = idxl.readNum(idxr.read5(m * 5L));
-      if(stats.adding(oc)) stats.add(data.text(idxl.readNum(), text));
+      final long pos = idxr.read5(m * 5L);
+      final int oc = idxl.readNum(pos);
+      if(stats.adding(oc)) stats.add(data.text(firstpre(pos), text));
     }
     stats.print(tb);
     return tb.finish();
