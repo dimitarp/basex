@@ -132,13 +132,26 @@ public final class DataOutput extends OutputStream {
   }
 
   /**
-   * Writes the specified nums to the output stream.
+   * Writes the length and the specified nums to the output stream.
    * @param array array to be written
    * @throws IOException I/O exception
    */
   public void writeNums(final int[] array) throws IOException {
     writeNum(array.length);
     for(final int a : array) writeNum(a);
+  }
+
+  /**
+   * Writes the specified nums to the output stream.
+   * @param array array to be written
+   * @param off offset: position from which values will be read
+   * @param len number of read elements
+   * @throws IOException I/O exception
+   */
+  public void writeNums(final int[] array, final int off, final int len)
+      throws IOException {
+    final int s = off + len;
+    for(int i = off; i < s; ++i) writeNum(array[i]);
   }
 
   /**

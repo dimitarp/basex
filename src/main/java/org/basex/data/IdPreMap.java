@@ -1,9 +1,14 @@
 package org.basex.data;
 
+import static java.lang.Math.*;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 
+import org.basex.io.DataInput;
+import org.basex.io.DataOutput;
 import org.basex.util.Array;
-import org.basex.util.BitArray;
 import org.basex.util.IntList;
 
 /**
@@ -27,7 +32,7 @@ public class IdPreMap {
   private int[] oids;
 
   /** Deleted IDs. */
-  private final BitArray delids;
+  private final SortedIntIntervals delids;
 
   /** Number of records in the table. */
   private int rows;
@@ -54,9 +59,58 @@ public class IdPreMap {
     incs = new int[pres.length];
     oids = new int[pres.length];
 
-    delids = new BitArray();
+    delids = new SortedIntIntervals(pres.length);
 
     idix = new int[pres.length][];
+  }
+
+  /**
+   * Construct a map by reading it from a file.
+   * @param f file to read from
+   * @throws IOException I/O error while reading from the file
+   */
+  public IdPreMap(final File f) throws IOException {
+    final DataInput in = new DataInput(f);
+    try {
+      baseid = in.readNum();
+      rows = in.readNum();
+      pres = in.readNums();
+      fids = in.readNums();
+      nids = in.readNums();
+      incs = in.readNums();
+      oids = in.readNums();
+
+      final int s = in.readNum();
+      final int[] fs = in.readNums(s);
+      final int[] ls = in.readNums(s);
+      delids = new SortedIntIntervals(s, fs, ls);
+      idix = new int[pres.length][];
+    } finally {
+      in.close();
+    }
+  }
+
+  /**
+   * Write the map to the specified file.
+   * @param f file to write to
+   * @throws IOException I/O error while writing to the file
+   */
+  public void write(final File f) throws IOException {
+    final DataOutput out = new DataOutput(f);
+    try {
+      out.writeNum(baseid);
+      out.writeNum(rows);
+      out.writeNums(pres);
+      out.writeNums(fids);
+      out.writeNums(nids);
+      out.writeNums(incs);
+      out.writeNums(oids);
+      out.writeNum(delids.size);
+      out.writeNums(delids.fids, 0, delids.size);
+      out.writeNums(delids.lids, 0, delids.size);
+    } finally {
+      out.close();
+    }
   }
 
   /**
@@ -68,7 +122,7 @@ public class IdPreMap {
     // no updates or id is not affected by updates:
     if(rows == 0 || id < pres[0]) return id;
     // record was deleted:
-    if(delids.get(id)) return -1;
+    if(delids.sortedIndexOf(id) >= 0) return -1;
     // id was inserted by update:
     if(id > baseid) {
       // int i = sortedIndexOf(idix, 0, id);
@@ -189,7 +243,7 @@ public class IdPreMap {
   public void delete(final int pre, final int[] ids, final int c) {
     if(ids.length == 0) return;
     // store the deleted ids:
-    for(int i = 1; i < ids.length; ++i) delids.set(ids[i]);
+    delids.insert(ids);
     delete(pre, ids[0], c);
   }
 
@@ -199,9 +253,7 @@ public class IdPreMap {
    * @param id ID of the first deleted record
    * @param c number of deleted records
    */
-  public void delete(final int pre, final int id, final int c) {
-    delids.set(id);
-
+  private void delete(final int pre, final int id, final int c) {
     int oid = id;
     // if nothing has been modified and we delete from the end, nothing to do:
     if(rows == 0 && pre == oid && oid == baseid) {
@@ -549,5 +601,115 @@ public class IdPreMap {
       System.arraycopy(idix, k + 1, idix, k, ixrows - (k + 1));
     }
     --ixrows;
+  }
+}
+
+/** Sorted list of intervals. */
+class SortedIntIntervals {
+  /** List of interval starts. */
+  int[] fids;
+  /** List of interval ends. */
+  int[] lids;
+  /** Number of stored entries. */
+  int size;
+
+  /**
+   * Construct a new interval set.
+   * @param c initial capacity
+   */
+  public SortedIntIntervals(final int c) {
+    size = 0;
+    fids = new int[c];
+    lids = new int[c];
+  }
+
+  /**
+   * Construct a new interval set using the provided data.
+   * @param s size
+   * @param f list of interval starts
+   * @param l list of interval ends
+   */
+  public SortedIntIntervals(final int s, final int[] f, final int[] l) {
+    size = s;
+    fids = f;
+    lids = l;
+  }
+
+  /**
+   * Search for a key in the stored intervals.
+   * @param k key
+   * @return if the key is found: the index of the interval in which it is
+   *         else: -(insertion point - 1)
+   */
+  public int sortedIndexOf(final int k) {
+    int low = 0;
+    int high = size - 1;
+    while(low <= high) {
+      int mid = (low + high) >>> 1;
+      final int midValMin = fids[mid];
+      final int midValMax = midValMin + lids[mid] - fids[mid];
+      if(midValMax < k) low = mid + 1;
+      else if(midValMin > k) high = mid - 1;
+      else return mid; // key found
+    }
+    return -(low + 1); // key not found.
+  }
+
+  /**
+   * Insert a set of numbers.
+   * @param k set of numbers
+   */
+  public void insert(final int[] k) {
+    Arrays.sort(k);
+    int first = k[0];
+    int last = first;
+    for(int i = 0; i < k.length; ++i) {
+      final int next = k[i];
+      if(next - last <= 1) {
+        last = next;
+      } else {
+        insert(first, last);
+        first = last = next;
+      }
+    }
+    insert(first, last);
+  }
+
+  /**
+   * Insert an interval.
+   * @param first interval beginning
+   * @param last interval end
+   */
+  public void insert(final int first, final int last) {
+    int ins = sortedIndexOf(first);
+    if(ins < 0) {
+      ins = -(ins + 1);
+      if(ins == size) {
+        // append the interval at the end
+        checkSize();
+        fids[size] = first;
+        lids[size++] = last;
+      } else {
+        if(abs(last - fids[ins]) <= 1) fids[ins] = first;
+        else {
+          // insert the record
+          checkSize();
+          System.arraycopy(fids, ins, fids, ins + 1, size - ins);
+          System.arraycopy(lids, ins, lids, ins + 1, size++ - ins);
+          fids[ins] = first;
+          lids[ins] = last;
+        }
+      }
+    } else {
+      if(last > lids[ins]) lids[ins] = last;
+    }
+  }
+
+  /** Check the size and if necessary, resizes the arrays. */
+  private void checkSize() {
+    if(size == fids.length) {
+      fids = Arrays.copyOf(fids, Array.newSize(size));
+      lids = Arrays.copyOf(lids, fids.length);
+    }
   }
 }

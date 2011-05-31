@@ -249,4 +249,6 @@ public interface DataText {
   String DATAFTX = "ftx";
   /** Database - Stopword list. */
   String DATASWL = "swl";
+  /** Database - ID->PRE mapping. */
+  String DATAIDP = "idp";
 }

@@ -2,6 +2,7 @@ package org.basex.data;
 
 import static org.basex.data.DataText.*;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.basex.build.DiskBuilder;
@@ -99,9 +100,11 @@ public final class DiskData extends Data {
     texts = new DataAccess(meta.file(DATATXT));
     values = new DataAccess(meta.file(DATAATV));
     super.init();
-    // [DP] ID->PRE mapping: check if the ID -> PRE mapping is available
-    // restore ID -> PRE mapping from disk
-    idmap = new IdPreMap(meta.lastid);
+    // if the ID -> PRE mapping is available restore it from disk
+    final File idpfile = meta.file(DATAIDP);
+    idmap = idpfile.exists() && idpfile.length() > 0L ?
+        new IdPreMap(idpfile) :
+        new IdPreMap(meta.lastid);
   }
 
   /**
@@ -134,6 +137,7 @@ public final class DiskData extends Data {
       values.flush();
       if(txtindex != null) ((DiskValues) txtindex).flush();
       if(atvindex != null) ((DiskValues) atvindex).flush();
+      idmap.write(meta.file(DATAIDP));
       meta.dirty = false;
     } catch(final IOException ex) {
       Util.stack(ex);
