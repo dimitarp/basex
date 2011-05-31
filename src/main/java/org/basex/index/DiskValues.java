@@ -14,7 +14,8 @@ import org.basex.util.TokenList;
 
 /**
  * This class provides access to attribute values and text contents
- * stored on disk.
+ * stored on disk. The data structure is described in the {@link ValueBuilder}
+ * class.
  *
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
@@ -104,23 +105,23 @@ public final class DiskValues implements Index {
     if(ix < 0) return 0;
     final long pos = idxr.read5(ix * 5L);
     // the first number is the number of hits:
-    final int num = idxl.readNum(pos);
-    cache.add(it.get(), num, pos + Num.len(num));
-    return num;
+    final int nr = idxl.readNum(pos);
+    cache.add(it.get(), nr, pos + Num.length(nr));
+    return nr;
   }
 
   /**
-   * Returns next id values. Called by the {@link ValueBuilder}.
-   * @return compressed id values
+   * Returns next values. Called by the {@link ValueBuilder}.
+   * @return compressed values
    */
-  byte[] nextIDs() {
+  byte[] nextValues() {
     return idxr.pos() >= idxr.length() ? EMPTY :
       idxl.readBytes(idxr.read5(), idxl.read4());
   }
 
   /**
    * Iterator method.
-   * @param s number of pre values
+   * @param s number of values
    * @param ps offset
    * @return iterator
    */
@@ -336,7 +337,7 @@ public final class DiskValues implements Index {
       // check if txt is cached and update the cache entry
       final int cacheid = cache.id(txt);
       if(cacheid > 0)
-        cache.update(cacheid, ids.size(), newpos + Num.len(ids.size()));
+        cache.update(cacheid, ids.size(), newpos + Num.length(ids.size()));
     }
   }
 
@@ -376,7 +377,7 @@ public final class DiskValues implements Index {
       // check if txt is cached and update the cache entry
       final int cacheid = cache.id(txt);
       if(cacheid > 0)
-        cache.update(cacheid, ids.size(), pos + Num.len(ids.size()));
+        cache.update(cacheid, ids.size(), pos + Num.length(ids.size()));
     }
   }
 }

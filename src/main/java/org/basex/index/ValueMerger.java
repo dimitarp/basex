@@ -14,19 +14,19 @@ import org.basex.io.IO;
  * @author Christian Gruen
  */
 final class ValueMerger {
-  /** Data input reference. */
-  private final DataInput di;
+  /** Index instance. */
+  private final DiskValues dv;
+  /** Index keys. */
+  private final DataInput dk;
   /** File prefix. */
   private final String pref;
   /** Data reference. */
   private final Data data;
-  /** Index instance. */
-  private final DiskValues v;
 
-  /** Current value. */
-  byte[] value;
-  /** Current id values. */
-  byte[] pre;
+  /** Current key. */
+  byte[] key;
+  /** Current values. */
+  byte[] values;
 
   /**
    * Constructor.
@@ -37,23 +37,24 @@ final class ValueMerger {
    */
   ValueMerger(final Data d, final boolean txt, final int i) throws IOException {
     pref = (txt ? DATATXT : DATAATV) + i;
-    di = new DataInput(d.meta.file(pref + 't'));
-    v = new DiskValues(d, txt, pref);
+    dk = new DataInput(d.meta.file(pref + 't'));
+    dv = new DiskValues(d, txt, pref);
     data = d;
     next();
   }
 
   /**
-   * Jumps to the next value.
+   * Jumps to the next value. {@link #values} will have 0 entries if the
+   * end of file is reached.
    * @throws IOException I/O exception
    */
   void next() throws IOException {
-    pre = v.nextIDs();
-    if(pre.length != 0) {
-      value = di.readBytes();
+    values = dv.nextValues();
+    if(values.length != 0) {
+      key = dk.readBytes();
     } else {
-      v.close();
-      di.close();
+      dv.close();
+      dk.close();
       DropDB.drop(data.meta.name, pref + '.' + IO.BASEXSUFFIX, data.meta.prop);
     }
   }
