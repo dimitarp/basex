@@ -293,7 +293,7 @@ public final class DiskValues implements Index {
         idxr.write5(i * 5L, idxr.read5((i - 1) * 5L));
 
       final long newpos = idxl.length();
-      idxl.writeNums(idxl.length(), new int[] { id});
+      idxl.writeNums(newpos, new int[] { id});
       idxr.write5(ix * 5L, newpos);
 
       // [DP] should the entry be added to the cache?
@@ -321,6 +321,7 @@ public final class DiskValues implements Index {
           cid = id;
           added = true;
         }
+        // [DP] if insert performance is slow, dont't make the check
         // add the next id only if it hasn't been deleted
         if(data.pre(cid + v) >= 0) {
           ids.add(v);
