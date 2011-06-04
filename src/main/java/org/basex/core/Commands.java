@@ -33,6 +33,8 @@ public interface Commands {
   enum CmdIndexInfo { NULL, TEXT, ATTRIBUTE, FULLTEXT, PATH, TAG, ATTNAME }
   /** Alter types. */
   enum CmdAlter { DATABASE, DB, USER }
+  /** Repo types. */
+  enum CmdRepo { INSTALL, REMOVE, LIST }
 
   /** Command definitions. */
   enum Cmd {
@@ -42,8 +44,9 @@ public interface Commands {
     GET(HELPGET), GRANT(HELPGRANT), HELP(HELPHELP), INFO(HELPINFO),
     KILL(HELPKILL), LIST(HELPLIST), OPEN(HELPOPEN), OPTIMIZE(HELPOPTIMIZE),
     PASSWORD(HELPPASSWORD), RENAME(HELPRENAME), REPLACE(HELPREPLACE),
-    RESTORE(HELPRESTORE), RUN(HELPRUN), SET(HELPSET), SHOW(HELPSHOW),
-    XQUERY(HELPXQUERY);
+    // [RS] to be added: texts for REPO command
+    REPO, RESTORE(HELPRESTORE), RUN(HELPRUN), SET(HELPSET),
+    SHOW(HELPSHOW), XQUERY(HELPXQUERY);
 
     /** Help texts. */
     private final String[] help;

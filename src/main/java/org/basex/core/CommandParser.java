@@ -12,6 +12,7 @@ import org.basex.core.Commands.CmdIndexInfo;
 import org.basex.core.Commands.CmdInfo;
 import org.basex.core.Commands.CmdOptimize;
 import org.basex.core.Commands.CmdPerm;
+import org.basex.core.Commands.CmdRepo;
 import org.basex.core.Commands.CmdShow;
 import org.basex.core.cmd.Add;
 import org.basex.core.cmd.AlterDB;
@@ -41,6 +42,7 @@ import org.basex.core.cmd.Info;
 import org.basex.core.cmd.InfoDB;
 import org.basex.core.cmd.InfoIndex;
 import org.basex.core.cmd.InfoStorage;
+import org.basex.core.cmd.RepoInstall;
 import org.basex.core.cmd.Kill;
 import org.basex.core.cmd.List;
 import org.basex.core.cmd.ListDB;
@@ -64,6 +66,7 @@ import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.QueryParser;
 import org.basex.util.Array;
+import org.basex.util.InputInfo;
 import org.basex.util.InputParser;
 import org.basex.util.Levenshtein;
 import org.basex.util.StringList;
@@ -279,6 +282,15 @@ public final class CommandParser extends InputParser {
         final String db = key(ON, null) ? glob(cmd) : null;
         key(TO, cmd);
         return new Grant(perm, glob(cmd), db);
+      case REPO:
+        switch(consume(CmdRepo.class, cmd)) {
+          case INSTALL:
+            return new RepoInstall(string(cmd), new InputInfo(this));
+          case REMOVE:
+          case LIST:
+          default:
+        }
+        break;
       default:
     }
     return null;

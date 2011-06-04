@@ -161,7 +161,7 @@ public final class FNFileTest extends AdvancedQueryTest {
    * @throws QueryException database exception
    */
   @Test
-  public void testRead() throws QueryException {
+  public void testReadText() throws QueryException {
     final String fun = check(FunDef.READTEXT);
     error(fun + "('" + PATH1 + "')", Err.PATHNOTEXISTS);
     error(fun + "('" + Prop.TMP + "')", Err.PATHISDIR);
@@ -325,7 +325,7 @@ public final class FNFileTest extends AdvancedQueryTest {
   }
 
   /**
-   * Test method for the file:path-to-full-path() function.
+   * Test method for the file:path-to-uri() function.
    * @throws Exception exception
    */
   @Test
@@ -348,16 +348,16 @@ public final class FNFileTest extends AdvancedQueryTest {
     final String name1 = query(fun + "('" + PATH1 + "')");
     assertEquals(name1, NAME);
     // Check with a path ending with a directory separator
-    final String name2 = query(fun + "('" + PATH1 + Prop.DIRSEP + "')");
+    final String name2 = query(fun + "('" + PATH1 + File.separator + "')");
     assertEquals(name2, NAME);
     // Check with a path consisting only of directory separators
-    final String name3 = query(fun + "('" + Prop.DIRSEP + Prop.DIRSEP + "')");
+    final String name3 = query(fun + "('//')");
     assertEquals(name3, "");
     // Check with empty string path
     final String name4 = query(fun + "('" + "" + "')");
     assertEquals(name4, ".");
     // Check using a suffix
-    final String name5 = query(fun + "('" + PATH1 + Prop.DIRSEP + "test.xml"
+    final String name5 = query(fun + "('" + PATH1 + File.separator + "test.xml"
         + "', '.xml')");
     assertEquals(name5, "test");
   }

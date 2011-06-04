@@ -6,6 +6,7 @@ import static org.basex.util.Token.*;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,7 +17,6 @@ import java.util.TreeSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
-import org.basex.build.MemBuilder;
 import org.basex.build.Parser;
 import org.basex.build.file.HTMLParser;
 import org.basex.core.Prop;
@@ -141,9 +141,8 @@ public final class FNZip extends Fun {
     final Prop prop = ctx.context.prop;
     final IO io = new IOContent(entry(ctx));
     try {
-      final Parser p = html ? new HTMLParser(io, "", prop) :
-        Parser.xmlParser(io, prop, "");
-      return new DBNode(MemBuilder.build(p, prop, ""), 0);
+      return new DBNode(html ? new HTMLParser(io, "", prop) :
+        Parser.xmlParser(io, prop, ""), prop);
     } catch(final IOException ex) {
       throw SAXERR.thrw(input, ex);
     }
@@ -382,7 +381,7 @@ public final class FNZip extends Fun {
 
     // interpret query parameters
     final TokenBuilder tb = new TokenBuilder();
-    final AxisIter ati = node.atts();
+    final AxisIter ati = node.attributes();
     for(ANode at; (at = ati.next()) != null;) {
       final QNm name = at.qname();
       if(name.eq(A_NAME) || name.eq(A_SRC)) continue;
@@ -511,29 +510,44 @@ public final class FNZip extends Fun {
     ZipFile zf = null;
     try {
       zf = new ZipFile(file);
-      final ZipEntry ze = zf.getEntry(path);
-      if(ze == null) throw ZIPNOTFOUND.thrw(input, file + '/' + path);
-
-      final InputStream zis = zf.getInputStream(ze);
-      final int s = (int) ze.getSize();
-      if(s >= 0) {
-        // known size: pre-allocate and fill array
-        final byte[] data = new byte[s];
-        int c, o = 0;
-        while(s - o != 0 && (c = zis.read(data, o, s - o)) != -1) o += c;
-        return data;
-      }
-      // unknown size: use byte list
-      final byte[] data = new byte[IO.BLOCKSIZE];
-      final ByteList bl = new ByteList();
-      int c;
-      while((c = zis.read(data)) != -1) bl.add(data, 0, c);
-      return bl.toArray();
+      return read(zf, path);
+    } catch(final FileNotFoundException ex) {
+      throw ZIPNOTFOUND.thrw(input, file + '/' + path);
     } catch(final IOException ex) {
       throw ZIPFAIL.thrw(input, ex.getMessage());
     } finally {
       if(zf != null) try { zf.close(); } catch(final IOException e) { }
     }
+  }
+
+  /**
+   * Reads and returns a zip file entry.
+   * @param zf zip file
+   * @param path file to be read
+   * @return resulting byte array
+   * @throws IOException I/O exception
+   */
+  public static byte[] read(final ZipFile zf, final String path)
+      throws IOException {
+
+    final ZipEntry ze = zf.getEntry(path);
+    if(ze == null) throw new FileNotFoundException(path);
+
+    final InputStream zis = zf.getInputStream(ze);
+    final int s = (int) ze.getSize();
+    if(s >= 0) {
+      // known size: pre-allocate and fill array
+      final byte[] data = new byte[s];
+      int c, o = 0;
+      while(s - o != 0 && (c = zis.read(data, o, s - o)) != -1) o += c;
+      return data;
+    }
+    // unknown size: use byte list
+    final byte[] data = new byte[IO.BLOCKSIZE];
+    final ByteList bl = new ByteList();
+    int c;
+    while((c = zis.read(data)) != -1) bl.add(data, 0, c);
+    return bl.toArray();
   }
 
   @Override

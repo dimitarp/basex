@@ -20,8 +20,6 @@ public final class Prop extends AProp {
   public static final String NL = System.getProperty("line.separator");
   /** Returns the system's default encoding. */
   public static final String ENCODING = System.getProperty("file.encoding");
-  /** Directory separator. */
-  public static final String DIRSEP = System.getProperty("file.separator");
 
   /** System's temporary directory. */
   public static final String TMP =
@@ -53,6 +51,9 @@ public final class Prop extends AProp {
   /** Web path. */
   public static final Object[] JAXRXPATH =
     { "JAXRXPATH", HOME + Text.NAME + "Web" };
+  /** Package repository path. */
+  public static final Object[] REPOPATH =
+    { "REPOPATH", HOME + Text.NAME + "Repo"};
 
   /** Language name. */
   public static final Object[] LANG = { "LANG", "English" };

@@ -5,6 +5,7 @@ import org.basex.data.Data;
 import org.basex.data.MetaData;
 import org.basex.data.Nodes;
 import org.basex.io.IO;
+import org.basex.query.util.repo.Repo;
 import org.basex.server.ServerProcess;
 import org.basex.server.Sessions;
 
@@ -17,6 +18,8 @@ import org.basex.server.Sessions;
  * @author Christian Gruen
  */
 public final class Context {
+  /** Database properties. */
+  public final Prop prop = new Prop(true);
   /** Client connections. */
   public final Sessions sessions;
   /** Event pool. */
@@ -25,8 +28,8 @@ public final class Context {
   public final Datas datas;
   /** Users. */
   public final Users users;
-  /** Database properties. */
-  public final Prop prop;
+  /** Package repository. */
+  public final Repo repo;
 
   /** Session reference. */
   public ServerProcess session;
@@ -55,13 +58,13 @@ public final class Context {
    * Constructor.
    */
   public Context() {
-    prop = new Prop(true);
     datas = new Datas();
     events = new Events();
     sessions = new Sessions();
     lock = new Lock(this);
     users = new Users(true);
     user = users.get(ADMIN);
+    repo = new Repo(this);
   }
 
   /**
@@ -70,13 +73,13 @@ public final class Context {
    * @param s server process
    */
   public Context(final Context ctx, final ServerProcess s) {
-    prop = new Prop(true);
+    session = s;
     datas = ctx.datas;
     events = ctx.events;
     sessions = ctx.sessions;
-    session = s;
     lock = ctx.lock;
     users = ctx.users;
+    repo = ctx.repo;
   }
 
   /**
