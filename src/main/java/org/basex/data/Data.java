@@ -542,7 +542,7 @@ public abstract class Data {
    * @param data replace data
    */
   public final void replace(final int rpre, final Data data) {
-    meta.update();
+    update();
 
     // check if attribute size of parent must be updated
     final int dsize = data.meta.size;
@@ -551,6 +551,10 @@ public abstract class Data {
     final int rkind = kind(rpre);
     final int rsize = size(rpre, rkind);
     final int rpar = parent(rpre, rkind);
+
+    // update index
+    indexDelete(rpre, rsize);
+
     for(int dpre = 0; dpre < dsize; dpre++) {
       final int dkind = data.kind(dpre);
       final int dpar = data.parent(dpre, dkind);
@@ -623,6 +627,9 @@ public abstract class Data {
     int k = kind(pre);
     int s = size(pre, k);
     ns.delete(pre, s);
+
+    // delete child records from indexes:
+    indexDelete(pre, s);
 
     // reduce size of ancestors
     int par = pre;
@@ -1052,6 +1059,13 @@ public abstract class Data {
    */
   protected abstract long index(final byte[] value, final int id,
       final boolean text);
+
+  /**
+   * Delete a node and its descendants from the corresponding indexes.
+   * @param pre pre value of the node to delete
+   * @param size number of descendants
+   */
+  protected abstract void indexDelete(final int pre, final int size);
 
   /** Calls {@link MetaData#update()}. Inheriting classes can override. */
   protected void update() {

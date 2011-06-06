@@ -11,6 +11,7 @@ import org.basex.util.Num;
 import org.basex.util.Performance;
 import org.basex.util.TokenBuilder;
 import org.basex.util.TokenList;
+import org.basex.util.TokenObjMap;
 
 /**
  * This class provides access to attribute values and text contents
@@ -344,41 +345,108 @@ public final class DiskValues implements Index {
 
   /**
    * Remove record from the index.
-   * @param txt record key
+   * @param key record key
    * @param id record id
    */
-  public void indexDelete(final byte[] txt, final int id) {
-    final int ix = get(txt);
-    if(ix < 0) return;
+  public void delete(final byte[] key, final int id) {
+    final IntList arr = new IntList(new int[] { id});
+    final int keyIndex = deleteIds(key, arr);
+    if(keyIndex >= 0) {
+      arr.set(keyIndex, 0);
+      deleteKeys(arr);
+    }
+  }
+
+  /**
+   * Delete records from the index.
+   * @param m a set of <key, id-list> pairs
+   */
+  public void delete(final TokenObjMap<IntList> m) {
+    final IntList empty = new IntList(m.size());
+    for(final byte[] key : m) {
+      final int keyIndex = deleteIds(key, m.get(key));
+      if(keyIndex >= 0) empty.add(keyIndex);
+    }
+    deleteKeys(empty);
+  }
+
+  /**
+   * Remove record ids from the index.
+   * @param key record key
+   * @param ids list of record ids to delete
+   * @return the position of the key, if all ids for the key have been deleted
+   *         {@code -1} otherwise
+   */
+  private int deleteIds(final byte[] key, final IntList ids) {
+    // safety check
+    final int idnum = ids.size();
+    if(idnum == 0) return -1;
+
+    // find the key position in the index
+    final int ix = get(key);
+    if(ix < 0) return -1;
 
     // read the position of the id-list in idxl
     final long pos = idxr.read5(ix * 5L);
 
     // read the number of ids in the list
     final int num = idxl.readNum(pos);
-    final IntList ids = new IntList(num);
-    boolean unchanged = true;
-    int cid = 0;
-    for(int i = 0; i < num || id < cid; ++i) {
-      int v = idxl.readNum();
-      if(unchanged) {
-        if(id == cid + v) {
-          unchanged = false;
-          if(i == num - 1) break;
-          v += idxl.readNum();
-        } else {
-          cid += v;
-        }
+    final IntList nids = new IntList(num);
+
+    ids.sort();
+
+    // read each element from the list
+    for(int i = 0, j = 0, cid = 0, pid = 0; i < num; ++i) {
+      cid += idxl.readNum();
+      if(j < idnum && ids.get(j) == cid) {
+        // there are more ids to delete and the current id must be deleted
+        // skip the current id from adding to the new list
+        ++j;
+      } else {
+        // add the difference between previous and current id
+        nids.add(cid - pid);
+        pid = cid;
       }
-      ids.add(v);
     }
 
-    if(!unchanged) {
-      idxl.writeNums(pos, ids.toArray());
-      // check if txt is cached and update the cache entry
-      final int cacheid = cache.id(txt);
-      if(cacheid > 0)
-        cache.update(cacheid, ids.size(), pos + Num.length(ids.size()));
+    final int rem = nids.size();
+    if(rem == 0) {
+      // the list is empty; the key itself will be deleted
+      cache.delete(key);
+      return ix;
     }
+    if(num != rem) {
+      // the list was changed; it needs to be written back to disk
+      idxl.writeNums(pos, nids.toArray());
+      // update the cache entry, if the key is cached
+      final int cacheid = cache.id(key);
+      if(cacheid > 0) cache.update(cacheid, rem, pos + Num.length(rem));
+    }
+    return -1;
+  }
+
+  /**
+   * Delete keys from the index.
+   * @param keys list of key positions to delete
+   */
+  private void deleteKeys(final IntList keys) {
+    final int num = keys.size();
+    if(num == 0) return;
+
+    keys.sort();
+
+    // shift all keys to the left, skipping the ones which have to be deleted
+    int j = 0;
+    for(int pos = keys.get(j), i = pos + 1; i < size; ++i) {
+      if(i == keys.get(j)) {
+        ++j;
+      } else {
+        idxr.write5(pos * 5L, idxr.read5(i * 5L));
+        ctext.set(ctext.get(i), pos++);
+      }
+    }
+
+    // reduce the size of the index
+    size -= j;
   }
 }

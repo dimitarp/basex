@@ -18,7 +18,9 @@ import org.basex.io.DataOutput;
 import org.basex.io.IO;
 import org.basex.io.TableDiskAccess;
 import org.basex.util.Compress;
+import org.basex.util.IntList;
 import org.basex.util.Token;
+import org.basex.util.TokenObjMap;
 import org.basex.util.Util;
 
 /**
@@ -250,7 +252,7 @@ public final class DiskData extends Data {
     final byte[] oldval = text(pre, txt);
     final DiskValues index = (DiskValues) (txt ? txtindex : atvindex);
     if(index != null) {
-      index.indexDelete(oldval, id);
+      index.delete(oldval, id);
       index.index(val, id);
     }
 
@@ -301,6 +303,40 @@ public final class DiskData extends Data {
     final long off = da.length();
     da.writeBytes(off, txt);
     return off;
+  }
+
+  @Override
+  protected void indexDelete(final int pre, final int size) {
+    if(!(meta.textindex || meta.attrindex)) return;
+
+    // [DP] Full-text index updates: update the existing indexes
+    // collect all keys and ids
+    final TokenObjMap<IntList> txts = new TokenObjMap<IntList>();
+    final TokenObjMap<IntList> atvs = new TokenObjMap<IntList>();
+    final int l = pre + size;
+    for(int p = pre; p < l; ++p) {
+      final int k = kind(p);
+      final boolean isAttr = k == ATTR;
+      // skip nodes which are not attribute, text, comment, or proc. instruction
+      if(isAttr || k == TEXT || k == COMM || k == PI) {
+        final TokenObjMap<IntList> m = isAttr ? atvs : txts;
+        final byte[] key = text(p, !isAttr);
+        final IntList ids;
+        final int hash = m.id(key);
+        if(hash == 0) {
+          ids = new IntList();
+          m.add(key, ids);
+        } else {
+          ids = m.value(hash);
+        }
+        ids.add(id(p));
+      }
+    }
+
+    // delete <key, ids> pairs from indexes
+    // [DP] Index updates: delete from atvindex and txtindex in parallel?
+    if(meta.textindex) ((DiskValues) txtindex).delete(txts);
+    if(meta.attrindex) ((DiskValues) atvindex).delete(atvs);
   }
 
   @Override
