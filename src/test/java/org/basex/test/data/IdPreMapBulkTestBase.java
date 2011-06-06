@@ -53,8 +53,8 @@ public abstract class IdPreMapBulkTestBase {
    */
   protected final void delete(final int pre, final int c) {
     ops.add(new int[] { pre, basemap.id(pre), c});
-    testedmap.delete(pre, basemap.ids(pre, -c), c);
-    basemap.delete(pre, basemap.ids(pre, -c), c);
+    testedmap.delete(pre, basemap.id(pre), c);
+    basemap.delete(pre, basemap.id(pre), c);
   }
 
   /** Check the two mappings. */
@@ -110,7 +110,7 @@ public abstract class IdPreMapBulkTestBase {
     }
 
     @Override
-    public void delete(final int pre, final int[] ids, final int c) {
+    public void delete(final int pre, final int id, final int c) {
       for(int i = 0; i < -c; ++i) idlist.remove(pre);
     }
 

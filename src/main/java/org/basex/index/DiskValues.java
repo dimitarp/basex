@@ -132,8 +132,7 @@ public final class DiskValues implements Index {
     for(int l = 0, v = 0; l < s; ++l) {
       v += idxl.readNum(p);
       p = idxl.pos();
-      final int pre = data.pre(v);
-      if(pre >= 0) pres.add(pre);
+      pres.add(data.pre(v));
     }
     return iter(pres.sort());
   }
@@ -156,23 +155,20 @@ public final class DiskValues implements Index {
     for(int l = 0; l < size; ++l) {
       final int ds = idxl.readNum(idxr.read5(l * 5L));
       int id = idxl.readNum();
-      int pre = data.pre(id);
-      if(pre >= 0) {
-        final double v = data.textDbl(pre, text);
+      final int pre = data.pre(id);
+      final double v = data.textDbl(pre, text);
 
-        if(v >= min && v <= max) {
-          // value is in range
-          for(int d = 0; d < ds; ++d) {
-            pre = data.pre(id);
-            if(pre >= 0) pres.add(pre);
-            id += idxl.readNum();
-          }
-        } else if(simple && v > max && data.textLen(pre, text) == len) {
-          // if limits are integers, if min, max and current value have the same
-          // string length, and if current value is larger than max, test can be
-          // skipped, as all remaining values will be bigger
-          break;
+      if(v >= min && v <= max) {
+        // value is in range
+        for(int d = 0; d < ds; ++d) {
+          pres.add(data.pre(id));
+          id += idxl.readNum();
         }
+      } else if(simple && v > max && data.textLen(pre, text) == len) {
+        // if limits are integers, if min, max and current value have the same
+        // string length, and if current value is larger than max, test can be
+        // skipped, as all remaining values will be bigger
+        break;
       }
     }
     return iter(pres.sort());
@@ -203,52 +199,21 @@ public final class DiskValues implements Index {
    * @return {@code -1} if the id-list contains only deleted ids
    */
   private int firstpre(final long pos) {
-    final int num = idxl.readNum(pos);
-    for(int i = 0, v = 0; i < num; ++i) {
-      v += idxl.readNum();
-      final int pre = data.pre(v);
-      if(pre >= 0) return pre;
-    }
-    return -1;
+    // read the number of ids in the list
+    idxl.readNum(pos);
+    return data.pre(idxl.readNum());
   }
 
   /**
    * Binary search for key in the {@link #idxr}.
    * @param key token to be found
-   * @return if the key is found: index of the key
-   *         else: -(insertion point - 1)
+   * @return if the key is found: index of the key else: -(insertion point - 1)
    */
   private int get(final byte[] key) {
-    // [DP] Refactor!
     int l = 0, h = size - 1;
     while(l <= h) {
-      int m = l + h >>> 1;
-      int pre = firstpre(idxr.read5(m * 5L));
-
-      if(pre < 0) {
-        // try to find the next non-negative pre to the left
-        for(int i = m - 1; i >= l; --i) {
-          pre = firstpre(idxr.read5(i * 5L));
-          if(pre >= 0) {
-            m = i;
-            break;
-          }
-        }
-      }
-
-      if(pre < 0) {
-        // try to find the next non-negative pre to the right
-        for(int i = m + 1; i <= h; ++i) {
-          pre = firstpre(idxr.read5(i * 5L));
-          if(pre >= 0) {
-            m = i;
-            break;
-          }
-        }
-      }
-
-      if(pre < 0) break;
-
+      final int m = l + h >>> 1;
+      final int pre = firstpre(idxr.read5(m * 5L));
       byte[] txt = ctext.get(m);
       if(txt == null) {
         txt = data.text(pre, text);
@@ -324,10 +289,8 @@ public final class DiskValues implements Index {
         }
         // [DP] if insert performance is slow, dont't make the check
         // add the next id only if it hasn't been deleted
-        if(data.pre(cid + v) >= 0) {
-          ids.add(v);
-          cid += v;
-        }
+        ids.add(v);
+        cid += v;
       }
 
       if(!added) ids.add(id - cid);
@@ -437,8 +400,8 @@ public final class DiskValues implements Index {
 
     // shift all keys to the left, skipping the ones which have to be deleted
     int j = 0;
-    for(int pos = keys.get(j), i = pos + 1; i < size; ++i) {
-      if(i == keys.get(j)) {
+    for(int pos = keys.get(j++), i = pos + 1; i < size; ++i) {
+      if(j < num && i == keys.get(j)) {
         ++j;
       } else {
         idxr.write5(pos * 5L, idxr.read5(i * 5L));

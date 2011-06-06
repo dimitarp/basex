@@ -588,7 +588,7 @@ public abstract class Data {
       }
     }
     // update ID -> PRE map:
-    idmap.delete(rpre, ids(rpre, rsize), -rsize);
+    idmap.delete(rpre, id(rpre), -rsize);
     idmap.insert(rpre, meta.lastid - dsize + 1, dsize);
     // update table:
     table.replace(rpre, buffer(), rsize);
@@ -659,7 +659,7 @@ public abstract class Data {
     }
 
     // delete node and descendants from ID -> PRE map:
-    idmap.delete(pre, ids(pre, s), -s);
+    idmap.delete(pre, id(pre), -s);
     // delete node from table structure and reduce document size
     table.delete(pre, s);
     updateDist(p, -s);

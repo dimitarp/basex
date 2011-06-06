@@ -31,9 +31,6 @@ public class IdPreMap {
   /** ID values for the PRE, before inserting/deleting a record. */
   private int[] oids;
 
-  /** Deleted IDs. */
-  private final SortedIntIntervals delids;
-
   /** Number of records in the table. */
   private int rows;
 
@@ -59,8 +56,6 @@ public class IdPreMap {
     incs = new int[pres.length];
     oids = new int[pres.length];
 
-    delids = new SortedIntIntervals(pres.length);
-
     idix = new int[pres.length][];
   }
 
@@ -80,10 +75,6 @@ public class IdPreMap {
       incs = in.readNums();
       oids = in.readNums();
 
-      final int s = in.readNum();
-      final int[] fs = in.readNums(s);
-      final int[] ls = in.readNums(s);
-      delids = new SortedIntIntervals(s, fs, ls);
       idix = new int[pres.length][];
     } finally {
       in.close();
@@ -105,9 +96,6 @@ public class IdPreMap {
       out.writeNums(nids);
       out.writeNums(incs);
       out.writeNums(oids);
-      out.writeNum(delids.size);
-      out.writeNums(delids.fids, 0, delids.size);
-      out.writeNums(delids.lids, 0, delids.size);
     } finally {
       out.close();
     }
@@ -121,8 +109,6 @@ public class IdPreMap {
   public int pre(final int id) {
     // no updates or id is not affected by updates:
     if(rows == 0 || id < pres[0]) return id;
-    // record was deleted:
-    if(delids.sortedIndexOf(id) >= 0) return -1;
     // id was inserted by update:
     if(id > baseid) {
       // int i = sortedIndexOf(idix, 0, id);
@@ -161,10 +147,7 @@ public class IdPreMap {
    */
   public int[] pre(final int[] ids, final int off, final int len) {
     final IntList p = new IntList(ids.length);
-    for(int i = off; i < len; ++i) {
-      final int pre = pre(ids[i]);
-      if(pre >= 0) p.add(pre);
-    }
+    for(int i = off; i < len; ++i) p.add(pre(ids[i]));
     return p.sort().toArray();
   }
 
@@ -237,23 +220,10 @@ public class IdPreMap {
   /**
    * Delete records.
    * @param pre PRE of the first record
-   * @param ids IDs of the deleted records
-   * @param c number of deleted records
-   */
-  public void delete(final int pre, final int[] ids, final int c) {
-    if(ids.length == 0) return;
-    // store the deleted ids:
-    delids.insert(ids);
-    delete(pre, ids[0], c);
-  }
-
-  /**
-   * Delete records.
-   * @param pre PRE of the first record
    * @param id ID of the first deleted record
    * @param c number of deleted records
    */
-  private void delete(final int pre, final int id, final int c) {
+  public void delete(final int pre, final int id, final int c) {
     int oid = id;
     // if nothing has been modified and we delete from the end, nothing to do:
     if(rows == 0 && pre == oid && oid == baseid) {
