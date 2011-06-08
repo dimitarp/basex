@@ -210,7 +210,18 @@ public final class DiskValues implements Index {
    * @return if the key is found: index of the key else: -(insertion point - 1)
    */
   private int get(final byte[] key) {
-    int l = 0, h = size - 1;
+    return get(key, 0, size - 1);
+  }
+
+  /**
+   * Binary search for key in the {@link #idxr}.
+   * @param key token to be found
+   * @param first begin of the search interval
+   * @param last end of the search interval
+   * @return if the key is found: index of the key else: -(insertion point - 1)
+   */
+  private int get(final byte[] key, final int first, final int last) {
+    int l = first, h = last;
     while(l <= h) {
       final int m = l + h >>> 1;
       final int pre = firstpre(idxr.read5(m * 5L));
@@ -243,11 +254,119 @@ public final class DiskValues implements Index {
   }
 
   /**
+   * Add entries to the index.
+   * @param m a set of <key, id-list> pairs
+   */
+  public void index(final TokenObjMap<IntList> m) {
+    // create a sorted list of the keys
+    final TokenList nkeys = new TokenList(m.size());
+    for(final byte[] key : m) {
+      final int ins = get(key);
+      if(ins < 0) {
+        // key does not exist and needs to be inserted
+        nkeys.add(key);
+      } else {
+        // key exists: append the new ids
+        appendIds(ins, key, m.get(key));
+      }
+    }
+
+    nkeys.sort(true);
+
+    for(int j = nkeys.size() - 1, i = size - 1, pos = size + j; j >= 0; --j) {
+      // search each key in the index
+      final byte[] k = nkeys.get(j);
+      int ins = get(k, 0, i);
+
+      if(ins < 0) {
+        // key does not exist and needs to be inserted
+        ins = -(ins + 1);
+
+        // shift all bigger keys to the right
+        while(i >= ins) {
+          idxr.write5(pos * 5L, idxr.read5(i * 5L));
+          ctext.set(ctext.get(i--), pos--);
+        }
+
+        // add the new key and its ids
+        final long newpos = idxl.length();
+        idxr.write5(pos * 5L, newpos);
+        idxl.writeNums(newpos, m.get(k).toArray());
+
+        // cache the key token
+        ctext.set(k, pos--);
+        // [DP] should the entry be added to the cache?
+      } else {
+        throw new IllegalStateException("Key should not exists");
+      }
+    }
+
+    size += nkeys.size();
+  }
+
+  /**
+   * Add record ids to an index entry.
+   * @param ix index of the key
+   * @param txt key
+   * @param nids list of record ids to add
+   */
+  private void appendIds(final int ix, final byte[] txt, final IntList nids) {
+    final int numnew = nids.size();
+
+    // read the old ids
+    final long oldpos = idxr.read5(ix * 5L);
+    final int numold = idxl.readNum(oldpos);
+    final IntList ids = new IntList(numold + numnew);
+    int pid = 0;
+    for(int i = 0; i < numold; ++i) {
+      final int v = idxl.readNum();
+      pid += v;
+      ids.add(v);
+    }
+
+    // append the new ids
+    nids.sort();
+    for(int i = 0; i < numnew; ++i) {
+      final int cid = nids.get(i);
+      ids.add(cid - pid);
+      pid = cid;
+    }
+
+    final long newpos = idxl.length();
+    idxl.writeNums(newpos, ids.toArray());
+    idxr.write5(ix * 5L, newpos);
+
+    // check if txt is cached and update the cache entry
+    final int cacheid = cache.id(txt);
+    if(cacheid > 0) cache.update(cacheid, ids.size(),
+        newpos + Num.length(ids.size()));
+  }
+
+  /**
+   * Remove record from the index.
+   * @param o old record key
+   * @param n new record key
+   * @param id record id
+   */
+  public void replace(final byte[] o, final byte[] n, final int id) {
+    // delete the entry from the old key
+    final IntList arr = new IntList(new int[] { id});
+    final int keyIndex = deleteIds(o, arr);
+    if(keyIndex >= 0) {
+      arr.set(keyIndex, 0);
+      deleteKeys(arr);
+    }
+
+    // add the entry to the new key
+    insertId(n, id);
+  }
+
+  /**
    * Add a text entry to the index.
    * @param txt text to index
    * @param id id value
    */
-  public void index(final byte[] txt, final int id) {
+  private void insertId(final byte[] txt, final int id) {
     // search for the key
     int ix = get(txt);
     if(ix < 0) {
@@ -301,22 +420,8 @@ public final class DiskValues implements Index {
 
       // check if txt is cached and update the cache entry
       final int cacheid = cache.id(txt);
-      if(cacheid > 0)
-        cache.update(cacheid, ids.size(), newpos + Num.length(ids.size()));
-    }
-  }
-
-  /**
-   * Remove record from the index.
-   * @param key record key
-   * @param id record id
-   */
-  public void delete(final byte[] key, final int id) {
-    final IntList arr = new IntList(new int[] { id});
-    final int keyIndex = deleteIds(key, arr);
-    if(keyIndex >= 0) {
-      arr.set(keyIndex, 0);
-      deleteKeys(arr);
+      if(cacheid > 0) cache.update(cacheid, ids.size(),
+          newpos + Num.length(ids.size()));
     }
   }
 

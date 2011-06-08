@@ -251,10 +251,7 @@ public final class DiskData extends Data {
     final int id = id(pre);
     final byte[] oldval = text(pre, txt);
     final DiskValues index = (DiskValues) (txt ? txtindex : atvindex);
-    if(index != null) {
-      index.delete(oldval, id);
-      index.index(val, id);
-    }
+    if(index != null) index.replace(oldval, val, id);
 
     final long v = Token.toSimpleInt(val);
     if(v != Integer.MIN_VALUE) {
@@ -289,17 +286,49 @@ public final class DiskData extends Data {
     }
   }
 
+  private TokenObjMap<IntList> txts;
+  private TokenObjMap<IntList> atvs;
+
+  @Override
+  protected void indexBegin() {
+    txts = new TokenObjMap<IntList>();
+    atvs = new TokenObjMap<IntList>();
+  }
+
+  @Override
+  protected void indexEnd() {
+    if(txts.size() > 0) ((DiskValues) txtindex).index(txts);
+    if(atvs.size() > 0) ((DiskValues) atvindex).index(atvs);
+  }
+
   @Override
   protected long index(final byte[] txt, final int id, final boolean text) {
     // [DP] Full-text index updates: update the existing indexes
     final DataAccess da;
+    final TokenObjMap<IntList> m;
+
     if(text) {
       da = texts;
-      if(meta.textindex) ((DiskValues) txtindex).index(txt, id);
+      m = meta.textindex ? txts : null;
     } else {
       da = values;
-      if(meta.attrindex) ((DiskValues) atvindex).index(txt, id);
+      m = meta.attrindex ? atvs : null;
     }
+
+    // add text to map to index later
+    if(m != null) {
+      final IntList ids;
+      final int hash = m.id(txt);
+      if(hash == 0) {
+        ids = new IntList();
+        m.add(txt, ids);
+      } else {
+        ids = m.value(hash);
+      }
+      ids.add(id);
+    }
+
+    // add text to text file
     final long off = da.length();
     da.writeBytes(off, txt);
     return off;

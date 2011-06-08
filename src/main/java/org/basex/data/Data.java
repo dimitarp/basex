@@ -554,6 +554,7 @@ public abstract class Data {
 
     // update index
     indexDelete(rpre, rsize);
+    indexBegin();
 
     for(int dpre = 0; dpre < dsize; dpre++) {
       final int dkind = data.kind(dpre);
@@ -587,6 +588,7 @@ public abstract class Data {
           break;
       }
     }
+    indexEnd();
     // update ID -> PRE map:
     idmap.delete(rpre, id(rpre), -rsize);
     idmap.insert(rpre, meta.lastid - dsize + 1, dsize);
@@ -695,6 +697,7 @@ public abstract class Data {
    */
   public final void insert(final int ipre, final int ipar, final Data data) {
     update();
+    indexBegin();
 
     final int[] preStack = new int[IO.MAXHEIGHT];
     int l = 0;
@@ -843,6 +846,8 @@ public abstract class Data {
 
     // NSNodes have to be checked for pre value shifts after insert
     ns.update(ipre, ms, true, newNodes);
+
+    indexEnd();
 
     // delete old empty root node
     if(size(0, DOC) == 1) delete(0);
@@ -1059,6 +1064,12 @@ public abstract class Data {
    */
   protected abstract long index(final byte[] value, final int id,
       final boolean text);
+
+  /** Notify the index structures that an update operation is started. */
+  protected void indexBegin() { }
+
+  /** Notify the index structures that an update operation is finished. */
+  protected void indexEnd() { }
 
   /**
    * Delete a node and its descendants from the corresponding indexes.
