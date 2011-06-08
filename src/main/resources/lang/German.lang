@@ -400,6 +400,7 @@ srv_login=Zugriff wurde verweigert.
 srv_connect=Server ist nicht erreichbar.
 srv_timeout=Prozess hat Time-Out überschritten.
 srv_bind=Server läuft, oder der Zugriff wurde untersagt.
+srv_ports=Identischer Server- und Event-Port.
 srv_unknown=Unbekannter Host '%'.
 srv_start=Server wurde gestartet.
 srv_stop=Server wurde gestoppt.
@@ -439,6 +440,8 @@ qu_exec=Anfrage ausgeführt (%).
 # Admin Commands
 ad_databases=% geöffnete Datenbank(en)
 ad_sessions=% Verbindung(en)
+ad_events=% Event(s)
+ad_packages=Paket(e)
 ad_permno=%-Recht benötigt.
 ad_perminv=%-Recht ist unbekannt.
 ad_grant=% zugewiesen an '%'.
@@ -454,14 +457,14 @@ ad_passno=Kein Passwort angegeben.
 ad_admin=Admin-Benutzer kann nicht modifiziert werden.
 ad_kill=% Verbindungen beendet.
 ad_killself='%' kann sich nicht selbst beenden.
-ad_Eventdrop=Event '%' entfernt.
-ad_Eventcreate=Event '%' erzeugt.
-ad_Eventknown=Event '%' existiert schon.
-ad_Eventno=Unbekannter Event '%'.
+ad_eventdrop=Event '%' entfernt.
+ad_eventcreate=Event '%' erzeugt.
+ad_eventknown=Event '%' existiert schon.
+ad_eventno=Unbekannter Event '%'.
 ad_eventalr=Event '%' wird schon beobachtet.
 ad_eventnouw=Event '%' wurde nicht beobachtet.
-ad_Eventatt=Beobachte Event '%'.
-ad_Eventdet=Von Event '%' abgemeldet.
+ad_eventatt=Beobachte Event '%'.
+ad_eventdet=Von Event '%' abgemeldet.
 
 # General Commands
 gc_setwhich=Unbekannte Option '%'
@@ -508,6 +511,10 @@ info_off=AUS
 info_error=Fehler
 info_entries=% Einträge
 info_browsererror=Browser konnte nicht geöffnet werden. Bitte die URL von Hand im Browser öffnen:\n\n%
+
+#Repo commands
+repo_delete=Paket '%' wurde gelöscht.
+repo_install=Paket '%' wurde in % installiert.
 
 # Command Help
 ch_nohelp=Keine Hilfe verfügbar.
@@ -569,8 +576,8 @@ ch_replace1=Ersetzung von Datenbank-Dokumenten.
 ch_replace2=Ersetzt Dokumente in der geöffneten Datenbank.
 ch_restore1=Wiederherstellung der Datenbank.
 ch_restore2=Stellt eine Datenbank wieder her. Das Argument\nkann den Zeitstempel des Backup-Files beinhalten.
-ch_show1=Anzeige von Server-Information.
-ch_show21=Zeigt Server-Information an:
+ch_show1=Anzeige von Server-Informationen.
+ch_show21=Zeigt Server-Informationen an:
 ch_show22=zeigt aktuell geöffnete Datenbanken.
 ch_show23=zeigt aktuelle Datenbankverbindungen.
 ch_show24=zeigt registrierte Benutzer (einer Datenbank).
@@ -589,7 +596,7 @@ ch_set28=Text-Indexierung
 ch_set29=Attributwert-Indexierung
 ch_set31=Volltext-Indexierung
 ch_set32=Pfad-Indexierung
-ch_get1=Anzeige von globalen Optionen.
+ch_get1=Anzeige globaler Datenbankoptionen.
 ch_get2=Zeigt den Wert einer globalen Option an.
 ch_password1=Ändern des Passworts.
 ch_password2=Ändert das Passwort des angemeldeten Benutzers.
@@ -597,6 +604,11 @@ ch_help1=Hilfe für %-Befehle.
 ch_help2=Wenn [%] angegeben wurde, werden Informationen\nzum eingegebenen Befehl dargestellt; ansonsten werden\nalle Befehle aufgelistet.
 ch_exit1=Beenden des Programms.
 ch_exit2=Beendet %.
+ch_repo1=Installation, Entfernen oder Auflisten von Paketen.
+ch_repo2=Installiert, entfernt oder listet installierte Pakete auf:
+ch_repo3=entfernt das Paket mit dem Namen [%] oder dem Verzeichnis [%]
+ch_repo4=installiert das Paket mit dem Pfad [%]
+ch_repo5=listet alle installierten Pakete auf
 
 # Help Texts
 h_hist=Auswahl der letzten Texteingaben.

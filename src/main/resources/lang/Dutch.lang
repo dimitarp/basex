@@ -400,6 +400,7 @@ srv_login=Toegang geweigerd.
 srv_connect=Communicatie met de server mislukt.
 srv_timeout=Timeout overschreden.
 srv_bind=Server loopt al of toegang ontzegd.
+srv_ports=Same server and event port specified.
 srv_unknown=Onbekende host '%'.
 srv_start=Server is gestart.
 srv_stop=Server is gestopt.
@@ -439,6 +440,8 @@ qu_exec=Query uitgevoerd in % seconden.
 # Admin Commands
 ad_databases=% geopende database(s)
 ad_sessions=% sessie(s)
+ad_events=% event(s)
+ad_packages=package(s)
 ad_permno=% toegang geweigerd.
 ad_perminv=% permission is unknown.
 ad_grant=% granted to '%'.
@@ -598,6 +601,11 @@ ch_help1=Vraag hulp over % commando's.
 ch_help2=Als [%] is opgegeven, dan wordt informatie over het specifieke\ncommando geprint; anders worden alle commando's getoond.
 ch_exit1=Stop applicatie.
 ch_exit2=Stop %.
+ch_repo1=Install, delete or list packages.
+ch_repo2=installs, deletes or lists packages from the repository
+ch_repo3=deletes the package with name [%] or directory [%]
+ch_repo4=installs package with path [%]
+ch_repo5=lists all installed packages
 
 # Help Texts
 h_hist=Toon input geschiedenis.

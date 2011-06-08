@@ -400,6 +400,7 @@ srv_login=Accès refusé.
 srv_connect=Pas de communication avec le serveur.
 srv_timeout=Délai expiré.
 srv_bind=Serveur déjà démarré ou permission refusée.
+srv_ports=Same server and event port specified.
 srv_unknown=Unknown host '%'.
 srv_start=Serveur démarré.
 srv_stop=Serveur arrêté.
@@ -439,6 +440,8 @@ qu_exec=Query executed in %.
 # Commandes Admin
 ad_databases=% base(s) de données ouverte(s)
 ad_sessions=% session(s)
+ad_events=% event(s)
+ad_packages=package(s)
 ad_permno=Permission % requise.
 ad_perminv=% permission is unknown.
 ad_grant=% granted to '%'.
@@ -597,6 +600,11 @@ ch_help1=Obtenir de l'aide sur les commandes %
 ch_help2=Si [%] est spécifié, l'information relative à la \ncommande est imprimée; sinon, toutes les commandes sont listées.
 ch_exit1=Quitter l'application.
 ch_exit2=Quitter %.
+ch_repo1=Install, delete or list packages.
+ch_repo2=installs, deletes or lists packages from the repository
+ch_repo3=deletes the package with name [%] or directory [%]
+ch_repo4=installs package with path [%]
+ch_repo5=lists all installed packages
 
 # Aide Texts
 h_hist=Afficher l'historique des saisies.

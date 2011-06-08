@@ -8,6 +8,7 @@ import org.basex.core.Commands.CmdDrop;
 import org.basex.core.Commands.CmdIndex;
 import org.basex.core.Commands.CmdInfo;
 import org.basex.core.Commands.CmdPerm;
+import org.basex.core.Commands.CmdRepo;
 import org.basex.core.Commands.CmdSet;
 import org.basex.core.Commands.CmdShow;
 
@@ -115,6 +116,7 @@ public interface Text {
     "  stop     Stop existing server" + NL +
     "  -c<cmd>  Execute initial database command(s)" + NL +
     "  -d       Activate debugging mode" + NL +
+    "  -e<num>  Set event port" + NL +
     "  -i       Enter interactive mode" + NL +
     "  -p<num>  Set server port" + NL +
     "  -s       Start as service" + NL +
@@ -146,6 +148,8 @@ public interface Text {
   String SERVERSTOPPED = lang("srv_stop");
   /** Server is running or permission was denied. */
   String SERVERBIND = lang("srv_bind");
+  /** Same ports specified. */
+  String SERVERPORTS = lang("srv_ports");
   /** Unknown host. */
   String SERVERUNKNOWN = lang("srv_unknown");
   /** Timeout exceeded. */
@@ -189,6 +193,12 @@ public interface Text {
   String C_PW = "password";
   /** Command help. */
   String C_TARGET = "target";
+  /** Command help. */
+  String C_PKGPATH = "path";
+  /** Command help. */
+  String C_PKGNAME = "name";
+  /** Command help. */
+  String C_PKGDIR = "dir";
 
   /** Missing help. */
   String NOHELP = lang("ch_nohelp");
@@ -211,6 +221,7 @@ public interface Text {
     LI + CmdCreate.USER + " [" + C_NAME + "] ([" + C_PW + "]):" + NL +
       "  " + lang("ch_create8")
   };
+
   /** Command help. */
   String[] HELPCOPY = {
     "[" + C_NAME + "] [new" + C_NAME + "]", lang("ch_copy1"), lang("ch_copy2")
@@ -374,6 +385,19 @@ public interface Text {
   /** Command help. */
   String[] HELPEXIT = {
     "", lang("ch_exit1", NAME), lang("ch_exit2", NAME)
+  };
+
+  /** Command help. */
+  String[] HELPREPO = {
+      "[" + CmdRepo.DELETE + "|" + CmdRepo.INSTALL + "|" + CmdRepo.LIST + "]",
+      lang("ch_repo1"),
+      lang("ch_repo2") + NL +
+      LI + CmdRepo.DELETE + " [" + C_PKGNAME + "|" + C_PKGDIR + "]:" +  NL +
+      "  " + lang("ch_repo3", C_PKGNAME, C_PKGDIR) + NL +
+      LI + CmdRepo.INSTALL + " [" + C_PKGPATH + "]:" + NL +
+      "  " + lang("ch_repo4", C_PKGPATH) + NL +
+      LI + CmdRepo.LIST + ":" + NL +
+      "  " + lang("ch_repo5")
   };
 
   // COMMAND INFOS ============================================================
@@ -607,7 +631,9 @@ public interface Text {
   /** Show sessions. */
   String SRVSESSIONS = lang("ad_sessions");
   /** Show events. */
-  String SRVEVENTS = lang("ad_events");
+  String EVENTS = lang("ad_events");
+  /** Show packages. */
+  String PACKAGES = lang("ad_packages");
   /** Permission needed. */
   String PERMNO = lang("ad_permno");
   /** Invalid permissions. */
@@ -654,6 +680,12 @@ public interface Text {
   String EVENTWAT = lang("ad_eventatt");
   /** Unwatch Event. */
   String EVENTUNWAT = lang("ad_eventdet");
+
+  // REPO COMMANDS ========================================================
+  /** Package deleted. */
+  String REPODEL = lang("repo_delete");
+  /** Package installed. */
+  String REPOINST = lang("repo_install");
 
   // GENERAL COMMANDS =========================================================
 

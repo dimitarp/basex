@@ -400,6 +400,7 @@ srv_login=アクセスが拒否されました。
 srv_connect=サーバーと通信できません。
 srv_timeout=タイムアウトになりました。
 srv_bind=サーバーが既に起動しているか、権限が足りません。
+srv_ports=Same server and event port specified.
 srv_unknown=Unknown host '%'。
 srv_start=サーーバーが開始しました。
 srv_stop=サーバーが停止しました。
@@ -439,6 +440,8 @@ qu_exec=Query executed in %.
 # Admin Commands
 ad_databases=% 個のデータベースが開かれています。
 ad_sessions=% セッション
+ad_events=% event(s)
+ad_packages=package(s)
 ad_permno=% パーミッションが必要です。
 ad_perminv=% permission is unknown.
 ad_grant=% granted to '%'.
@@ -597,6 +600,11 @@ ch_help1=ヘルプをオンにする % コマンド
 ch_help2=[%] が指定された場合、指定されたコマンドに関する情報が\n 表示されます。指定しなかった場合は全てのコマンドが表示されます。
 ch_exit1=アプリケーションの終了
 ch_exit2=% を終了します。
+ch_repo1=Install, delete or list packages.
+ch_repo2=installs, deletes or lists packages from the repository
+ch_repo3=deletes the package with name [%] or directory [%]
+ch_repo4=installs package with path [%]
+ch_repo5=lists all installed packages
 
 # Help Texts
 h_hist=入力履歴の表示
