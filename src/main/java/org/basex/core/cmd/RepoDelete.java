@@ -6,7 +6,7 @@ import java.io.IOException;
 import org.basex.core.Command;
 import org.basex.core.User;
 import org.basex.query.QueryException;
-import org.basex.query.util.repo.RepoManager;
+import org.basex.query.util.pkg.RepoManager;
 import org.basex.util.InputInfo;
 import org.basex.util.Util;
 
@@ -35,7 +35,7 @@ public class RepoDelete extends Command {
     try {
       new RepoManager(context).delete(args[0], ii);
       return info(REPODEL, args[0]);
-    } catch(QueryException ex) {
+    } catch(final QueryException ex) {
       Util.debug(ex);
       return error(ex.getMessage());
     }

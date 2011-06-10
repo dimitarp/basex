@@ -1,4 +1,4 @@
-package org.basex.query.util.repo;
+package org.basex.query.util.pkg;
 
 import static org.basex.util.Token.*;
 
@@ -12,11 +12,11 @@ import org.basex.util.Token;
  */
 public final class PkgVersion implements Comparable<PkgVersion> {
   /** Major version. */
-  private int major;
+  private final int major;
   /** Minor version. */
-  private int minor;
+  private final int minor;
   /** Patch version. */
-  private int patch;
+  private final int patch;
 
   /**
    * Constructor.
