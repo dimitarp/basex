@@ -211,8 +211,8 @@ public final class DataAccess {
       if(bf.dirty) writeBlock(bf);
       bf.pos = b;
       file.seek(bf.pos);
-      if(bf.pos < len)
-        file.readFully(bf.data, 0, (int) Math.min(len - b, IO.BLOCKSIZE));
+      if(bf.pos < file.length())
+        file.readFully(bf.data, 0, (int) Math.min(len - bf.pos, IO.BLOCKSIZE));
     } catch(final IOException ex) {
       Util.stack(ex);
     }

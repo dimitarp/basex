@@ -847,6 +847,8 @@ public abstract class Data {
     // NSNodes have to be checked for pre value shifts after insert
     ns.update(ipre, ms, true, newNodes);
 
+    // add the entries to the ID -> PRE mapping:
+    idmap.insert(ipre, id(ipre), ms);
     indexEnd();
 
     // delete old empty root node
@@ -939,11 +941,7 @@ public abstract class Data {
    * @param pre insert position
    */
   public final void insert(final int pre) {
-    final byte[] t = buffer();
-    table.insert(pre, t);
-
-    // add the entries to the ID -> PRE mapping:
-    idmap.insert(pre, id(pre), t.length >>> IO.NODEPOWER);
+    table.insert(pre, buffer());
   }
 
   /**

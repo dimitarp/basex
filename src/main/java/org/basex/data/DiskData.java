@@ -4,6 +4,9 @@ import static org.basex.data.DataText.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.basex.build.DiskBuilder;
 import org.basex.core.Prop;
@@ -19,6 +22,7 @@ import org.basex.io.IO;
 import org.basex.io.TableDiskAccess;
 import org.basex.util.Compress;
 import org.basex.util.IntList;
+import org.basex.util.Performance;
 import org.basex.util.Token;
 import org.basex.util.TokenObjMap;
 import org.basex.util.Util;
@@ -286,8 +290,10 @@ public final class DiskData extends Data {
     }
   }
 
-  private TokenObjMap<IntList> txts;
-  private TokenObjMap<IntList> atvs;
+  /** Buffered text entries. */
+  TokenObjMap<IntList> txts;
+  /** Buffered attribute value entries. */
+  TokenObjMap<IntList> atvs;
 
   @Override
   protected void indexBegin() {
@@ -297,13 +303,33 @@ public final class DiskData extends Data {
 
   @Override
   protected void indexEnd() {
-    if(txts.size() > 0) ((DiskValues) txtindex).index(txts);
-    if(atvs.size() > 0) ((DiskValues) atvindex).index(atvs);
+    // update all indexes in parallel
+    // [DP] Full-text index updates: update the existing indexes
+    final ExecutorService exec = Executors.newFixedThreadPool(2);
+    if(txts.size() > 0) {
+      exec.execute(new Runnable() { @Override public void run() {
+        final Performance p = new Performance();
+        ((DiskValues) txtindex).index(txts);
+        Util.errln("Insert into TXT index in " + p);
+      }});
+    }
+    if(atvs.size() > 0) {
+      exec.execute(new Runnable() { @Override public void run() {
+        final Performance p = new Performance();
+        ((DiskValues) atvindex).index(atvs);
+        Util.errln("Insert into ATV index in " + p);
+      }});
+    }
+
+    // wait for all tasks to finish
+    exec.shutdown();
+    try {
+      exec.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+    } catch(InterruptedException e) { Util.errln(e); }
   }
 
   @Override
   protected long index(final byte[] txt, final int id, final boolean text) {
-    // [DP] Full-text index updates: update the existing indexes
     final DataAccess da;
     final TokenObjMap<IntList> m;
 
@@ -318,14 +344,16 @@ public final class DiskData extends Data {
     // add text to map to index later
     if(m != null) {
       final IntList ids;
-      final int hash = m.id(txt);
-      if(hash == 0) {
-        ids = new IntList();
-        m.add(txt, ids);
-      } else {
-        ids = m.value(hash);
+      if(Token.len(txt) <= Token.MAXLEN) {
+        final int hash = m.id(txt);
+        if(hash == 0) {
+          ids = new IntList();
+          m.add(txt, ids);
+        } else {
+          ids = m.value(hash);
+        }
+        ids.add(id);
       }
-      ids.add(id);
     }
 
     // add text to text file
@@ -338,34 +366,54 @@ public final class DiskData extends Data {
   protected void indexDelete(final int pre, final int size) {
     if(!(meta.textindex || meta.attrindex)) return;
 
-    // [DP] Full-text index updates: update the existing indexes
     // collect all keys and ids
-    final TokenObjMap<IntList> txts = new TokenObjMap<IntList>();
-    final TokenObjMap<IntList> atvs = new TokenObjMap<IntList>();
+    txts = new TokenObjMap<IntList>();
+    atvs = new TokenObjMap<IntList>();
     final int l = pre + size;
     for(int p = pre; p < l; ++p) {
       final int k = kind(p);
       final boolean isAttr = k == ATTR;
       // skip nodes which are not attribute, text, comment, or proc. instruction
       if(isAttr || k == TEXT || k == COMM || k == PI) {
-        final TokenObjMap<IntList> m = isAttr ? atvs : txts;
         final byte[] key = text(p, !isAttr);
-        final IntList ids;
-        final int hash = m.id(key);
-        if(hash == 0) {
-          ids = new IntList();
-          m.add(key, ids);
-        } else {
-          ids = m.value(hash);
+        if(Token.len(key) <= Token.MAXLEN) {
+          final IntList ids;
+          final TokenObjMap<IntList> m = isAttr ? atvs : txts;
+          final int hash = m.id(key);
+          if(hash == 0) {
+            ids = new IntList();
+            m.add(key, ids);
+          } else {
+            ids = m.value(hash);
+          }
+          ids.add(id(p));
         }
-        ids.add(id(p));
       }
     }
 
-    // delete <key, ids> pairs from indexes
-    // [DP] Index updates: delete from atvindex and txtindex in parallel?
-    if(meta.textindex) ((DiskValues) txtindex).delete(txts);
-    if(meta.attrindex) ((DiskValues) atvindex).delete(atvs);
+    // update all indexes in parallel
+    // [DP] Full-text index updates: update the existing indexes
+    final ExecutorService exec = Executors.newFixedThreadPool(2);
+    if(txts.size() > 0) {
+      exec.execute(new Runnable() { @Override public void run() {
+        final Performance p = new Performance();
+        ((DiskValues) txtindex).delete(txts);
+        Util.errln("Delete from TXT index in " + p);
+      }});
+    }
+    if(atvs.size() > 0) {
+      exec.execute(new Runnable() { @Override public void run() {
+        final Performance p = new Performance();
+        ((DiskValues) atvindex).delete(atvs);
+        Util.errln("Delete from ATV index in " + p);
+      }});
+    }
+
+    // wait for all tasks to finish
+    exec.shutdown();
+    try {
+      exec.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+    } catch(InterruptedException e) { Util.errln(e); }
   }
 
   @Override

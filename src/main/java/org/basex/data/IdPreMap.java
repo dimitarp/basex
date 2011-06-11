@@ -180,7 +180,7 @@ public class IdPreMap {
             final int s = pre - prevpre;
             final int fid = fids[i - 1] + s;
             add(i, pre, fid, nids[i - 1], incs[i - 1], oids[i - 1]);
-            addid(i, fid, false);
+            // addid(i, fid, false);
             // decrement the number of ids:
             nids[i - 1] = fids[i - 1] + s - 1;
             // decrement the correcting value:
@@ -197,14 +197,14 @@ public class IdPreMap {
         inc += incs[i - 1];
       }
       add(i, pre, id, id + c - 1, inc, oid);
-      addid(i, id, true);
+      // addid(i, id, true);
       for(int k = i + 1; k < rows; ++k) {
         pres[k] += c;
         incs[k] += c;
       }
     } else {
       add(i, pre, id, id + c - 1, inc, oid);
-      addid(i, id, true);
+      // addid(i, id, true);
     }
   }
 
@@ -309,7 +309,7 @@ public class IdPreMap {
             final int s2 = pre2 - min2 + 1;
             final int fid = fids[i2] + s2;
             add(i2 + 1, pre2 + c + 1, fid, nids[i2], incs[i1] + c, oids[i2]);
-            addid(i2 + 1, fid, false);
+            // addid(i2 + 1, fid, false);
 
             final int s1 = max1 - pre1 + 1;
             nids[i1] -= s1;
@@ -525,6 +525,7 @@ public class IdPreMap {
    * @param fid first ID value
    * @param sid is the ID newly generated (i.e. bigger than any other)
    */
+  @SuppressWarnings("unused")
   private void addid(final int i, final int fid, final boolean sid) {
     if(ixrows == idix.length) {
       idix = Arrays.copyOf(idix, Array.newSize(ixrows));
