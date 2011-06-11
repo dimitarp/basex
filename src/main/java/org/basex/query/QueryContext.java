@@ -35,8 +35,7 @@ import org.basex.query.item.Value;
 import org.basex.query.iter.ItemCache;
 import org.basex.query.iter.Iter;
 import org.basex.query.up.Updates;
-import org.basex.query.util.Err;
-import org.basex.query.util.Functions;
+import org.basex.query.util.UserFuncs;
 import org.basex.query.util.NSLocal;
 import org.basex.query.util.Var;
 import org.basex.query.util.Variables;
@@ -59,7 +58,7 @@ import org.basex.util.ft.FTOpt;
  */
 public final class QueryContext extends Progress {
   /** Functions. */
-  public final Functions funcs = new Functions();
+  public final UserFuncs funcs = new UserFuncs();
   /** Variables. */
   public final Variables vars = new Variables();
   /** Namespaces. */
@@ -214,7 +213,7 @@ public final class QueryContext extends Progress {
       try {
         value = initExpr.value(this);
       } catch(final QueryException ex) {
-        if(ex.err() != Err.XPNOCTX) throw ex;
+        if(ex.err() != XPNOCTX) throw ex;
         // only {@link ParseExpr} instances may cause this error
         CTXINIT.thrw(((ParseExpr) initExpr).input, ex.getMessage());
       }
@@ -401,7 +400,7 @@ public final class QueryContext extends Progress {
     if(!inf) return;
     if(!firstOpt) info.add(QUERYSEP);
     firstOpt = false;
-    info.addExt(string, ext).nl();
+    info.addExt(string, ext).add(NL);
   }
 
   /**
@@ -410,8 +409,8 @@ public final class QueryContext extends Progress {
    */
   public void evalInfo(final byte[] string) {
     if(!inf) return;
-    if(firstEval) info.nl().add(QUERYEVAL).nl();
-    info.add(QUERYSEP).add(string).nl();
+    if(firstEval) info.add(NL).add(QUERYEVAL).add(NL);
+    info.add(QUERYSEP).add(string).add(NL);
     firstEval = false;
   }
 
