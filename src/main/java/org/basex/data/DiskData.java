@@ -4,10 +4,6 @@ import static org.basex.data.DataText.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
 import org.basex.build.DiskBuilder;
 import org.basex.core.Prop;
 import org.basex.index.FTIndex;
@@ -305,27 +301,31 @@ public final class DiskData extends Data {
   protected void indexEnd() {
     // update all indexes in parallel
     // [DP] Full-text index updates: update the existing indexes
-    final ExecutorService exec = Executors.newFixedThreadPool(2);
+    Thread txtupdater = null;
     if(txts.size() > 0) {
-      exec.execute(new Runnable() { @Override public void run() {
+      txtupdater = new Thread(new Runnable() { @Override public void run() {
         final Performance p = new Performance();
         ((DiskValues) txtindex).index(txts);
         Util.errln("Insert into TXT index in " + p);
       }});
+      txtupdater.start();
     }
+
+    Thread atvupdater = null;
     if(atvs.size() > 0) {
-      exec.execute(new Runnable() { @Override public void run() {
+      atvupdater = new Thread(new Runnable() { @Override public void run() {
         final Performance p = new Performance();
         ((DiskValues) atvindex).index(atvs);
         Util.errln("Insert into ATV index in " + p);
       }});
+      atvupdater.start();
     }
 
     // wait for all tasks to finish
-    exec.shutdown();
     try {
-      exec.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
-    } catch(InterruptedException e) { Util.errln(e); }
+      if(txtupdater != null) txtupdater.join();
+      if(atvupdater != null) atvupdater.join();
+    } catch(InterruptedException e) { Util.stack(e); }
   }
 
   @Override
@@ -393,26 +393,30 @@ public final class DiskData extends Data {
 
     // update all indexes in parallel
     // [DP] Full-text index updates: update the existing indexes
-    final ExecutorService exec = Executors.newFixedThreadPool(2);
+    Thread txtupdater = null;
     if(txts.size() > 0) {
-      exec.execute(new Runnable() { @Override public void run() {
+      txtupdater = new Thread(new Runnable() { @Override public void run() {
         final Performance p = new Performance();
         ((DiskValues) txtindex).delete(txts);
         Util.errln("Delete from TXT index in " + p);
       }});
+      txtupdater.start();
     }
+
+    Thread atvupdater = null;
     if(atvs.size() > 0) {
-      exec.execute(new Runnable() { @Override public void run() {
+      atvupdater = new Thread(new Runnable() { @Override public void run() {
         final Performance p = new Performance();
         ((DiskValues) atvindex).delete(atvs);
         Util.errln("Delete from ATV index in " + p);
       }});
+      atvupdater.start();
     }
 
     // wait for all tasks to finish
-    exec.shutdown();
     try {
-      exec.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+      if(txtupdater != null) txtupdater.join();
+      if(atvupdater != null) atvupdater.join();
     } catch(InterruptedException e) { Util.errln(e); }
   }
 
