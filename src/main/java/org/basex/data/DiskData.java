@@ -1,7 +1,7 @@
 package org.basex.data;
 
 import static org.basex.data.DataText.*;
-
+import static org.basex.util.Token.*;
 import java.io.File;
 import java.io.IOException;
 import org.basex.build.DiskBuilder;
@@ -18,7 +18,6 @@ import org.basex.io.IO;
 import org.basex.io.TableDiskAccess;
 import org.basex.util.Compress;
 import org.basex.util.IntList;
-import org.basex.util.Performance;
 import org.basex.util.Token;
 import org.basex.util.TokenObjMap;
 import org.basex.util.Util;
@@ -39,6 +38,10 @@ public final class DiskData extends Data {
   private DataAccess texts;
   /** Values access file. */
   private DataAccess values;
+  /** Texts buffered for subsequent index updates. */
+  TokenObjMap<IntList> txts;
+  /** Attribute values buffered for subsequent index updates. */
+  TokenObjMap<IntList> atvs;
 
   /**
    * Default constructor.
@@ -286,11 +289,6 @@ public final class DiskData extends Data {
     }
   }
 
-  /** Buffered text entries. */
-  TokenObjMap<IntList> txts;
-  /** Buffered attribute value entries. */
-  TokenObjMap<IntList> atvs;
-
   @Override
   protected void indexBegin() {
     txts = new TokenObjMap<IntList>();
@@ -301,25 +299,10 @@ public final class DiskData extends Data {
   protected void indexEnd() {
     // update all indexes in parallel
     // [DP] Full-text index updates: update the existing indexes
-    Thread txtupdater = null;
-    if(txts.size() > 0) {
-      txtupdater = new Thread(new Runnable() { @Override public void run() {
-        final Performance p = new Performance();
-        ((DiskValues) txtindex).index(txts);
-        Util.errln("Insert into TXT index in " + p);
-      }});
-      txtupdater.start();
-    }
-
-    Thread atvupdater = null;
-    if(atvs.size() > 0) {
-      atvupdater = new Thread(new Runnable() { @Override public void run() {
-        final Performance p = new Performance();
-        ((DiskValues) atvindex).index(atvs);
-        Util.errln("Insert into ATV index in " + p);
-      }});
-      atvupdater.start();
-    }
+    final Thread txtupdater = txts.size() > 0 ? runIndexInsert(txtindex, txts)
+        : null;
+    final Thread atvupdater = atvs.size() > 0 ? runIndexInsert(atvindex, atvs)
+        : null;
 
     // wait for all tasks to finish
     try {
@@ -342,18 +325,16 @@ public final class DiskData extends Data {
     }
 
     // add text to map to index later
-    if(m != null) {
+    if(m != null && len(txt) <= MAXLEN) {
       final IntList ids;
-      if(Token.len(txt) <= Token.MAXLEN) {
-        final int hash = m.id(txt);
-        if(hash == 0) {
-          ids = new IntList();
-          m.add(txt, ids);
-        } else {
-          ids = m.value(hash);
-        }
-        ids.add(id);
+      final int hash = m.id(txt);
+      if(hash == 0) {
+        ids = new IntList();
+        m.add(txt, ids);
+      } else {
+        ids = m.value(hash);
       }
+      ids.add(id);
     }
 
     // add text to text file
@@ -373,10 +354,10 @@ public final class DiskData extends Data {
     for(int p = pre; p < l; ++p) {
       final int k = kind(p);
       final boolean isAttr = k == ATTR;
-      // skip nodes which are not attribute, text, comment, or proc. instruction
+      // consider nodes which are attribute, text, comment, or proc. instruction
       if(isAttr || k == TEXT || k == COMM || k == PI) {
         final byte[] key = text(p, !isAttr);
-        if(Token.len(key) <= Token.MAXLEN) {
+        if(len(key) <= MAXLEN) {
           final IntList ids;
           final TokenObjMap<IntList> m = isAttr ? atvs : txts;
           final int hash = m.id(key);
@@ -393,25 +374,10 @@ public final class DiskData extends Data {
 
     // update all indexes in parallel
     // [DP] Full-text index updates: update the existing indexes
-    Thread txtupdater = null;
-    if(txts.size() > 0) {
-      txtupdater = new Thread(new Runnable() { @Override public void run() {
-        final Performance p = new Performance();
-        ((DiskValues) txtindex).delete(txts);
-        Util.errln("Delete from TXT index in " + p);
-      }});
-      txtupdater.start();
-    }
-
-    Thread atvupdater = null;
-    if(atvs.size() > 0) {
-      atvupdater = new Thread(new Runnable() { @Override public void run() {
-        final Performance p = new Performance();
-        ((DiskValues) atvindex).delete(atvs);
-        Util.errln("Delete from ATV index in " + p);
-      }});
-      atvupdater.start();
-    }
+    final Thread txtupdater = txts.size() > 0 ? runIndexDelete(txtindex, txts)
+        : null;
+    final Thread atvupdater = atvs.size() > 0 ? runIndexDelete(atvindex, atvs)
+        : null;
 
     // wait for all tasks to finish
     try {
@@ -423,5 +389,37 @@ public final class DiskData extends Data {
   @Override
   protected void update() {
     meta.update();
+  }
+
+  /**
+   * Start a new thread which inserts records into an index.
+   * @param ix index
+   * @param m records to be inserted
+   * @return the new thread
+   */
+  private Thread runIndexInsert(final Index ix, final TokenObjMap<IntList> m) {
+    final Thread t = new Thread(new Runnable() { @Override public void run() {
+      final org.basex.util.Performance p = new org.basex.util.Performance();
+      ((DiskValues) ix).index(m);
+      Util.errln("Index insert finished in " + p);
+    }});
+    t.start();
+    return t;
+  }
+
+  /**
+   * Start a new thread which deletes records from an index.
+   * @param ix index
+   * @param m records to be deleted
+   * @return the new thread
+   */
+  private Thread runIndexDelete(final Index ix, final TokenObjMap<IntList> m) {
+    final Thread t = new Thread(new Runnable() { @Override public void run() {
+      final org.basex.util.Performance p = new org.basex.util.Performance();
+      ((DiskValues) ix).delete(m);
+      Util.errln("Index delete finished in " + p);
+    }});
+    t.start();
+    return t;
   }
 }

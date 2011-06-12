@@ -293,14 +293,25 @@ public final class DataAccess {
   }
 
   /**
-   * Appends values to the file.
+   * Writes integers to the file in compressed form.
    * @param p write position
-   * @param v byte array to be appended
+   * @param v integer values
    */
   public void writeNums(final long p, final int[] v) {
     cursor(p);
     writeNum(v.length);
     for(final int n : v) writeNum(n);
+  }
+
+  /**
+   * Appends integers to the file in compressed form.
+   * @param v integer values
+   * @return the position in the file where the values have been written
+   */
+  public long appendNums(final int[] v) {
+    final long end = len;
+    writeNums(end, v);
+    return end;
   }
 
   // PRIVATE METHODS ==========================================================

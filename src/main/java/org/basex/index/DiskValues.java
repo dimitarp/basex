@@ -257,33 +257,28 @@ public final class DiskValues implements Index {
    * @param m a set of <key, id-list> pairs
    */
   public void index(final TokenObjMap<IntList> m) {
-    // create a sorted list of all keys
+    // create a sorted list of all keys: allows faster binary search
     final TokenList allkeys = new TokenList(m.keys());
     allkeys.sort(true);
 
-    // create a sorted list of the new keys
+    // create a sorted list of the new keys and update the old keys
     final TokenList nkeys = new TokenList(m.size());
     int p = 0;
-    for(final byte[] k : allkeys) {
-      p = get(k, p, size - 1);
+    for(final byte[] key : allkeys) {
+      p = get(key, p, size - 1);
       if(p < 0) {
         p = -(p + 1);
-        // key does not exist and needs to be inserted
-        nkeys.add(k);
+        nkeys.add(key);
       } else {
-        // key exists: append the new ids
-        appendIds(p, k, m.get(k));
+        appendIds(p, key, diffs(m.get(key)));
       }
     }
 
     // insert new keys
     for(int j = nkeys.size() - 1, i = size - 1, pos = size + j; j >= 0; --j) {
-      // search each key in the index
-      final byte[] k = nkeys.get(j);
-      int ins = get(k, 0, i);
-
+      final byte[] key = nkeys.get(j);
+      int ins = get(key, 0, i);
       if(ins < 0) {
-        // key does not exist and needs to be inserted
         ins = -(ins + 1);
 
         // shift all bigger keys to the right
@@ -292,22 +287,12 @@ public final class DiskValues implements Index {
           ctext.set(ctext.get(i--), pos--);
         }
 
-        final int[] ids = m.get(k).sort().toArray();
-        for(int l = ids.length - 1; l > 0; --l) ids[l] -= ids[l - 1];
-
         // add the new key and its ids
-        final long newpos = idxl.length();
-        idxl.writeNums(newpos, ids);
-        idxr.write5(pos * 5L, newpos);
-
-        // cache the key token
-        ctext.set(k, pos--);
+        idxr.write5(pos * 5L, idxl.appendNums(diffs(m.get(key))));
+        ctext.set(key, pos--);
         // [DP] should the entry be added to the cache?
-      } else {
-        throw new IllegalStateException("Key should not exists");
-      }
+      } else throw new IllegalStateException("Key should not exist");
     }
-
     size += nkeys.size();
   }
 
@@ -317,12 +302,10 @@ public final class DiskValues implements Index {
    * @param txt key
    * @param nids list of record ids to add
    */
-  private void appendIds(final int ix, final byte[] txt, final IntList nids) {
-    final int numnew = nids.size();
-
+  private void appendIds(final int ix, final byte[] txt, final int[] nids) {
     final long oldpos = idxr.read5(ix * 5L);
     final int numold = idxl.readNum(oldpos);
-    final int[] ids = new int[numold + numnew];
+    final int[] ids = new int[numold + nids.length];
 
     // read the old ids
     int pid = 0;
@@ -333,19 +316,93 @@ public final class DiskValues implements Index {
     }
 
     // append the new ids - they are bigger than the old ones
-    final int[] newids = nids.sort().toArray();
-    for(int l = newids.length - 1; l > 0; --l) newids[l] -= newids[l - 1];
-    newids[0] -= pid;
-    System.arraycopy(newids, 0, ids, numold, newids.length);
+    nids[0] -= pid;
+    System.arraycopy(nids, 0, ids, numold, nids.length);
 
-    final long newpos = idxl.length();
-    idxl.writeNums(newpos, ids);
+    final long newpos = idxl.appendNums(ids);
     idxr.write5(ix * 5L, newpos);
 
     // check if txt is cached and update the cache entry
     final int cacheid = cache.id(txt);
     if(cacheid > 0)
       cache.update(cacheid, ids.length, newpos + Num.length(ids.length));
+  }
+
+  /**
+   * Delete records from the index.
+   * @param m a set of <key, id-list> pairs
+   */
+  public void delete(final TokenObjMap<IntList> m) {
+    // create a sorted list of all keys: allows faster binary search
+    final TokenList allkeys = new TokenList(m.keys());
+    allkeys.sort(true);
+
+    // create a sorted list of the old keys which should be completely deleted
+    final IntList empty = new IntList(m.size());
+    int p = 0;
+    for(final byte[] key : allkeys) {
+      p = get(key, p, size - 1);
+      if(p < 0) p = -(p + 1); // should not occur, but anyway
+      else if(deleteIds(p, key, m.get(key).sort().toArray()) == 0) empty.add(p);
+    }
+    deleteKeys(empty.toArray());
+  }
+
+  /**
+   * Remove record ids from the index.
+   * @param ix index of the key
+   * @param key record key
+   * @param ids list of record ids to delete
+   * @return number of remaining records
+   */
+  private int deleteIds(final int ix, final byte[] key, final int[] ids) {
+    final long pos = idxr.read5(ix * 5L);
+    final int numold = idxl.readNum(pos);
+    if(numold == ids.length) {
+      // the list is empty; the key itself will be deleted
+      cache.delete(key);
+      return 0;
+    }
+
+    final int[] nids = new int[numold - ids.length];
+
+    // read each element from the list and skip the ones which should be deleted
+    for(int i = 0, j = 0, cid = 0, pid = 0; i < nids.length;) {
+      cid += idxl.readNum();
+      if(j < ids.length && ids[j] == cid) ++j;
+      else {
+        nids[i++] = cid - pid;
+        pid = cid;
+      }
+    }
+
+    idxl.writeNums(pos, nids);
+
+    // check if txt is cached and update the cache entry
+    final int cacheid = cache.id(key);
+    if(cacheid > 0)
+      cache.update(cacheid, nids.length, pos + Num.length(nids.length));
+
+    return nids.length;
+  }
+
+  /**
+   * Delete keys from the index.
+   * @param keys list of key positions to delete
+   */
+  private void deleteKeys(final int[] keys) {
+    if(keys.length == 0) return;
+    // shift all keys to the left, skipping the ones which have to be deleted
+    int j = 0;
+    for(int pos = keys[j++], i = pos + 1; i < size; ++i) {
+      if(j < keys.length && i == keys[j]) ++j;
+      else {
+        idxr.write5(pos * 5L, idxr.read5(i * 5L));
+        ctext.set(ctext.get(i), pos++);
+      }
+    }
+    // reduce the size of the index
+    size -= j;
   }
 
   /**
@@ -356,11 +413,14 @@ public final class DiskValues implements Index {
    */
   public void replace(final byte[] o, final byte[] n, final int id) {
     // delete the entry from the old key
-    final IntList arr = new IntList(new int[] { id});
-    final int keyIndex = deleteIds(o, arr);
-    if(keyIndex >= 0) {
-      arr.set(keyIndex, 0);
-      deleteKeys(arr);
+    final int p = get(o);
+    if(p >= 0) {
+      final int[] arr = new int[] { id};
+      final int keyIndex = deleteIds(p, o, arr);
+      if(keyIndex >= 0) {
+        arr[0] = p;
+        deleteKeys(arr);
+      }
     }
 
     // add the entry to the new key
@@ -373,154 +433,59 @@ public final class DiskValues implements Index {
    * @param id id value
    */
   private void insertId(final byte[] txt, final int id) {
-    // search for the key
     int ix = get(txt);
     if(ix < 0) {
-      // key does not exist, create a new entry with the id
       ix = -(ix + 1);
 
       // shift all entries with bigger keys to the right
       for(int i = size; i > ix; --i)
         idxr.write5(i * 5L, idxr.read5((i - 1) * 5L));
 
-      final long newpos = idxl.length();
-      idxl.writeNums(newpos, new int[] { id});
-      idxr.write5(ix * 5L, newpos);
-
+      idxr.write5(ix * 5L, idxl.appendNums(new int[] { id}));
+      ctext.add(txt, ix);
       // [DP] should the entry be added to the cache?
       ++size;
-      ctext.add(txt, ix);
     } else {
       // add id to the list of ids in the index node
-      // read the position of the id-list in idxl
       final long pos = idxr.read5(ix * 5L);
-      // read the number of ids in the list
       final int num = idxl.readNum(pos);
 
-      final IntList ids = new IntList(num + 1);
-      boolean added = false;
+      final int[] ids = new int[num + 1];
+      boolean notadded = true;
       int cid = 0;
-      // read all elements from the list: the first is a text node id; then
-      // next value is the difference between the id and the previous id
-      for(int i = 0; i < num; ++i) {
+      for(int i = 0, j = 0; i < num; ++i) {
         int v = idxl.readNum();
-        if(id < cid + v) {
-          // add the difference between the previous id and the new id
-          ids.add(id - cid);
+        if(notadded && id < cid + v) {
+          ids[j++] = id - cid;
           // decrement the difference to the next id
           v -= id - cid;
           cid = id;
-          added = true;
+          notadded = false;
         }
-        // [DP] if insert performance is slow, dont't make the check
-        // add the next id only if it hasn't been deleted
-        ids.add(v);
+        ids[j++] = v;
         cid += v;
       }
 
-      if(!added) ids.add(id - cid);
+      if(notadded) ids[ids.length - 1] = id - cid;
 
-      final long newpos = idxl.length();
-      idxl.writeNums(idxl.length(), ids.toArray());
+      final long newpos = idxl.appendNums(ids);
       idxr.write5(ix * 5L, newpos);
 
       // check if txt is cached and update the cache entry
       final int cacheid = cache.id(txt);
-      if(cacheid > 0) cache.update(cacheid, ids.size(),
-          newpos + Num.length(ids.size()));
+      if(cacheid > 0)
+        cache.update(cacheid, ids.length, newpos + Num.length(ids.length));
     }
   }
 
   /**
-   * Delete records from the index.
-   * @param m a set of <key, id-list> pairs
+   * Sort and calculate the differences between a list of ids.
+   * @param ids id list
+   * @return differences
    */
-  public void delete(final TokenObjMap<IntList> m) {
-    final IntList empty = new IntList(m.size());
-    for(final byte[] key : m) {
-      final int keyIndex = deleteIds(key, m.get(key));
-      if(keyIndex >= 0) empty.add(keyIndex);
-    }
-    deleteKeys(empty);
-  }
-
-  /**
-   * Remove record ids from the index.
-   * @param key record key
-   * @param ids list of record ids to delete
-   * @return the position of the key, if all ids for the key have been deleted
-   *         {@code -1} otherwise
-   */
-  private int deleteIds(final byte[] key, final IntList ids) {
-    // safety check
-    final int numdel = ids.size();
-    if(numdel == 0) return -1;
-
-    // find the key position in the index
-    // [DP] use limited binary search
-    final int ix = get(key);
-    if(ix < 0) return -1;
-
-    // read the position of the id-list in idxl
-    final long pos = idxr.read5(ix * 5L);
-
-    // read the number of ids in the list
-    final int numold = idxl.readNum(pos);
-    final int numnew = numold - numdel;
-    if(numnew == 0) {
-      // the list is empty; the key itself will be deleted
-      cache.delete(key);
-      return ix;
-    }
-
-    final int[] nids = new int[numnew];
-    final int[] oids = ids.sort().toArray();
-
-    // read each element from the list
-    for(int i = 0, j = 0, cid = 0, pid = 0; i < numnew;) {
-      cid += idxl.readNum();
-      if(j < numdel && oids[j] == cid) {
-        // there are more ids to delete and the current id must be deleted
-        // skip the current id from adding to the new list
-        ++j;
-      } else {
-        // add the difference between previous and current id
-        nids[i++] = cid - pid;
-        pid = cid;
-      }
-    }
-
-    idxl.writeNums(pos, nids);
-    // update the cache entry, if the key is cached
-    final int cacheid = cache.id(key);
-    if(cacheid > 0)
-      cache.update(cacheid, nids.length, pos + Num.length(nids.length));
-
-    return -1;
-  }
-
-  /**
-   * Delete keys from the index.
-   * @param keys list of key positions to delete
-   */
-  private void deleteKeys(final IntList keys) {
-    final int num = keys.size();
-    if(num == 0) return;
-
-    keys.sort();
-
-    // shift all keys to the left, skipping the ones which have to be deleted
-    int j = 0;
-    for(int pos = keys.get(j++), i = pos + 1; i < size; ++i) {
-      if(j < num && i == keys.get(j)) {
-        ++j;
-      } else {
-        idxr.write5(pos * 5L, idxr.read5(i * 5L));
-        ctext.set(ctext.get(i), pos++);
-      }
-    }
-
-    // reduce the size of the index
-    size -= j;
+  private static int[] diffs(final IntList ids) {
+    final int[] a = ids.sort().toArray();
+    for(int l = a.length - 1; l > 0; --l) a[l] -= a[l - 1];
+    return a;
   }
 }
