@@ -7,6 +7,7 @@ import java.io.IOException;
 import org.basex.data.Data;
 import org.basex.io.DataAccess;
 import org.basex.util.IntList;
+import org.basex.util.IntMap;
 import org.basex.util.Num;
 import org.basex.util.Performance;
 import org.basex.util.TokenBuilder;
@@ -228,6 +229,7 @@ public final class DiskValues implements Index {
       if(txt == null) {
         txt = data.text(firstpre(idxr.read5(m * 5L)), text);
         ctext.set(txt, m);
+      if(txt == null) {
       }
       final int d = diff(txt, key);
       if(d == 0) return m;
