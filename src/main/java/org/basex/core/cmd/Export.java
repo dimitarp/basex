@@ -8,13 +8,13 @@ import org.basex.core.Command;
 import org.basex.core.Prop;
 import org.basex.core.User;
 import org.basex.data.Data;
-import org.basex.data.SerializerProp;
-import org.basex.data.XMLSerializer;
-import org.basex.io.IO;
 import org.basex.io.IOFile;
-import org.basex.io.PrintOutput;
+import org.basex.io.out.PrintOutput;
+import org.basex.io.serial.SerializerProp;
+import org.basex.io.serial.XMLSerializer;
 import org.basex.util.Token;
 import org.basex.util.Util;
+import org.basex.util.list.IntList;
 
 /**
  * Evaluates the 'export' command and saves the currently opened database
@@ -36,7 +36,7 @@ public final class Export extends Command {
   protected boolean run() {
     try {
       final Data data = context.data;
-      export(context.prop, data, args[0]);
+      export(prop, data, args[0]);
       return info(DBEXPORTED, data.meta.name, perf);
     } catch(final IOException ex) {
       Util.debug(ex);
@@ -56,18 +56,17 @@ public final class Export extends Command {
       final String target) throws IOException {
 
     final SerializerProp sp = new SerializerProp(prop.get(Prop.EXPORTER));
-    final IO root = IO.get(target);
-    if(!(root instanceof IOFile))
-      throw new IOException(Util.info(DBNOTEXPORTED, target));
-
-    if(!root.exists()) root.md();
+    final IOFile root = new IOFile(target);
+    root.md();
 
     final HashSet<String> exported = new HashSet<String>();
-    for(final int pre : data.doc()) {
+    final IntList il = data.doc();
+    for(int i = 0, is = il.size(); i < is; i++) {
+      final int pre = il.get(i);
       // create file path
-      final IO file = root.merge(Token.string(data.text(pre, true)));
+      final IOFile file = root.merge(Token.string(data.text(pre, true)));
       // create dir if necessary
-      final IO dir = IO.get(file.dir());
+      final IOFile dir = new IOFile(file.dir());
       if(!dir.exists()) dir.md();
 
       // attach counter to duplicate file names

@@ -8,7 +8,6 @@ import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
@@ -28,10 +27,11 @@ import org.basex.gui.GUI;
 import org.basex.gui.GUICommand;
 import org.basex.gui.GUIConstants;
 import org.basex.gui.GUIConstants.Fill;
+import org.basex.gui.layout.BaseXLayout.DropHandler;
 import org.basex.io.IO;
 import org.basex.util.TokenBuilder;
 import org.basex.util.Undo;
-import org.basex.util.Util;
+
 import static org.basex.util.Token.*;
 
 /**
@@ -93,7 +93,7 @@ public class BaseXEditor extends BaseXPanel {
     Undo un = null;
     if(edit) {
       setBackground(Color.white);
-      setBorder(new MatteBorder(1, 1, 0, 0, GUIConstants.COLORS[6]));
+      setBorder(new MatteBorder(1, 1, 0, 0, GUIConstants.color(6)));
       un = new Undo();
     } else {
       mode(Fill.NONE);
@@ -104,6 +104,15 @@ public class BaseXEditor extends BaseXPanel {
       new GUICommand[] { new UndoCmd(), new RedoCmd(), null, new CutCmd(),
         new CopyCmd(), new PasteCmd(), new DelCmd(), null, new AllCmd() } :
       new GUICommand[] { new CopyCmd(), null, new AllCmd() });
+
+    BaseXLayout.addDrop(this, new DropHandler() {
+      @Override
+      public void drop(final Object object) {
+        paste(object.toString());
+        finish();
+        repaint();
+      }
+    });
   }
 
   /**
@@ -191,8 +200,7 @@ public class BaseXEditor extends BaseXPanel {
    */
   public final void setSyntax(final IO file) {
     // choose XML or XQuery highlighter
-    setSyntax(file.name().endsWith(IO.XMLSUFFIX) ? new XMLSyntax() :
-      new XQuerySyntax());
+    setSyntax(file.xml() ? new XMLSyntax() : new XQuerySyntax());
   }
 
   /**
@@ -682,8 +690,14 @@ public class BaseXEditor extends BaseXPanel {
    * Pastes the clipboard text.
    */
   protected final void paste() {
-    // copy selection to clipboard
-    final String txt = clip();
+    paste(clip());
+  }
+
+  /**
+   * Pastes the specified string.
+   * @param txt string to be pasted
+   */
+  protected final void paste(final String txt) {
     if(txt == null) return;
     text.pos(text.cursor());
     if(undo != null) undo.cursor(text.cursor());
@@ -710,15 +724,21 @@ public class BaseXEditor extends BaseXPanel {
   final String clip() {
     // copy selection to clipboard
     final Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
-    final Transferable t = clip.getContents(null);
-    if(t != null && t.isDataFlavorSupported(DataFlavor.stringFlavor)) {
-      try {
-        return (String) t.getTransferData(DataFlavor.stringFlavor);
-      } catch(final Exception ex) {
-        Util.debug(ex);
-      }
+    final Transferable tr = clip.getContents(null);
+    if(tr != null) {
+      for(final Object o : BaseXLayout.contents(tr)) return o.toString();
     }
-    return null;
+    return "";
+  }
+
+  /**
+   * Finishes a command.
+   */
+  public void finish() {
+    text.setCaret();
+    rend.calc();
+    showCursor(2);
+    release(false);
   }
 
   /** Cursor. */
@@ -776,13 +796,6 @@ public class BaseXEditor extends BaseXPanel {
     @Override
     public String key() {
       return null;
-    }
-    /** Finishes a command. */
-    public void finish() {
-      text.setCaret();
-      rend.calc();
-      showCursor(2);
-      release(false);
     }
   }
 

@@ -1,10 +1,11 @@
 package org.basex.query.item;
 
 import static org.basex.query.util.Err.*;
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import java.io.IOException;
 import java.math.BigDecimal;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.iter.ValueIter;
@@ -33,7 +34,7 @@ public abstract class Item extends Value {
   }
 
   @Override
-  public ValueIter iter() {
+  public final ValueIter iter() {
     return new ValueIter() {
       private boolean more;
       @Override
@@ -50,22 +51,22 @@ public abstract class Item extends Value {
   }
 
   @Override
-  public Item item(final QueryContext ctx, final InputInfo ii) {
+  public final Item item(final QueryContext ctx, final InputInfo ii) {
     return this;
   }
 
   @Override
-  public Item itemAt(final long pos) {
+  public final Item itemAt(final long pos) {
     return this;
   }
 
   @Override
-  public Item ebv(final QueryContext ctx, final InputInfo ii) {
+  public final Item ebv(final QueryContext ctx, final InputInfo ii) {
     return this;
   }
 
   @Override
-  public Item test(final QueryContext ctx, final InputInfo ii)
+  public final Item test(final QueryContext ctx, final InputInfo ii)
       throws QueryException {
     return bool(ii) ? this : null;
   }
@@ -181,7 +182,7 @@ public abstract class Item extends Value {
   }
 
   @Override
-  public SeqType type() {
+  public final SeqType type() {
     return type.seq();
   }
 
@@ -244,7 +245,7 @@ public abstract class Item extends Value {
    * @return never
    * @throws QueryException query exception
    */
-  public QueryException dateErr(final byte[] i, final String ex,
+  public final QueryException dateErr(final byte[] i, final String ex,
       final InputInfo ii) throws QueryException {
     throw DATEFORMAT.thrw(ii, type, i, ex);
   }
@@ -266,13 +267,13 @@ public abstract class Item extends Value {
   }
 
   @Override
-  public int writeTo(final Item[] arr, final int start) {
+  public final int writeTo(final Item[] arr, final int start) {
     arr[start] = this;
     return 1;
   }
 
   @Override
-  public boolean homogenous() {
+  public final boolean homogenous() {
     return true;
   }
 }

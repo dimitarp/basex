@@ -2,10 +2,11 @@ package org.basex.query.ft;
 
 import static org.basex.query.util.Err.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
-import org.basex.query.QueryTokens;
+import org.basex.query.QueryText;
 import org.basex.query.expr.Expr;
 import org.basex.query.item.FTNode;
 import org.basex.query.iter.FTIter;
@@ -114,6 +115,6 @@ public final class FTWeight extends FTExpr {
 
   @Override
   public String toString() {
-    return expr[0] + " " + QueryTokens.WEIGHT + " " + weight;
+    return expr[0] + " " + QueryText.WEIGHT + " " + weight;
   }
 }

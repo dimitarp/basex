@@ -4,7 +4,7 @@ import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 
-import org.basex.data.IdPreMap;
+import org.basex.index.IdPreMap;
 import org.junit.Before;
 
 /**

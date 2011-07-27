@@ -1,6 +1,6 @@
 package org.basex.query.func;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.query.util.Err.*;
 import static org.basex.util.Token.*;
 import org.basex.query.QueryContext;
@@ -15,7 +15,7 @@ import org.basex.query.iter.Iter;
 import org.basex.query.iter.NodeCache;
 import org.basex.query.iter.AxisIter;
 import org.basex.util.InputInfo;
-import org.basex.util.TokenList;
+import org.basex.util.list.TokenList;
 
 /**
  * ID functions.

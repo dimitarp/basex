@@ -12,7 +12,7 @@ import org.basex.data.Data;
 import org.basex.data.Nodes;
 import org.basex.util.Table;
 import org.basex.util.TokenBuilder;
-import org.basex.util.TokenList;
+import org.basex.util.list.TokenList;
 
 /**
  * Evaluates the 'info storage' command and returns the table representation
@@ -50,7 +50,7 @@ public final class InfoStorage extends AQuery {
       result = null;
     } else {
       int ps = 0;
-      int pe = data.meta.size;
+      int pe = 1000;
 
       if(start != null) {
         if(end != null) {

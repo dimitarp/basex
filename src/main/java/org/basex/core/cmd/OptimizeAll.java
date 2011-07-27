@@ -1,21 +1,27 @@
 package org.basex.core.cmd;
 
 import static org.basex.core.Text.*;
+
 import java.io.IOException;
+
 import org.basex.build.Builder;
 import org.basex.build.DiskBuilder;
 import org.basex.build.Parser;
+import org.basex.core.BaseXException;
 import org.basex.core.CommandBuilder;
+import org.basex.core.Commands.Cmd;
+import org.basex.core.Context;
 import org.basex.core.Prop;
 import org.basex.core.User;
-import org.basex.core.Commands.Cmd;
-import org.basex.data.BuilderSerializer;
+import org.basex.data.Data;
 import org.basex.data.DiskData;
 import org.basex.data.MetaData;
-import org.basex.data.Serializer;
 import org.basex.index.IndexToken.IndexType;
 import org.basex.io.IO;
+import org.basex.io.serial.BuilderSerializer;
+import org.basex.io.serial.Serializer;
 import org.basex.util.Util;
+import org.basex.util.list.IntList;
 
 /**
  * Evaluates the 'optimize all' command and rebuilds all data structures of
@@ -26,8 +32,6 @@ import org.basex.util.Util;
  * @author Leo Woerteler
  */
 public final class OptimizeAll extends ACreate {
-  /** Data reference to optimize. */
-  DiskData old;
   /** Current pre value. */
   int pre;
   /** Data size. */
@@ -42,42 +46,16 @@ public final class OptimizeAll extends ACreate {
 
   @Override
   protected boolean run() throws IOException {
-    if(!(context.data instanceof DiskData)) return error(PROCMM);
-
-    old = (DiskData) context.data;
-    final MetaData m = old.meta;
-    size = m.size;
-
-    // check if database is also pinned by other users
-    if(context.datas.pins(m.name) > 1) return error(DBLOCKED, m.name);
-
-    // find unique temporary database name
-    final String tname = m.random();
-
-    // build database and index structures
-    final DiskBuilder builder = new DiskBuilder(new DBParser(), m.prop);
     try {
-      final DiskData d = builder.build(tname);
-      if(m.textindex || prop.is(Prop.TEXTINDEX)) index(IndexType.TEXT,      d);
-      if(m.attrindex || prop.is(Prop.ATTRINDEX)) index(IndexType.ATTRIBUTE, d);
-      if(m.ftindex   || prop.is(Prop.FTINDEX))   index(IndexType.FULLTEXT,  d);
-      d.meta.filesize = m.filesize;
-      d.meta.users    = m.users;
-      d.meta.dirty    = true;
-      d.close();
-    } finally {
-      try {
-        builder.close();
-      } catch(final IOException ex) {
-        Util.debug(ex);
-      }
-    }
+      final Data data = context.data;
+      optimizeAll(data, context, this);
 
-    // delete the old database, move the new one into place and reopen it
-    if(!run(new DropDB(m.name)) || !run(new AlterDB(tname, m.name)) ||
-       !run(new Open(m.name))) return false;
-    error("");
-    return info(DBOPTIMIZED, m.name, perf);
+      final Open open = new Open(data.meta.name);
+      return open.run(context) ? info(DBOPTIMIZED, data.meta.name, perf) :
+        error(open.info());
+    } catch(final BaseXException ex) {
+      return error(ex.getMessage());
+    }
   }
 
   @Override
@@ -101,15 +79,80 @@ public final class OptimizeAll extends ACreate {
   }
 
   /**
+   * Optimizes all data structures. Recreates the database, drops the
+   * old instance and renames the recreated instance.
+   * @param data disk data
+   * @param ctx database context
+   * @param cmd command reference, or {@code null}
+   * @throws IOException IO exception during index rebuild
+   * @throws BaseXException database exception
+   */
+  public static void optimizeAll(final Data data, final Context ctx,
+      final OptimizeAll cmd) throws IOException, BaseXException {
+
+    if(!(data instanceof DiskData)) throw new BaseXException(PROCMM);
+
+    final DiskData old = (DiskData) data;
+    final MetaData m = old.meta;
+    if(cmd != null) cmd.size = m.size;
+
+    // check if database is also pinned by other users
+    if(ctx.datas.pins(m.name) > 1) throw new BaseXException(DBLOCKED, m.name);
+
+    // find unique temporary database name
+    final String tname = ctx.mprop.random(m.name);
+
+    // build database and index structures
+    final DiskBuilder builder = new DiskBuilder(tname,
+        new DBParser(old, cmd), ctx);
+    try {
+      final DiskData d = builder.build();
+      if(m.textindex || ctx.prop.is(Prop.TEXTINDEX))
+        index(IndexType.TEXT, d, cmd);
+      if(m.attrindex || ctx.prop.is(Prop.ATTRINDEX))
+        index(IndexType.ATTRIBUTE, d, cmd);
+      if(m.ftindex || ctx.prop.is(Prop.FTINDEX))
+        index(IndexType.FULLTEXT, d, cmd);
+      d.meta.filesize = m.filesize;
+      d.meta.users    = m.users;
+      d.meta.dirty    = true;
+      d.close();
+    } finally {
+      try {
+        builder.close();
+      } catch(final IOException ex) {
+        Util.debug(ex);
+      }
+    }
+    Close.close(data, ctx);
+
+    if(!DropDB.drop(m.name, ctx.mprop))
+      throw new BaseXException(DBDROPERROR, m.name);
+    if(!AlterDB.alter(tname, m.name, ctx.mprop))
+      throw new BaseXException(DBNOTALTERED, tname);
+  }
+
+  /**
    * Parser for rebuilding existing databases.
    *
    * @author BaseX Team 2005-11, BSD License
    * @author Leo Woerteler
    */
-  public final class DBParser extends Parser {
-    /** Constructor. */
-    protected DBParser() {
-      super(old.meta.path.isEmpty() ? null : IO.get(old.meta.path), "");
+  private static final class DBParser extends Parser {
+    /** Disk data. */
+    private final DiskData data;
+    /** Calling command (can be {@code null}). */
+    final OptimizeAll cmd;
+
+    /**
+     * Constructor.
+     * @param d disk data
+     * @param c calling command (can be {@code null})
+     */
+    protected DBParser(final DiskData d, final OptimizeAll c) {
+      super(d.meta.original.isEmpty() ? null : IO.get(d.meta.original));
+      data = d;
+      cmd = c;
     }
 
     @Override
@@ -118,18 +161,17 @@ public final class OptimizeAll extends ACreate {
         @Override
         protected void start(final byte[] t) throws IOException {
           super.start(t);
-          pre++;
+          if(cmd != null) cmd.pre++;
         }
 
         @Override
         protected void openDoc(final byte[] name) throws IOException {
           super.openDoc(name);
-          pre++;
+          if(cmd != null) cmd.pre++;
         }
       };
-      for(final int root : old.doc()) {
-        ser.node(old, root);
-      }
+      final IntList il = data.doc();
+      for(int i = 0, is = il.size(); i < is; i++) ser.node(data, il.get(i));
     }
   }
 }

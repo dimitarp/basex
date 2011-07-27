@@ -18,6 +18,8 @@ public final class Reflect {
   /** Cached classes. */
   private static HashMap<String, Class<?>> classes =
     new HashMap<String, Class<?>>();
+  /** Class loader for jars. */
+  public static JarLoader jarLoader;
 
   /** Hidden constructor. */
   private Reflect() { }
@@ -38,44 +40,26 @@ public final class Reflect {
    */
   public static Class<?> find(final String... names) {
     for(final String n : names) {
+      Class<?> c = classes.get(n);
       try {
-        Class<?> c = classes.get(n);
         if(c == null) {
-          c = Class.forName(n);
-          classes.put(n, c);
+          try {
+            c = Class.forName(n);
+            classes.put(n, c);
+            return c;
+          } catch (final ClassNotFoundException ex) {
+            if(jarLoader != null) {
+              c = Class.forName(n, true, jarLoader);
+              classes.put(n, c);
+            }
+            return c;
+          }
         }
         return c;
       } catch(final Exception ex) {
       }
     }
     return null;
-  }
-
-  /**
-   * Finds a public, protected or private method by name and parameter types.
-   * @param clazz class to search for the method
-   * @param name method name
-   * @param types method parameters
-   * @return reference, or {@code null} if the method is not found
-   */
-  public static Method find(final Class<?> clazz, final String name,
-      final Class<?>... types) {
-
-    if(clazz == null) return null;
-
-    Method m = null;
-    try {
-      try {
-        m = clazz.getMethod(name, types);
-      } catch(final Exception ex) {
-        m = clazz.getDeclaredMethod(name, types);
-        m.setAccessible(true);
-      }
-      //methods.put(key, m);
-    } catch(final Exception ex) {
-      Util.debug(ex);
-    }
-    return m;
   }
 
   /**
@@ -106,6 +90,33 @@ public final class Reflect {
       } catch(final Exception ex) {
         Util.debug(ex);
       }
+    }
+    return m;
+  }
+
+  /**
+   * Finds a public, protected or private method by name and parameter types.
+   * @param clazz class to search for the method
+   * @param name method name
+   * @param types method parameters
+   * @return reference, or {@code null} if the method is not found
+   */
+  public static Method method(final Class<?> clazz, final String name,
+      final Class<?>... types) {
+
+    if(clazz == null) return null;
+
+    Method m = null;
+    try {
+      try {
+        m = clazz.getMethod(name, types);
+      } catch(final Exception ex) {
+        m = clazz.getDeclaredMethod(name, types);
+        m.setAccessible(true);
+      }
+      //methods.put(key, m);
+    } catch(final Exception ex) {
+      Util.debug(ex);
     }
     return m;
   }
@@ -155,5 +166,57 @@ public final class Reflect {
       Util.debug(ex);
       return null;
     }
+  }
+
+  /**
+   * Invoked the specified method.
+   * @param object object
+   * @param method method to run
+   * @param args arguments
+   * @return result of method call
+   * @throws Exception exception
+   */
+  public static Object invoke(final Object object, final String method,
+      final Object... args) throws Exception {
+
+    if(object == null) return null;
+
+    final Class<?>[] clz = new Class<?>[args.length];
+    for(int a = 0; a < args.length; a++) clz[a] = args[a].getClass();
+
+    final Class<?> c = object.getClass();
+    Method m = method(c, method, clz);
+
+    if(m == null) {
+      // method not found: replace arguments with first interfaces
+      for(int a = 0; a < args.length; a++) {
+        final Class<?>[] ic = clz[a].getInterfaces();
+        if(ic.length != 0) clz[a] = ic[0];
+      }
+      m = method(c, method, clz);
+
+      while(m == null) {
+        // method not found: replace arguments with super classes
+        boolean same = true;
+        for(int a = 0; a < args.length; a++) {
+          final Class<?> ic = clz[a].getSuperclass();
+          if(ic != null && ic != Object.class) {
+            clz[a] = ic;
+            same = false;
+          }
+        }
+        if(same) return null;
+        m = method(c, method, clz);
+      }
+    }
+    return m.invoke(object, args);
+  }
+
+  /**
+   * Sets the class loader for jars.
+   * @param l loader
+   */
+  public static void setJarLoader(final JarLoader l) {
+    jarLoader = l;
   }
 }

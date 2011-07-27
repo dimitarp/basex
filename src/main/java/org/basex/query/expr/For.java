@@ -1,9 +1,10 @@
 package org.basex.query.expr;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.util.Token.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.item.Dbl;
@@ -57,14 +58,16 @@ public final class For extends ForLet {
     expr = checkUp(expr, ctx).comp(ctx);
     type = expr.type();
     size = expr.size();
-    var.size = 1;
-    var.ret = ctx.grouping ? SeqType.get(type.type, SeqType.Occ.ZM) :
-      type.type.seq();
+    if(ctx.grouping) {
+      var.ret = SeqType.get(type.type, SeqType.Occ.ZM);
+    } else {
+      var.size = Math.min(1, size);
+      var.ret = type.type.seq();
+    }
 
     ctx.vars.add(var);
     if(pos   != null) ctx.vars.add(pos);
     if(score != null) ctx.vars.add(score);
-
     return this;
   }
 
@@ -162,5 +165,21 @@ public final class For extends ForLet {
     if(pos != null) sb.append(AT + " " + pos + " ");
     if(score != null) sb.append(SCORE + " " + score + " ");
     return sb.append(IN + " " + expr).toString();
+  }
+
+  @Override
+  public boolean declares(final Var v) {
+    return var.is(v) || pos != null && pos.is(v)
+        || score != null && score.is(v);
+  }
+
+  @Override
+  public Var[] vars() {
+    if(pos != null) {
+      if(score != null) return new Var[]{ var, pos, score };
+      return new Var[]{ var, pos };
+    }
+    if(score != null) return new Var[]{ var, score };
+    return new Var[]{ var };
   }
 }

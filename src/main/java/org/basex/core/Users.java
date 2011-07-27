@@ -9,13 +9,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import org.basex.io.DataInput;
-import org.basex.io.DataOutput;
 import org.basex.io.IO;
-import org.basex.util.StringList;
+import org.basex.io.in.DataInput;
+import org.basex.io.out.DataOutput;
 import org.basex.util.Table;
-import org.basex.util.TokenList;
 import org.basex.util.Util;
+import org.basex.util.list.StringList;
+import org.basex.util.list.TokenList;
 
 /**
  * This class organizes all users.
@@ -37,7 +37,7 @@ public final class Users {
   public Users(final boolean global) {
     if(!global) return;
 
-    file = new File(Prop.HOME + IO.BASEXSUFFIX + "perm");
+    file = new File(Prop.HOME, IO.BASEXSUFFIX + "perm");
     if(!file.exists()) {
       // create default admin user with all rights
       list.add(new User(ADMIN, token(md5(ADMIN)), User.ADMIN));
@@ -91,7 +91,7 @@ public final class Users {
   public synchronized boolean create(final String usern, final String pass) {
     // check if user exists already
     return get(usern) == null &&
-      create(new User(usern, token(md5(pass)), User.WRITE));
+      create(new User(usern, token(pass), User.WRITE));
   }
 
   /**
@@ -105,7 +105,6 @@ public final class Users {
     return true;
   }
 
-
   /**
    * Changes the password of a user.
    * @param usern user name
@@ -117,7 +116,7 @@ public final class Users {
     final User user = get(usern);
     if(user == null) return false;
 
-    user.password = token(md5(pass));
+    user.password = token(pass);
     write();
     return true;
   }
@@ -186,15 +185,15 @@ public final class Users {
     for(final User user : list) {
       if(users != null) if(users.get(user.name) == null) continue;
 
-      final TokenList entry = new TokenList();
-      entry.add(user.name);
-      entry.add(user.perm(User.READ) ? "X" : "");
-      entry.add(user.perm(User.WRITE) ? "X" : "");
+      final TokenList tl = new TokenList();
+      tl.add(user.name);
+      tl.add(user.perm(User.READ) ? "X" : "");
+      tl.add(user.perm(User.WRITE) ? "X" : "");
       if(sz == 5) {
-        entry.add(user.perm(User.CREATE) ? "X" : "");
-        entry.add(user.perm(User.ADMIN) ? "X" : "");
+        tl.add(user.perm(User.CREATE) ? "X" : "");
+        tl.add(user.perm(User.ADMIN) ? "X" : "");
       }
-      table.contents.add(entry);
+      table.contents.add(tl);
     }
     table.sort();
     table.toTop(token(ADMIN));

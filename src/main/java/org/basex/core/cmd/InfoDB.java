@@ -59,13 +59,12 @@ public final class InfoDB extends AInfo {
 
     tb.add(NL).addExt(header, INFOCREATE);
     format(tb, INFOTIME, DATE.format(new Date(meta.time)));
-    if(create && !meta.path.isEmpty()) format(tb, INFOPATH, meta.path);
+    if(create && !meta.original.isEmpty()) format(tb, INFOPATH, meta.original);
     if(meta.filesize != 0)
       format(tb, INFODOCSIZE, Performance.format(meta.filesize));
     format(tb, INFOENCODING, meta.encoding);
     format(tb, INFONDOCS, Integer.toString(meta.ndocs));
     format(tb, INFOCHOP, flag(meta.chop));
-    format(tb, INFOENTITY, flag(meta.entity));
 
     if(index) {
       tb.add(NL).addExt(header, INFOINDEX);

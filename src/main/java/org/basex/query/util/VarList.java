@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.basex.core.Text;
 import org.basex.data.ExprInfo;
-import org.basex.data.Serializer;
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryException;
 import org.basex.query.item.QNm;
 
@@ -71,6 +71,15 @@ public final class VarList extends ExprInfo {
   }
 
   /**
+   * Checks if the given variable is in this list.
+   * @param v variable
+   * @return {@code true} if the variable was found, {@code false} otherwise
+   */
+  public boolean contains(final Var v) {
+    return indexOf(v) != -1;
+  }
+
+  /**
    * Checks if all variables have been correctly declared.
    * @throws QueryException query exception
    */
@@ -90,7 +99,7 @@ public final class VarList extends ExprInfo {
   public String toString() {
     final StringBuilder sb = new StringBuilder();
     for(int i = 0; i < size; ++i)
-      sb.append((i == 0 ? "" : Text.NL) + i + ": " + vars[i]);
+      sb.append((i == 0 ? "" : Text.NL) + i + Text.COLS + vars[i]);
     return sb.toString();
   }
 }

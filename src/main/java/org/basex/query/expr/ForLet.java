@@ -36,7 +36,7 @@ public abstract class ForLet extends Single {
     if(!simple(true)) return;
 
     // don't bind variable if expression uses variables, context, or fragments
-    if(expr.uses(Use.VAR) || expr.uses(Use.CTX) || expr.uses(Use.CNS) ||
+    if(expr.hasFreeVars(ctx) || expr.uses(Use.CTX) || expr.uses(Use.CNS) ||
         ctx.grouping) return;
 
     ctx.compInfo(OPTBIND, var);
@@ -74,4 +74,17 @@ public abstract class ForLet extends Single {
   public final boolean uses(final Use u) {
     return u == Use.VAR || super.uses(u);
   }
+
+  /**
+   * Checks if the given variable is declared by this clause.
+   * @param v variable
+   * @return declaration flag
+   */
+  public abstract boolean declares(final Var v);
+
+  /**
+   * Gathers all variables declared by this clause.
+   * @return variables
+   */
+  public abstract Var[] vars();
 }

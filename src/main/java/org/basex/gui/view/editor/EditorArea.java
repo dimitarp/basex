@@ -2,13 +2,15 @@ package org.basex.gui.view.editor;
 
 import static org.basex.gui.layout.BaseXKeys.*;
 import static org.basex.util.Token.*;
+
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+
 import org.basex.core.cmd.XQuery;
 import org.basex.gui.GUIProp;
-import org.basex.gui.layout.BaseXLabel;
 import org.basex.gui.layout.BaseXEditor;
-import org.basex.io.IO;
+import org.basex.gui.layout.BaseXLabel;
+import org.basex.io.IOFile;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.QueryProcessor;
@@ -24,10 +26,10 @@ final class EditorArea extends BaseXEditor {
   /** File label. */
   final BaseXLabel label;
   /** View reference. */
-  private final EditorView view;
-
+  final EditorView view;
   /** File in tab. */
-  IO file;
+  private IOFile file;
+
   /** Flag for modified content. */
   boolean mod;
   /** Opened flag; states if file was opened from disk. */
@@ -49,7 +51,7 @@ final class EditorArea extends BaseXEditor {
    * @param v view reference
    * @param f file reference
    */
-  EditorArea(final EditorView v, final IO f) {
+  EditorArea(final EditorView v, final IOFile f) {
     super(true, v.gui);
     view = v;
     file = f;
@@ -95,16 +97,14 @@ final class EditorArea extends BaseXEditor {
     gui.context.query = file;
     last = in;
 
-    if(file.name().endsWith(IO.XMLSUFFIX)) {
+    if(file.xml()) {
       view.info("", true);
       exec = false;
     } else {
       final String qu = in.length == 0 ? "()" : string(in);
       exec = !module(in);
       if(exec && (force || gui.gprop.is(GUIProp.EXECRT))) {
-        view.startWait();
-        view.stop.setEnabled(true);
-        gui.execute(new XQuery(qu), false);
+        gui.execute(false, new XQuery(qu));
       } else {
         final QueryContext ctx = new QueryContext(gui.context);
         try {
@@ -123,6 +123,23 @@ final class EditorArea extends BaseXEditor {
    */
   void query() {
     release(true);
+  }
+
+  /**
+   * Returns the currently assigned file.
+   * @return file
+   */
+  IOFile file() {
+    return file;
+  }
+
+  /**
+   * Sets the file reference.
+   * @param f file
+   */
+  void file(final IOFile f) {
+    file = f;
+    setSyntax(file);
   }
 
   /**

@@ -7,15 +7,15 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.basex.io.DataInput;
-import org.basex.io.DataOutput;
-import org.basex.io.IO;
+import org.basex.io.in.DataInput;
+import org.basex.io.out.DataOutput;
 import org.basex.util.Table;
 import org.basex.util.Token;
 import org.basex.util.TokenBuilder;
-import org.basex.util.TokenList;
-import org.basex.util.TokenObjMap;
-import org.basex.util.TokenSet;
+import org.basex.util.hash.TokenObjMap;
+import org.basex.util.hash.TokenSet;
+import org.basex.util.list.IntList;
+import org.basex.util.list.TokenList;
 
 /**
  * This class contains the namespaces of a database.
@@ -25,7 +25,7 @@ import org.basex.util.TokenSet;
  */
 public final class Namespaces {
   /** Namespace stack. */
-  private final int[] uriStack = new int[IO.MAXHEIGHT];
+  private final IntList uriStack = new IntList();
   /** Prefixes. */
   private final TokenSet pref;
   /** URIs. */
@@ -95,7 +95,7 @@ public final class Namespaces {
     final int k = addPref(p);
     final int v = addURI(u);
     current.add(k, v);
-    if(p.length == 0) uriStack[uriL] = v;
+    if(p.length == 0) uriStack.set(uriL, v);
     return newNode;
   }
 
@@ -104,7 +104,7 @@ public final class Namespaces {
    * @return true if a new namespace has been added
    */
   public boolean open() {
-    uriStack[uriL + 1] = uriStack[uriL];
+    uriStack.set(uriL + 1, uriStack.get(uriL));
     ++uriL;
     final boolean n = newns;
     newns = false;
@@ -116,9 +116,9 @@ public final class Namespaces {
    * @param pre current pre value
    */
   public void close(final int pre) {
-    while(current.pre >= pre && current.par != null)
-      current = current.par;
-    uriStack[--uriL] = uriStack[uriL - 1];
+    while(current.pre >= pre && current.par != null) current = current.par;
+    --uriL;
+    uriStack.set(uriL, uriStack.get(uriL - 1));
   }
 
   /**
@@ -131,7 +131,7 @@ public final class Namespaces {
   public int uri(final byte[] n, final boolean elem) {
     if(uri.size() == 0) return 0;
     final byte[] pr = Token.pref(n);
-    int u = elem ? uriStack[uriL] : 0;
+    int u = elem ? uriStack.get(uriL) : 0;
     if(pr.length != 0) u = uri(pr, current);
     return u;
   }
@@ -143,7 +143,21 @@ public final class Namespaces {
    * @return number of uri references
    */
   public int size() {
+    /* [LK] returns the size of the uri container - if we delete nodes from
+     * the namespace structure via this.delete(pre,s) the container size isn't
+     * changed at all, as only NSNodes in the range pre,pre+s-1 are deleted.
+     * COUNTERINTUITIVE?
+     */
     return uri.size();
+  }
+
+  /**
+   * Returns whether the namespace root node has any children, which means this
+   * function returns whether there are any namespace declarations at all.
+   * @return true if namespace declarations exist.
+   */
+  public boolean rootEmpty() {
+    return root.ch.length == 0;
   }
 
   /**
@@ -236,7 +250,7 @@ public final class Namespaces {
   void delete(final int pre, final int size) {
     NSNode nd = current.find(pre);
     if(nd.pre == pre) nd = nd.par;
-    while(nd != root) {
+    while(nd != null) {
       nd.delete(pre, size);
       nd = nd.par;
     }
@@ -292,10 +306,10 @@ public final class Namespaces {
    */
   void setNearestRoot(final NSNode n, final int pre) {
     final int uriI = uri(Token.EMPTY, pre);
-    uriStack[uriL] = uriI;
+    uriStack.set(uriL, uriI);
     // remind uri before insert of first node n to connect siblings of n to
     // according namespace
-    uriStack[uriL - 1] = uriI;
+    uriStack.set(uriL - 1, uriI);
     setRoot(n);
   }
 

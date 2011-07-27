@@ -1,9 +1,10 @@
 package org.basex.query.util;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.query.util.Err.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.expr.Expr;
@@ -24,17 +25,18 @@ import org.basex.util.TokenBuilder;
  * @author Christian Gruen
  */
 public final class Var extends ParseExpr {
-  /** Expected return type. */
-  public SeqType ret = SeqType.ITEM_ZM;
   /** Variable name. */
   public final QNm name;
+  /** Variable ID. */
+  public final int id;
+
+  /** Expected return type. */
+  public SeqType ret;
   /** Global flag. */
   public boolean global;
   /** Declaration flag. */
   public boolean declared;
 
-  /** Variable ID. */
-  public final int id;
   /** Bound value. */
   private Value value;
   /** Bound expression. */
@@ -205,6 +207,7 @@ public final class Var extends ParseExpr {
     v.global = global;
     v.value = value;
     v.expr = expr;
+    v.type = type;
     v.ret = ret;
     return v;
   }
@@ -232,7 +235,15 @@ public final class Var extends ParseExpr {
 
   @Override
   public SeqType type() {
-    return type != null ? type : expr != null ? expr.type() : ret;
+    return ret != null ? ret : type != null ? type :
+      expr != null ? expr.type() : SeqType.ITEM_ZM;
+  }
+
+  @Override
+  public boolean sameAs(final Expr cmp) {
+    if(!(cmp instanceof Var)) return false;
+    final Var v = (Var) cmp;
+    return name.eq(v.name) && type().eq(v.type());
   }
 
   @Override

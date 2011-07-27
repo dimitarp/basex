@@ -13,9 +13,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import org.basex.io.IO;
 import org.basex.util.Levenshtein;
-import org.basex.util.StringList;
 import org.basex.util.TokenBuilder;
 import org.basex.util.Util;
+import org.basex.util.list.StringList;
 
 /**
  * This class assembles properties which are used all around the project. They
@@ -61,9 +61,7 @@ public abstract class AProp {
       BufferedReader br = null;
       try {
         br = new BufferedReader(new FileReader(file));
-        String line = null;
-
-        while((line = br.readLine()) != null) {
+        for(String line; (line = br.readLine()) != null;) {
           line = line.trim();
           if(line.isEmpty() || line.charAt(0) == '#') continue;
           final int d = line.indexOf('=');
@@ -121,7 +119,6 @@ public abstract class AProp {
           final Object obj = f.get(null);
           if(!(obj instanceof Object[])) continue;
           final String key = ((Object[]) obj)[0].toString();
-          if(key.equals(Prop.SKIP[0])) break;
           ok &= read.contains(key);
         }
         if(!ok) err.addExt("Saving properties in \"%\"..." + NL, filename);
@@ -148,12 +145,11 @@ public abstract class AProp {
       // caches options specified by the user
       if(file.exists()) {
         br = new BufferedReader(new FileReader(file));
-        String line = null;
-        while((line = br.readLine()) != null)
+        for(String line; (line = br.readLine()) != null;) {
           if(line.equals(PROPUSER)) break;
-        while((line = br.readLine()) != null) {
-          user.append(line);
-          user.append(NL);
+        }
+        for(String line; (line = br.readLine()) != null;) {
+          user.append(line).append(NL);
         }
       }
     } catch(final Exception ex) {
@@ -171,7 +167,6 @@ public abstract class AProp {
         final Object obj = f.get(null);
         if(!(obj instanceof Object[])) continue;
         final String key = ((Object[]) obj)[0].toString();
-        if(key.equals(Prop.SKIP[0])) break;
 
         final Object val = props.get(key);
         if(val instanceof String[]) {

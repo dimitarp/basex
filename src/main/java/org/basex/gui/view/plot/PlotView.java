@@ -32,7 +32,7 @@ import org.basex.gui.layout.BaseXSlider;
 import org.basex.gui.view.View;
 import org.basex.gui.view.ViewNotifier;
 import org.basex.gui.view.ViewRect;
-import org.basex.util.IntList;
+import org.basex.util.list.IntList;
 
 /**
  * A scatter plot visualization of the database.
@@ -366,7 +366,7 @@ public final class PlotView extends View {
             ya += 2 * textH - gui.gprop.num(GUIProp.PLOTDOTS);
           }
           if(xa > w - lw)
-            BaseXLayout.drawTooltip(g, name + ": " + label, xa, ya, ww, 10);
+            BaseXLayout.drawTooltip(g, name + COLS + label, xa, ya, ww, 10);
           else {
             BaseXLayout.drawTooltip(g, name, xa, ya - textH, ww, 10);
             BaseXLayout.drawTooltip(g, label, xa, ya, ww, 10);

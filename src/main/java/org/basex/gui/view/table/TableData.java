@@ -10,10 +10,10 @@ import org.basex.data.StatsKey.Kind;
 import org.basex.gui.GUIProp;
 import org.basex.index.Names;
 import org.basex.util.Array;
-import org.basex.util.BoolList;
-import org.basex.util.IntList;
-import org.basex.util.StringList;
-import org.basex.util.TokenList;
+import org.basex.util.list.BoolList;
+import org.basex.util.list.IntList;
+import org.basex.util.list.StringList;
+import org.basex.util.list.TokenList;
 
 /**
  * This is a container for the table data.
@@ -29,7 +29,7 @@ final class TableData {
   /** Maximum number for sorting data. */
   private static final byte[] MAXNUM = token(Double.MAX_VALUE);
 
-  /** Context reference. */
+  /** Database context. */
   final Context context;
   /** Root nodes. */
   TokenList roots;
@@ -77,7 +77,7 @@ final class TableData {
 
   /**
    * Initializes the table data.
-   * @param ctx context
+   * @param ctx database context
    * @param pr gui properties
    */
   TableData(final Context ctx, final GUIProp pr) {

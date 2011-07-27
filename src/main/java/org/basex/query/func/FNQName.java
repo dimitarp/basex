@@ -1,6 +1,6 @@
 package org.basex.query.func;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.query.util.Err.*;
 import static org.basex.util.Token.*;
 import org.basex.query.QueryContext;
@@ -18,8 +18,8 @@ import org.basex.query.iter.Iter;
 import org.basex.query.util.Err;
 import org.basex.util.Atts;
 import org.basex.util.InputInfo;
-import org.basex.util.TokenSet;
 import org.basex.util.XMLToken;
+import org.basex.util.hash.TokenSet;
 
 /**
  * QName functions.
@@ -127,8 +127,7 @@ public final class FNQName extends FuncCall {
    * @return prefix sequence
    */
   private Iter inscope(final QueryContext ctx, final ANode node) {
-    final TokenSet pref = new TokenSet();
-    pref.add(XML);
+    final TokenSet pref = new TokenSet(XML);
 
     byte[] emp = null;
     ANode n = node;

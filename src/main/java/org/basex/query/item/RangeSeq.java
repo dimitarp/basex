@@ -1,9 +1,10 @@
 package org.basex.query.item;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.query.util.Err.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.iter.RangeIter;
@@ -61,17 +62,6 @@ public final class RangeSeq extends Seq {
   }
 
   @Override
-  public void plan(final Serializer ser) throws IOException {
-    ser.emptyElement(Token.token(Util.name(this)),
-        MIN, Token.token(start), MAX, Token.token(start + size - 1));
-  }
-
-  @Override
-  public String toString() {
-    return PAR1 + start + ' ' + TO + ' ' + (start + size - 1) + PAR2;
-  }
-
-  @Override
   public int writeTo(final Item[] arr, final int pos) {
     for(int i = 0; i < size; i++) arr[pos + i] = itemAt(i);
     return (int) size;
@@ -85,5 +75,16 @@ public final class RangeSeq extends Seq {
   @Override
   public boolean homogenous() {
     return true;
+  }
+
+  @Override
+  public void plan(final Serializer ser) throws IOException {
+    ser.emptyElement(Token.token(Util.name(this)),
+        MIN, Token.token(start), MAX, Token.token(start + size - 1));
+  }
+
+  @Override
+  public String toString() {
+    return PAR1 + start + ' ' + TO + ' ' + (start + size - 1) + PAR2;
   }
 }

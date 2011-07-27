@@ -1,6 +1,6 @@
 package org.basex.query.func;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.query.util.Err.*;
 import static javax.xml.datatype.DatatypeConstants.*;
 import java.io.IOException;
@@ -14,7 +14,8 @@ import java.math.BigInteger;
 import javax.xml.datatype.Duration;
 import javax.xml.datatype.XMLGregorianCalendar;
 import javax.xml.namespace.QName;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.expr.Arr;

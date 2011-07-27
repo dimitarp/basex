@@ -1,6 +1,6 @@
 package org.basex.query.util;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.util.Token.*;
 import org.basex.util.Atts;
 
@@ -23,6 +23,7 @@ public final class NSGlobal {
     NS.add(MATH, MATHURI);
     NS.add(XML, XMLURI);
     NS.add(UTIL, UTILURI);
+    NS.add(XSLT, XSLTURI);
     NS.add(DB, DBURI);
     NS.add(FT, FTURI);
     NS.add(FILE, FILEURI);
@@ -31,7 +32,6 @@ public final class NSGlobal {
     NS.add(ZIP, ZIPURI);
     NS.add(HOF, HOFURI);
     NS.add(MAP, MAPURI);
-    NS.add(PKG, PKGURI);
     NS.add(PKG, PKGURI);
   }
 

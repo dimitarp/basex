@@ -1,9 +1,11 @@
 package org.basex.core.cmd;
 
-import static org.basex.core.Commands.*;
 import static org.basex.core.Text.*;
 
-import org.basex.core.Prop;
+import org.basex.core.AProp;
+import org.basex.core.MainProp;
+import org.basex.core.Context;
+import org.basex.core.Commands.CmdSet;
 import org.basex.core.User;
 import org.basex.util.Util;
 
@@ -16,7 +18,7 @@ import org.basex.util.Util;
 public final class Set extends AGet {
   /** Info strings (same order as options defined in {@link CmdSet}). */
   private static final String[] STRINGS = {
-    INFOQUERY, INFODEBUG, INFOSERIALIZE, INFOCHOP, INFOENTITY, INFOTEXTINDEX,
+    INFOQUERY, INFODEBUG, INFOSERIALIZE, INFOCHOP, INFOTEXTINDEX,
     INFOATTRINDEX, INFOFTINDEX, INFOPATHINDEX, INFODBPATH
   };
 
@@ -34,22 +36,35 @@ public final class Set extends AGet {
   @Override
   protected boolean run() {
     String key = args[0].toUpperCase();
-    String val = args[1];
+    final String val = args[1];
 
     CmdSet s = null;
     try { s = Enum.valueOf(CmdSet.class, key); } catch(final Exception ex) { }
 
     try {
-      val = set(key, val, prop);
-      if(val == null) return whichKey();
+      String v = set(key, val, prop);
+      if(v == null && !context.client()) {
+        // disallow modification of database path if any database is opened
+        if(key.equals(MainProp.DBPATH[0]) && context.datas.size() > 0) {
+          return error(SETVAL, key, val);
+        }
+        v = set(key, val, mprop);
+      }
+      if(v == null) return whichKey();
 
       final CmdSet[] cs = CmdSet.values();
       for(int c = 0; c < cs.length; ++c) if(cs[c] == s) key = STRINGS[c];
-      return info(key + ": " + val);
+      return info(key + COLS + v);
     } catch(final Exception ex) {
       Util.debug(ex);
       return error(SETVAL, key, val);
     }
+  }
+
+  @Override
+  public boolean updating(final Context ctx) {
+    // command may set options that influence other commands
+    return true;
   }
 
   /**
@@ -60,20 +75,20 @@ public final class Set extends AGet {
    * @return final value
    */
   public static String set(final String key, final String val,
-      final Prop prop) {
+      final AProp prop) {
 
     final Object type = prop.get(key);
     if(type == null) return null;
 
     String v = val;
     if(type instanceof Boolean) {
-      final boolean b = val == null ? !((Boolean) type).booleanValue() :
+      final boolean b = val == null || val.isEmpty() ? !((Boolean) type) :
         val.equalsIgnoreCase(ON) || val.equalsIgnoreCase(TRUE);
       prop.set(key, b);
       v = AInfo.flag(b);
     } else if(type instanceof Integer) {
-      v = "0";
       prop.set(key, Integer.parseInt(val));
+      v = String.valueOf(prop.get(key));
     } else if(type instanceof String) {
       prop.set(key, val);
     } else {

@@ -9,19 +9,19 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.basex.core.MainProp;
 import org.basex.core.BaseXException;
 import org.basex.core.Context;
 import org.basex.core.Command;
-import org.basex.core.Prop;
 import org.basex.core.Commands.Cmd;
-import org.basex.io.BufferInput;
-import org.basex.io.PrintOutput;
+import org.basex.io.in.BufferInput;
+import org.basex.io.out.PrintOutput;
 import org.basex.util.Token;
 
 /**
- * This wrapper sends commands to the server instance over a socket
- * connection. It extends the {@link Session} class:
- *
+ * This class offers methods to execute database commands via the
+ * client/server architecture. Commands are sent to the server instance over
+ * a socket connection:
  * <ul>
  * <li> A socket instance is created by the constructor.</li>
  * <li> The {@link #execute} method sends database commands to the server.
@@ -42,16 +42,17 @@ public final class ClientSession extends Session {
   /** Event notifications. */
   final Map<String, EventNotifier> notifiers =
     Collections.synchronizedMap(new HashMap<String, EventNotifier>());
-  /** Socket reference. */
-  final Socket socket;
-  /** Server output. */
+  /** Server output (buffered). */
   final PrintOutput sout;
   /** Server input. */
   final InputStream sin;
-  /** Socket event reference. */
-  Socket esocket;
+
+  /** Socket reference. */
+  private final Socket socket;
   /** Socket host name. */
-  String ehost;
+  private final String ehost;
+  /** Socket event reference. */
+  private Socket esocket;
 
   /**
    * Constructor, specifying the database context and the
@@ -78,7 +79,7 @@ public final class ClientSession extends Session {
    */
   public ClientSession(final Context context, final String user,
       final String pw, final OutputStream output) throws IOException {
-    this(context.prop.get(Prop.HOST), context.prop.num(Prop.PORT),
+    this(context.mprop.get(MainProp.HOST), context.mprop.num(MainProp.PORT),
         user, pw, output);
   }
 
@@ -151,6 +152,18 @@ public final class ClientSession extends Session {
       sout.write(ServerCmd.ADD.code);
       send(name);
       send(target);
+      send(input);
+    } catch(final IOException ex) {
+      throw new BaseXException(ex);
+    }
+  }
+
+  @Override
+  public void replace(final String path, final InputStream input)
+      throws BaseXException {
+    try {
+      sout.write(ServerCmd.REPLACE.code);
+      send(path);
       send(input);
     } catch(final IOException ex) {
       throw new BaseXException(ex);
@@ -231,8 +244,7 @@ public final class ClientSession extends Session {
    * @throws IOException I/O exception
    */
   private void send(final InputStream input) throws IOException {
-    int l;
-    while((l = input.read()) != -1) sout.write(l);
+    for(int b; (b = input.read()) != -1;) sout.write(b);
     sout.write(0);
     sout.flush();
     final BufferInput bi = new BufferInput(sin);
@@ -280,8 +292,7 @@ public final class ClientSession extends Session {
     try {
       send(cmd);
       final BufferInput bi = new BufferInput(sin);
-      int l;
-      while((l = bi.read()) != 0) os.write(l);
+      for(int b; (b = bi.read()) != 0;) os.write(b);
       info = bi.readString();
       if(!ok(bi)) throw new BaseXException(info);
     } catch(final IOException ex) {

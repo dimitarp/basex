@@ -8,10 +8,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import org.basex.io.DataInput;
-import org.basex.io.DataOutput;
 import org.basex.io.IO;
-import org.basex.server.ServerProcess;
+import org.basex.io.in.DataInput;
+import org.basex.io.out.DataOutput;
+import org.basex.server.ClientListener;
 import org.basex.server.Sessions;
 import org.basex.util.Token;
 import org.basex.util.TokenBuilder;
@@ -27,7 +27,7 @@ import org.basex.util.Util;
  */
 public final class Events extends HashMap<String, Sessions> {
   /** Event file. */
-  private final File file = new File(Prop.HOME + IO.BASEXSUFFIX + "events");
+  private final File file = new File(Prop.HOME, IO.BASEXSUFFIX + "events");
 
   /**
    * Constructor.
@@ -111,9 +111,9 @@ public final class Events extends HashMap<String, Sessions> {
     // event was not found
     if(sess == null) return false;
 
-    for(final ServerProcess srv : sess) {
+    for(final ClientListener srv : sess) {
       // ignore active client
-      if(srv == ctx.session) continue;
+      if(srv == ctx.listener) continue;
       try {
         srv.notify(name, msg);
       } catch(final IOException ex) {

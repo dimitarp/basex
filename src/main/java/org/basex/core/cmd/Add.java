@@ -1,15 +1,13 @@
 package org.basex.core.cmd;
 
 import static org.basex.core.Text.*;
-import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import javax.xml.transform.sax.SAXSource;
 import org.basex.build.Builder;
+import org.basex.build.DirParser;
 import org.basex.build.DiskBuilder;
 import org.basex.build.MemBuilder;
 import org.basex.build.Parser;
-import org.basex.build.xml.DirParser;
 import org.basex.build.xml.SAXWrapper;
 import org.basex.core.BaseXException;
 import org.basex.core.CommandBuilder;
@@ -79,7 +77,7 @@ public final class Add extends ACreate {
     }
 
     final String trg = path(args[2]);
-    final DirParser p = new DirParser(io, context.prop, trg);
+    final DirParser p = new DirParser(io, trg, prop);
     try {
       return info(add(p, context, trg, name, this));
     } catch(final BaseXException ex) {
@@ -97,30 +95,30 @@ public final class Add extends ACreate {
    * @param name name of document. If {@code null}, the name of the input
    *   will be used
    * @param target target. If {@code null}, target will be set to root
-   * @param input XML input stream
+   * @param input XML input source
    * @param ctx database context
    * @param cmd calling command
+   * @param lock if {@code true}, register a write lock in context
    * @return info string
    * @throws BaseXException database exception
    */
   public static String add(final String name, final String target,
-      final InputStream input, final Context ctx, final Add cmd)
-      throws BaseXException {
+      final InputSource input, final Context ctx, final Add cmd,
+      final boolean lock) throws BaseXException {
 
     final Data data = ctx.data;
     if(data == null) return PROCNODB;
 
     String trg = path(target);
-    if(!trg.isEmpty()) trg = trg + '/';
+    if(!trg.isEmpty()) trg += '/';
 
-    final BufferedInputStream is = new BufferedInputStream(input);
-    final SAXSource sax = new SAXSource(new InputSource(is));
+    final SAXSource sax = new SAXSource(input);
     final Parser parser = new SAXWrapper(sax, name, trg, ctx.prop);
     try {
-      ctx.register(true);
+      if(lock) ctx.register(true);
       return add(parser, ctx, trg, name, cmd);
     } finally {
-      ctx.unregister(true);
+      if(lock) ctx.unregister(true);
     }
   }
 
@@ -134,17 +132,18 @@ public final class Add extends ACreate {
    * @return info string
    * @throws BaseXException database exception
    */
-  public static String add(final Parser parser, final Context ctx,
+  private static String add(final Parser parser, final Context ctx,
       final String target, final String name, final Add cmd)
       throws BaseXException {
 
     final Performance p = new Performance();
+    final String input = name == null ? parser.src.path() : name;
     final String path = target + (target.isEmpty() ? "/" : "") +
-        (name == null ? parser.file.name() : name);
+        (name == null ? parser.src.name() : name);
 
     // create disk instances for large documents
     // test does not work for input streams and directories
-    final long fl = parser.file.length();
+    final long fl = parser.src.length();
     boolean large = false;
     final Runtime rt = Runtime.getRuntime();
     if(fl > rt.freeMemory() / 3) {
@@ -154,28 +153,28 @@ public final class Add extends ACreate {
 
     // create random database name
     final Data data = ctx.data;
-    final String dbname = large ? data.meta.random() : path;
-    final Builder build = large ? new DiskBuilder(parser, ctx.prop) :
-      new MemBuilder(parser, ctx.prop);
+    final String dbname = large ? ctx.mprop.random(data.meta.name) : path;
+    final Builder build = large ? new DiskBuilder(dbname, parser, ctx) :
+      new MemBuilder(dbname, parser, ctx.prop);
     if(cmd != null) cmd.build = build;
 
     Data tmp = null;
     try {
-      tmp = build.build(dbname);
+      tmp = build.build();
       // ignore empty fragments
       if(tmp.meta.size > 1) {
         data.insert(data.meta.size, -1, tmp);
         ctx.update();
         data.flush();
       }
-      return Util.info(PATHADDED, path, p);
+      return Util.info(parser.info() + PATHADDED, input, p);
     } catch(final IOException ex) {
       Util.debug(ex);
       throw new BaseXException(ex);
     } finally {
       // close and drop intermediary database instance
       if(tmp != null) try { tmp.close(); } catch(final IOException e) { }
-      if(large) DropDB.drop(dbname, ctx.prop);
+      if(large) DropDB.drop(dbname, ctx.mprop);
     }
   }
 

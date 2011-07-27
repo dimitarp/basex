@@ -1,9 +1,10 @@
 package org.basex.query.expr;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.util.Token.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.item.Bln;
@@ -137,5 +138,15 @@ public final class Let extends ForLet {
     if(score) sb.append(SCORE).append(' ');
     sb.append(var).append(' ').append(ASSIGN).append(' ').append(expr);
     return sb.toString();
+  }
+
+  @Override
+  public boolean declares(final Var v) {
+    return var.is(v);
+  }
+
+  @Override
+  public Var[] vars() {
+    return new Var[]{ var };
   }
 }

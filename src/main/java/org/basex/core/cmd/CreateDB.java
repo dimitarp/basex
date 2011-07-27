@@ -8,10 +8,10 @@ import java.io.InputStream;
 import javax.xml.transform.sax.SAXSource;
 import org.basex.build.BuildException;
 import org.basex.build.Builder;
+import org.basex.build.DirParser;
 import org.basex.build.DiskBuilder;
 import org.basex.build.MemBuilder;
 import org.basex.build.Parser;
-import org.basex.build.xml.DirParser;
 import org.basex.build.xml.SAXWrapper;
 import org.basex.core.BaseXException;
 import org.basex.core.CommandBuilder;
@@ -22,11 +22,11 @@ import org.basex.core.Commands.Cmd;
 import org.basex.core.Commands.CmdPerm;
 import org.basex.data.Data;
 import org.basex.index.IndexToken.IndexType;
-import org.basex.index.FTBuilder;
-import org.basex.index.ValueBuilder;
-import org.basex.io.BufferInput;
+import org.basex.index.ft.FTBuilder;
+import org.basex.index.value.ValueBuilder;
 import org.basex.io.IO;
 import org.basex.io.IOContent;
+import org.basex.io.in.BufferInput;
 import org.basex.util.Performance;
 import org.basex.util.Util;
 import org.xml.sax.InputSource;
@@ -50,18 +50,18 @@ public final class CreateDB extends ACreate {
   }
 
   /**
-   * Constructor, specifying an input.
+   * Constructor, specifying an initial database input.
    * @param name name of database
-   * @param input input file path or XML string
+   * @param input input reference (local/remote file or XML string)
    */
   public CreateDB(final String name, final String input) {
     this(name, input, null);
   }
 
   /**
-   * Constructor, specifying an input.
+   * Constructor, specifying an initial database input.
    * @param name name of database
-   * @param input input file path or XML string
+   * @param input input reference (local/remote file or XML string)
    * @param p parser reference
    */
   public CreateDB(final String name, final String input, final Parser p) {
@@ -85,7 +85,7 @@ public final class CreateDB extends ACreate {
    * and assigns it to the specified database context.
    * @param name name of the database
    * @param input input stream
-   * @param ctx return database context
+   * @param ctx database context
    * @return info string
    * @throws BaseXException database exception
    */
@@ -95,7 +95,7 @@ public final class CreateDB extends ACreate {
     final InputStream is = input instanceof BufferedInputStream ||
       input instanceof BufferInput ? input : new BufferedInputStream(input);
     final SAXSource sax = new SAXSource(new InputSource(is));
-    return create(name, new SAXWrapper(sax, ctx.prop), ctx);
+    return create(name, new SAXWrapper(sax, "", ctx.prop), ctx);
   }
 
   /**
@@ -103,7 +103,7 @@ public final class CreateDB extends ACreate {
    * and assigns it to the specified database context.
    * @param name name of the database
    * @param parser parser
-   * @param ctx return database context
+   * @param ctx database context
    * @return info string
    * @throws BaseXException database exception
    */
@@ -143,16 +143,16 @@ public final class CreateDB extends ACreate {
   /**
    * Returns a database instance for the specified input.
    * @param name name of the database
-   * @param input input reference
+   * @param source document source
    * @param ctx database context
    * @return new database instance
    * @throws IOException I/O exception
    */
-  public static synchronized Data xml(final String name, final IO input,
+  public static synchronized Data xml(final String name, final IO source,
       final Context ctx) throws IOException {
 
-    if(!input.exists()) throw new BuildException(FILEWHICH, input);
-    return xml(name, new DirParser(input, ctx.prop), ctx);
+    if(!source.exists()) throw new BuildException(FILEWHICH, source);
+    return xml(name, new DirParser(source, ctx.prop), ctx);
   }
 
   /**
@@ -172,15 +172,15 @@ public final class CreateDB extends ACreate {
 
     // create main memory database instance
     final Prop prop = ctx.prop;
-    if(prop.is(Prop.MAINMEM)) return MemBuilder.build(parser, prop, name);
+    if(prop.is(Prop.MAINMEM)) return MemBuilder.build(name, parser, ctx.prop);
 
     // database is currently locked by another process
     if(ctx.pinned(name)) throw new IOException(Util.info(DBLOCKED, name));
 
     // build database and index structures
-    final Builder builder = new DiskBuilder(parser, prop);
+    final Builder builder = new DiskBuilder(name, parser, ctx);
     try {
-      final Data data = builder.build(name);
+      final Data data = builder.build();
       if(prop.is(Prop.TEXTINDEX)) data.setIndex(IndexType.TEXT,
         new ValueBuilder(data, true).build());
       if(prop.is(Prop.ATTRINDEX)) data.setIndex(IndexType.ATTRIBUTE,
@@ -211,27 +211,27 @@ public final class CreateDB extends ACreate {
 
   /**
    * Returns a main memory database instance for the specified input reference.
-   * @param io input reference
+   * @param source document source
    * @param ctx database context
    * @return new database instance
    * @throws IOException I/O exception
    */
-  public static synchronized Data xml(final IO io, final Context ctx)
+  public static synchronized Data xml(final IO source, final Context ctx)
       throws IOException {
-    if(!io.exists()) throw new BuildException(FILEWHICH, io.path());
-    return xml(new DirParser(io, ctx.prop), ctx);
+    if(!source.exists()) throw new BuildException(FILEWHICH, source.path());
+    return xml(new DirParser(source, ctx.prop), ctx);
   }
 
   /**
    * Returns a main memory database instance from the specified SAX source.
-   * @param sax sax source
+   * @param source sax source
    * @param ctx database context
    * @return new database instance
    * @throws IOException I/O exception
    */
-  public static synchronized Data xml(final SAXSource sax, final Context ctx)
+  public static synchronized Data xml(final SAXSource source, final Context ctx)
       throws IOException {
-    return xml(new SAXWrapper(sax, ctx.prop) , ctx);
+    return xml(new SAXWrapper(source, "", ctx.prop) , ctx);
   }
 
   @Override

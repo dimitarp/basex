@@ -1,14 +1,16 @@
 package org.basex.core.cmd;
 
 import static org.basex.core.Text.*;
+
 import java.io.IOException;
 import org.basex.core.CommandBuilder;
 import org.basex.core.Command;
 import org.basex.core.Commands.Cmd;
 import org.basex.data.Data;
 import org.basex.util.Table;
-import org.basex.util.TokenList;
 import org.basex.util.Util;
+import org.basex.util.list.IntList;
+import org.basex.util.list.TokenList;
 
 /**
  * Evaluates the 'list' command and shows all documents in a database.
@@ -27,13 +29,10 @@ public final class ListDB extends Command {
 
   @Override
   protected boolean run() throws IOException {
-    String db = args[0];
-    final int i = db.indexOf('/');
-    String path = null;
-    if(i != -1) {
-      path = db.substring(i + 1);
-      db = db.substring(0, i);
-    }
+    final String str = args[0];
+    final int s = str.indexOf('/');
+    final String db = s == -1 ? str : str.substring(0, s);
+    final String path = s == -1 ? "" : str.substring(s + 1);
     if(!validName(db, false)) return error(NAMEINVALID, db);
 
     final Table table = new Table();
@@ -43,13 +42,13 @@ public final class ListDB extends Command {
 
     try {
       final Data data = Open.open(db, context);
-      if(!data.empty()) {
-        for(final int pre : path == null ? data.doc() : data.doc(path)) {
-          final TokenList tl = new TokenList();
-          tl.add(data.text(pre, true));
-          tl.add(data.size(pre, Data.DOC));
-          table.contents.add(tl);
-        }
+      final IntList il = data.doc(path);
+      for(int i = 0, is = il.size(); i < is; i++) {
+        final int pre = il.get(i);
+        final TokenList tl = new TokenList(2);
+        tl.add(data.text(pre, true));
+        tl.add(data.size(pre, Data.DOC));
+        table.contents.add(tl);
       }
       Close.close(data, context);
     } catch(final IOException ex) {

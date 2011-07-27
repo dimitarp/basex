@@ -2,9 +2,9 @@ package org.basex.query.expr;
 
 import static org.basex.query.util.Err.*;
 import static org.basex.query.QueryText.*;
-import static org.basex.query.QueryTokens.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.item.AtomType;
@@ -38,6 +38,9 @@ public class UserFunc extends Single {
   /** Cast flag. */
   private boolean cast;
 
+  /** Compilation flag. */
+  private boolean compiled;
+
   /**
    * Function constructor.
    * @param ii input info
@@ -60,7 +63,7 @@ public class UserFunc extends Single {
    * Checks the function for updating behavior.
    * @throws QueryException query exception
    */
-  public void check() throws QueryException {
+  public final void check() throws QueryException {
     if(!declared || expr == null) FUNCUNKNOWN.thrw(input, name.atom());
 
     final boolean u = expr.uses(Use.UPD);
@@ -76,10 +79,16 @@ public class UserFunc extends Single {
 
   @Override
   public Expr comp(final QueryContext ctx) throws QueryException {
+    if(compiled) return this;
+    compiled = true;
+
     final int s = ctx.vars.size();
     for(final Var v : args) ctx.vars.add(v);
     expr = expr.comp(ctx);
     ctx.vars.reset(s);
+
+    // convert all function calls in tail position to proper tail calls
+    expr.markTailCalls();
 
     // remove redundant cast
     if(ret != null && (ret.type == AtomType.BLN || ret.type == AtomType.FLT ||

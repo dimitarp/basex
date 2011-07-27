@@ -4,7 +4,7 @@ import static org.basex.query.util.Err.*;
 
 import java.io.IOException;
 
-import org.basex.data.Serializer;
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.iter.Iter;
@@ -86,17 +86,18 @@ public abstract class FItem extends Item {
       final InputInfo ii) throws QueryException;
 
   @Override
-  public byte[] atom(final InputInfo ii) throws QueryException {
+  public final byte[] atom(final InputInfo ii) throws QueryException {
     throw NOTYP.thrw(ii, desc());
   }
 
   @Override
-  public boolean eq(final InputInfo ii, final Item it) throws QueryException {
+  public final boolean eq(final InputInfo ii, final Item it)
+      throws QueryException {
     throw FNEQ.thrw(ii, desc());
   }
 
   @Override
-  public Object toJava() {
+  public final Object toJava() {
     throw Util.notexpected();
   }
 

@@ -1,11 +1,9 @@
 package org.basex.query.expr;
 
 import static org.basex.query.util.Err.*;
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.util.Token.*;
 import org.basex.core.User;
-import org.basex.core.Commands.CmdPerm;
-import org.basex.data.Data;
 import org.basex.io.IO;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
@@ -16,12 +14,14 @@ import org.basex.query.item.DBNode;
 import org.basex.query.item.Empty;
 import org.basex.query.item.Item;
 import org.basex.query.item.ANode;
+import org.basex.query.item.MapType;
 import org.basex.query.item.NodeType;
 import org.basex.query.item.SeqType;
 import org.basex.query.item.AtomType;
 import org.basex.query.item.Type;
 import org.basex.query.item.Uri;
 import org.basex.query.item.Value;
+import org.basex.query.item.map.Map;
 import org.basex.query.iter.Iter;
 import org.basex.query.util.Err;
 import org.basex.util.InputInfo;
@@ -62,10 +62,8 @@ public abstract class ParseExpr extends Expr {
     final Iter ir = iter(ctx);
     final Item it = ir.next();
     if(it == null || ir.size() == 1) return it;
-
     final Item n = ir.next();
-    if(n != null) XPSEQ.thrw(ii, PAR1 + it + SEP + n +
-        (ir.next() != null ? SEP + DOTS : "") + PAR2);
+    if(n != null) XPSEQ.thrw(ii, this);
     return it;
   }
 
@@ -97,6 +95,7 @@ public abstract class ParseExpr extends Expr {
   @Override
   public final Item test(final QueryContext ctx, final InputInfo ii)
       throws QueryException {
+
     final Item it = ebv(ctx, input);
     return (it.num() ? it.dbl(input) == ctx.pos : it.bool(input)) ? it : null;
   }
@@ -177,6 +176,22 @@ public abstract class ParseExpr extends Expr {
       if(u && s == 2 || !u && s == 1) UPNOT.thrw(input, desc());
       s = u ? 1 : 2;
     }
+  }
+
+  /**
+   * Checks if the specified expression yields a boolean.
+   * Returns the boolean or throws an exception.
+   * @param e expression to be checked
+   * @param ctx query context
+   * @return boolean
+   * @throws QueryException query exception
+   */
+  public final boolean checkBln(final Expr e, final QueryContext ctx)
+      throws QueryException {
+
+    final Item it = checkNoEmpty(e.item(ctx, input), AtomType.BLN);
+    if(!it.unt() && it.type != AtomType.BLN) Err.type(this, AtomType.BLN, it);
+    return it.bool(input);
   }
 
   /**
@@ -314,18 +329,6 @@ public abstract class ParseExpr extends Expr {
   }
 
   /**
-   * Returns the data reference.
-   * @param ctx query context
-   * @return data reference
-   * @throws QueryException query exception
-   */
-  public final Data checkData(final QueryContext ctx) throws QueryException {
-    final Data data = ctx.data();
-    if(data == null) NODBCTX.thrw(input, this);
-    return data;
-  }
-
-  /**
    * Checks if the specified expression yields a non-empty item.
    * @param e expression to be evaluated
    * @param ctx query context
@@ -401,6 +404,49 @@ public abstract class ParseExpr extends Expr {
    * @throws QueryException query exception
    */
   public final void checkAdmin(final QueryContext ctx) throws QueryException {
-    if(!ctx.context.user.perm(User.ADMIN)) PERMNO.thrw(input, CmdPerm.ADMIN);
+    checkPerm(ctx, User.ADMIN);
+  }
+
+  /**
+   * Checks if the current user has write permissions. If negative, an
+   * exception is thrown.
+   * @param ctx query context
+   * @throws QueryException query exception
+   */
+  public final void checkWrite(final QueryContext ctx) throws QueryException {
+    checkPerm(ctx, User.WRITE);
+  }
+
+  /**
+   * Checks if the current user has read permissions. If negative, an
+   * exception is thrown.
+   * @param ctx query context
+   * @throws QueryException query exception
+   */
+  public final void checkRead(final QueryContext ctx) throws QueryException {
+    checkPerm(ctx, User.READ);
+  }
+
+  /**
+   * Checks if the current user has given permissions. If negative, an
+   * exception is thrown.
+   * @param ctx query context
+   * @param p permission
+   * @throws QueryException query exception
+   */
+  private void checkPerm(final QueryContext ctx, final byte p)
+      throws QueryException {
+    if(!ctx.context.user.perm(p)) PERMNO.thrw(input, p);
+  }
+
+  /**
+   * Assures that the given (non-{@code null}) item is a map.
+   * @param it item to check
+   * @return the map
+   * @throws QueryException if the item is not a map
+   */
+  public Map checkMap(final Item it) throws QueryException {
+    if(it instanceof Map) return (Map) it;
+    throw Err.type(this, MapType.ANY_MAP, it);
   }
 }

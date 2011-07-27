@@ -4,19 +4,17 @@ import java.awt.Font;
 import org.basex.core.AProp;
 import org.basex.core.Prop;
 import org.basex.io.IO;
-import org.basex.util.StringList;
+import org.basex.io.IOFile;
+import org.basex.util.list.StringList;
 
 /**
- * This class contains properties which are used in the GUI. They are
- * initially read from and finally written to disk, except for the properties
- * following the {@link #SKIP} flag.
+ * This class contains properties which are used in the GUI.
+ * They are also stored in the project's home directory.
  *
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
  */
 public final class GUIProp extends AProp {
-  // The following properties will be saved to disk:
-
   // DATABASE & PROGRAM PATHS =================================================
 
   /** Default GUI Font. */
@@ -71,7 +69,7 @@ public final class GUIProp extends AProp {
   /** Flag for activated plot view. */
   public static final Object[] SHOWPLOT = { "SHOWPLOT", false };
   /** Flag for activated xquery view. */
-  public static final Object[] SHOWXQUERY = { "SHOWXQUERY", true };
+  public static final Object[] SHOWEDITOR = { "SHOWEDITOR", true };
   /** Flag for activated tree view. */
   public static final Object[] SHOWTREE = { "SHOWTREE", false };
 
@@ -153,11 +151,6 @@ public final class GUIProp extends AProp {
   /** Last XQuery files. */
   public static final Object[] QUERIES = { "QUERIES", new String[0] };
 
-  // CONFIG OPTIONS ===========================================================
-
-  /** The following options are not saved to disk; don't remove this flag. */
-  public static final Object[] SKIP = { "SKIP", true };
-
   /** Flag for displaying the menu in the GUI window. */
   public static final Object[] SHOWMENU = { "SHOWMENU", true };
   /** Flag for activated help view. */
@@ -181,7 +174,7 @@ public final class GUIProp extends AProp {
    * Refreshes the list of recent query files and updates the query path.
    * @param file new file
    */
-  public void recent(final IO file) {
+  public void recent(final IOFile file) {
     final StringList sl = new StringList();
 
     String path = null;

@@ -10,8 +10,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,24 +24,28 @@ import javax.swing.event.ChangeListener;
 import org.basex.data.Nodes;
 import org.basex.gui.GUICommands;
 import org.basex.gui.GUIConstants;
+import org.basex.gui.GUIConstants.Fill;
+import org.basex.gui.GUIConstants.Msg;
 import org.basex.gui.GUIMenu;
 import org.basex.gui.GUIProp;
-import org.basex.gui.GUIConstants.Fill;
 import org.basex.gui.dialog.Dialog;
 import org.basex.gui.layout.BaseXBack;
 import org.basex.gui.layout.BaseXButton;
 import org.basex.gui.layout.BaseXFileChooser;
 import org.basex.gui.layout.BaseXLabel;
 import org.basex.gui.layout.BaseXLayout;
+import org.basex.gui.layout.BaseXLayout.DropHandler;
 import org.basex.gui.layout.BaseXTabs;
 import org.basex.gui.layout.BaseXTextField;
 import org.basex.gui.layout.TableLayout;
 import org.basex.gui.view.View;
 import org.basex.gui.view.ViewNotifier;
 import org.basex.io.IO;
-import org.basex.util.BoolList;
+import org.basex.io.IOFile;
 import org.basex.util.Performance;
 import org.basex.util.Util;
+import org.basex.util.list.BoolList;
+import org.basex.util.list.ObjList;
 
 /**
  * This view allows the input and evaluation of queries and documents.
@@ -70,9 +74,9 @@ public final class EditorView extends View {
   /** Thread counter. */
   int threadID;
 
-  /** Current error file. */
+  /** File in which the most recent error occurred. */
   String errFile;
-  /** Current error position. */
+  /** Most recent error position. */
   int errPos;
 
   /** Header string. */
@@ -80,7 +84,7 @@ public final class EditorView extends View {
   /** Scroll Pane. */
   private final BaseXBack south;
   /** Execute button. */
-  private final BaseXButton go;
+  final BaseXButton go;
   /** Filter button. */
   private final BaseXButton filter;
 
@@ -181,7 +185,7 @@ public final class EditorView extends View {
         final ActionListener al = new ActionListener() {
           @Override
           public void actionPerformed(final ActionEvent ac) {
-            open(IO.get(ac.getActionCommand()));
+            open(new IOFile(ac.getActionCommand()));
           }
         };
         if(gui.gprop.strings(GUIProp.QUERIES).length == 0) {
@@ -201,7 +205,7 @@ public final class EditorView extends View {
         EditorArea edit = getEditor();
         if(errFile != null) {
           edit = find(IO.get(errFile), false);
-          if(edit == null) edit = open(IO.get(errFile));
+          if(edit == null) edit = open(new IOFile(errFile));
           tabs.setSelectedComponent(edit);
           edit.error = errPos;
         }
@@ -216,6 +220,7 @@ public final class EditorView extends View {
       @Override
      public void actionPerformed(final ActionEvent e) {
         stop.setEnabled(false);
+        go.setEnabled(false);
         info.setText(OK, Msg.SUCCESS);
         gui.stop();
       }
@@ -235,6 +240,12 @@ public final class EditorView extends View {
         gui.refreshControls();
         refreshMark();
         if(gui.gprop.is(GUIProp.EXECRT)) edit.query();
+      }
+    });
+    BaseXLayout.addDrop(this, new DropHandler() {
+      @Override
+      public void drop(final Object file) {
+        if(file instanceof File) open(new IOFile((File) file));
       }
     });
   }
@@ -268,12 +279,12 @@ public final class EditorView extends View {
 
   @Override
   public boolean visible() {
-    return gui.gprop.is(GUIProp.SHOWXQUERY);
+    return gui.gprop.is(GUIProp.SHOWEDITOR);
   }
 
   @Override
   public void visible(final boolean v) {
-    gui.gprop.set(GUIProp.SHOWXQUERY, v);
+    gui.gprop.set(GUIProp.SHOWEDITOR, v);
   }
 
   @Override
@@ -289,7 +300,7 @@ public final class EditorView extends View {
     final BaseXFileChooser fc = new BaseXFileChooser(GUIOPEN,
         gui.gprop.get(GUIProp.XQPATH), gui);
     fc.addFilter(CREATEXQEXDESC, IO.XQSUFFIXES);
-    final IO file = fc.select(BaseXFileChooser.Mode.FOPEN);
+    final IOFile file = fc.select(BaseXFileChooser.Mode.FOPEN);
     if(file != null) {
       open(file);
       getEditor().opened = true;
@@ -315,13 +326,12 @@ public final class EditorView extends View {
     // open file chooser for XML creation
     final EditorArea edit = getEditor();
     final BaseXFileChooser fc =
-      new BaseXFileChooser(GUISAVEAS, edit.file.path(), gui);
+      new BaseXFileChooser(GUISAVEAS, edit.file().path(), gui);
     fc.addFilter(CREATEXQEXDESC, IO.XQSUFFIXES);
 
-    final IO file = fc.select(BaseXFileChooser.Mode.FSAVE);
+    final IOFile file = fc.select(BaseXFileChooser.Mode.FSAVE);
     if(file == null) return false;
-    edit.file = file;
-    edit.setSyntax(file);
+    edit.file(file);
     save(edit);
     return true;
   }
@@ -339,7 +349,7 @@ public final class EditorView extends View {
    * @param file query file
    * @return opened editor
    */
-  public EditorArea open(final IO file) {
+  public EditorArea open(final IOFile file) {
     if(!visible()) GUICommands.SHOWXQUERY.execute(gui);
 
     EditorArea edit = find(file, true);
@@ -356,7 +366,7 @@ public final class EditorView extends View {
     try {
       edit.setText(file.content());
       edit.opened = true;
-      edit.file = file;
+      edit.file(file);
       gui.gprop.recent(file);
       refresh(false, true);
       if(gui.gprop.is(GUIProp.EXECRT)) edit.query();
@@ -401,15 +411,26 @@ public final class EditorView extends View {
   }
 
   /**
-   * Starts a waiting thread, which shows a waiting info after a short timeout.
+   * Starts a thread, which shows a waiting info after a short timeout.
    */
-  void startWait() {
+  public void start() {
     final int thread = ++threadID;
     new Thread() {
       @Override
       public void run() {
+        // prevent updating queries from interruption as this may corrupt
+        // the database
+        if(gui.updating)
+          go.setEnabled(false);
+
         Performance.sleep(200);
-        if(thread == threadID) info.setText(INFOWAIT, Msg.SUCCESS);
+        if(thread == threadID) {
+          info.setToolTipText(null);
+          info.setText(INFOWAIT, Msg.SUCCESS);
+          // only allow non-updating queries to be interrupted
+          if(!gui.updating)
+            stop.setEnabled(true);
+        }
       }
     }.start();
   }
@@ -427,6 +448,7 @@ public final class EditorView extends View {
         ok ? Msg.SUCCESS : Msg.ERROR);
     info.setToolTipText(ok ? null : inf);
     stop.setEnabled(false);
+    go.setEnabled(true);
   }
 
   /**
@@ -434,9 +456,7 @@ public final class EditorView extends View {
    * @return {@code false} if confirmation was canceled
    */
   public boolean confirm() {
-    for(final EditorArea edit : editors()) {
-      if(!confirm(edit)) return false;
-    }
+    for(final EditorArea edit : editors()) if(!confirm(edit)) return false;
     return true;
   }
 
@@ -469,7 +489,7 @@ public final class EditorView extends View {
     refreshMark();
     if(edit.mod == mod && !force) return;
 
-    String title = edit.file.name();
+    String title = edit.file().name();
     if(mod) title += "*";
     edit.label.setText(title);
     edit.mod = mod;
@@ -484,7 +504,7 @@ public final class EditorView extends View {
    */
   EditorArea find(final IO file, final boolean opened) {
     for(final EditorArea edit : editors()) {
-      if(edit.file.eq(file) && (!opened || edit.opened)) return edit;
+      if(edit.file().eq(file) && (!opened || edit.opened)) return edit;
     }
     return null;
   }
@@ -495,9 +515,9 @@ public final class EditorView extends View {
    */
   private void save(final EditorArea edit) {
     try {
-      edit.file.write(getEditor().getText());
+      edit.file().write(getEditor().getText());
       edit.opened = true;
-      gui.gprop.recent(edit.file);
+      gui.gprop.recent(edit.file());
       refresh(false, true);
     } catch(final IOException ex) {
       Dialog.error(gui, NOTSAVED);
@@ -508,20 +528,20 @@ public final class EditorView extends View {
    * Choose a unique tab file.
    * @return io reference
    */
-  private IO newTabFile() {
+  private IOFile newTabFile() {
     // collect numbers of existing files
     final BoolList bl = new BoolList();
     for(final EditorArea edit : editors()) {
       if(edit.opened) continue;
-      final String n = edit.file.name().substring(EDITORFILE.length());
-      bl.set(true, n.isEmpty() ? 1 : Integer.parseInt(n));
+      final String n = edit.file().name().substring(EDITORFILE.length());
+      bl.set(n.isEmpty() ? 1 : Integer.parseInt(n), true);
     }
     // find first free file number
     int c = 0;
     while(++c < bl.size() && bl.get(c));
     // create io reference
     final String dir = gui.gprop.get(GUIProp.XQPATH);
-    return IO.get(dir + EDITORFILE + (c == 1 ? "" : c));
+    return new IOFile(dir, EDITORFILE + (c == 1 ? "" : c));
   }
 
   /**
@@ -587,7 +607,7 @@ public final class EditorView extends View {
   private boolean confirm(final EditorArea edit) {
     if(edit.mod) {
       final Boolean ok = Dialog.yesNoCancel(gui,
-          Util.info(XQUERYCONF, edit.file.name()));
+          Util.info(XQUERYCONF, edit.file().name()));
       if(ok == null || ok && !save()) return false;
     }
     return true;
@@ -598,7 +618,7 @@ public final class EditorView extends View {
    * @return editors
    */
   public EditorArea[] editors() {
-    final ArrayList<EditorArea> edits = new ArrayList<EditorArea>();
+    final ObjList<EditorArea> edits = new ObjList<EditorArea>();
     for(final Component c : tabs.getComponents()) {
       if(c instanceof EditorArea) edits.add((EditorArea) c);
     }

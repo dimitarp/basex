@@ -3,7 +3,7 @@ package org.basex.query.ft;
 import java.io.IOException;
 import org.basex.data.FTMatch;
 import org.basex.data.FTMatches;
-import org.basex.data.Serializer;
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.item.FTNode;
@@ -33,7 +33,7 @@ public abstract class FTFilter extends FTExpr {
   }
 
   @Override
-  public FTNode item(final QueryContext ctx, final InputInfo ii)
+  public final FTNode item(final QueryContext ctx, final InputInfo ii)
       throws QueryException {
     final FTNode it = expr[0].item(ctx, input);
     filter(ctx, it, ctx.fttoken);
@@ -41,7 +41,7 @@ public abstract class FTFilter extends FTExpr {
   }
 
   @Override
-  public FTIter iter(final QueryContext ctx) throws QueryException {
+  public final FTIter iter(final QueryContext ctx) throws QueryException {
     final FTIter ir = expr[0].iter(ctx);
 
     return new FTIter() {
@@ -107,7 +107,8 @@ public abstract class FTFilter extends FTExpr {
   }
 
   @Override
-  public boolean indexAccessible(final IndexContext ic) throws QueryException {
+  public final boolean indexAccessible(final IndexContext ic)
+      throws QueryException {
     return expr[0].indexAccessible(ic);
   }
 

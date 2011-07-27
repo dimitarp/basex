@@ -1,11 +1,14 @@
 package org.basex.query.expr;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
+import org.basex.query.item.AtomType;
 import org.basex.query.item.Item;
+import org.basex.query.item.ItrSeq;
 import org.basex.query.item.SeqType;
 import org.basex.query.item.Value;
+import org.basex.query.item.SeqType.Occ;
 import org.basex.query.iter.Iter;
 import org.basex.query.iter.ItemCache;
 import org.basex.util.InputInfo;
@@ -32,15 +35,6 @@ public final class List extends Arr {
     for(int e = expr.length; --e >= 0;) expr[e] = expr[e].comp(ctx);
     checkUp(ctx, expr);
 
-    // return simple sequence if all values are items or empty sequences
-    if(values()) return value(ctx);
-
-    // evaluate sequence type
-    type = expr[0].type();
-    for(int i = 1; i < expr.length; ++i) type = type.intersect(expr[i].type());
-    final SeqType.Occ o = type.mayBeZero() ? SeqType.Occ.ZM : SeqType.Occ.OM;
-    type = SeqType.get(type.type, o);
-
     // compute number of results
     size = 0;
     for(final Expr e : expr) {
@@ -51,7 +45,26 @@ public final class List extends Arr {
       }
       size += c;
     }
-    return this;
+
+    // evaluate sequence type
+    type = SeqType.EMP;
+    boolean v = true;
+    for(final Expr e : expr) {
+      // check if all expressions are values
+      v &= e.value();
+      // skip expression that will not add any results
+      if(e.size() == 0) continue;
+      // evaluate sequence type
+      final SeqType et = e.type();
+      type = type == SeqType.EMP ? et :
+        SeqType.get(et.type == type.type ? et.type : AtomType.ITEM,
+            et.mayBeZero() && type.mayBeZero() ? Occ.ZM : Occ.OM);
+    }
+
+    // return cached integer sequence, cached values or self reference
+    return v ? type.type.instance(AtomType.ITR) ?
+        optPre(ItrSeq.get(expr, size, type.type), ctx) :
+        optPre(value(ctx), ctx) : this;
   }
 
   @Override

@@ -6,7 +6,7 @@ import org.basex.data.MetaData;
 import org.basex.data.Nodes;
 import org.basex.io.IO;
 import org.basex.query.util.pkg.Repo;
-import org.basex.server.ServerProcess;
+import org.basex.server.ClientListener;
 import org.basex.server.Sessions;
 
 /**
@@ -18,8 +18,12 @@ import org.basex.server.Sessions;
  * @author Christian Gruen
  */
 public final class Context {
+  /** Client listener. Set to {@code null} in standalone/server mode. */
+  public final ClientListener listener;
   /** Database properties. */
-  public final Prop prop = new Prop(true);
+  public final Prop prop = new Prop();
+  /** Main properties. */
+  public final MainProp mprop;
   /** Client connections. */
   public final Sessions sessions;
   /** Event pool. */
@@ -31,8 +35,6 @@ public final class Context {
   /** Package repository. */
   public final Repo repo;
 
-  /** Session reference. */
-  public ServerProcess session;
   /** User reference. */
   public User user;
   /** Current query file. */
@@ -58,22 +60,25 @@ public final class Context {
    * Constructor.
    */
   public Context() {
+    listener = null;
+    mprop = new MainProp();
     datas = new Datas();
     events = new Events();
     sessions = new Sessions();
     lock = new Lock(this);
     users = new Users(true);
-    user = users.get(ADMIN);
     repo = new Repo(this);
+    user = users.get(ADMIN);
   }
 
   /**
    * Constructor. {@link #user} reference must be set after calling this.
-   * @param ctx parent context
-   * @param s server process
+   * @param ctx parent database context
+   * @param cl client listener
    */
-  public Context(final Context ctx, final ServerProcess s) {
-    session = s;
+  public Context(final Context ctx, final ClientListener cl) {
+    listener = cl;
+    mprop = ctx.mprop;
     datas = ctx.datas;
     events = ctx.events;
     sessions = ctx.sessions;
@@ -91,7 +96,15 @@ public final class Context {
   }
 
   /**
-   * Returns true if the current node set contains all documents.
+   * Returns {@code true} if the current context belongs to a client user.
+   * @return result of check
+   */
+  public boolean client() {
+    return listener != null;
+  }
+
+  /**
+   * Returns {@code true} if the current node set contains all documents.
    * @return result of check
    */
   public boolean root() {
@@ -103,7 +116,7 @@ public final class Context {
    * @return result of check
    */
   public int[] doc() {
-    return current.root ? current.list : data.doc();
+    return current.root ? current.list : data.doc().toArray();
   }
 
   /**
@@ -123,7 +136,8 @@ public final class Context {
   public void openDB(final Data d, final String path) {
     data = d;
     copied = null;
-    set(new Nodes(path == null ? d.doc() : d.doc(path), d), new Nodes(d));
+    set(new Nodes((path == null ? d.doc() : d.doc(path)).toArray(), d),
+        new Nodes(d));
     current.root = path == null;
   }
 
@@ -132,8 +146,8 @@ public final class Context {
    */
   public void closeDB() {
     data = null;
-    set(null, null);
     copied = null;
+    set(null, null);
   }
 
   /**
@@ -151,7 +165,7 @@ public final class Context {
    * Updates references to the document nodes.
    */
   public void update() {
-    current = new Nodes(data.doc(), data);
+    current = new Nodes(data.doc().toArray(), data);
     current.root = true;
   }
 
@@ -210,7 +224,7 @@ public final class Context {
    * Adds the specified session.
    * @param s session to be added
    */
-  public void add(final ServerProcess s) {
+  public void add(final ClientListener s) {
     sessions.add(s);
   }
 
@@ -218,7 +232,7 @@ public final class Context {
    * Removes the specified session.
    * @param s session to be removed
    */
-  public void delete(final ServerProcess s) {
+  public void delete(final ClientListener s) {
     sessions.remove(s);
   }
 

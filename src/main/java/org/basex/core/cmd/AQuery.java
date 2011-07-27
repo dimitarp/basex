@@ -7,13 +7,13 @@ import org.basex.core.Context;
 import org.basex.core.Command;
 import org.basex.core.ProgressException;
 import org.basex.core.Prop;
-import org.basex.data.DOTSerializer;
 import org.basex.data.Result;
-import org.basex.data.XMLSerializer;
-import org.basex.io.ArrayOutput;
-import org.basex.io.IO;
-import org.basex.io.NullOutput;
-import org.basex.io.PrintOutput;
+import org.basex.io.IOFile;
+import org.basex.io.out.ArrayOutput;
+import org.basex.io.out.NullOutput;
+import org.basex.io.out.PrintOutput;
+import org.basex.io.serial.DOTSerializer;
+import org.basex.io.serial.XMLSerializer;
 import org.basex.query.QueryException;
 import org.basex.query.QueryProcessor;
 import org.basex.query.item.Item;
@@ -76,10 +76,10 @@ abstract class AQuery extends Command {
         comp += per.getTime();
         if(i == 0) plan(true);
 
-        final PrintOutput po = i == 0 && ser ? out : new NullOutput(!ser);
+        final PrintOutput po = i == 0 && ser ? out : new NullOutput();
         XMLSerializer xml;
 
-        if(context.prop.is(Prop.CACHEQUERY)) {
+        if(prop.is(Prop.CACHEQUERY)) {
           result = qp.execute();
           eval += per.getTime();
           xml = qp.getSerializer(po);
@@ -137,8 +137,8 @@ abstract class AQuery extends Command {
   }
 
   /**
-   * Checks if the query performs updates.
-   * @param ctx context reference
+   * Checks if the query might perform updates.
+   * @param ctx database context
    * @param qu query
    * @return result of check
    */
@@ -204,7 +204,7 @@ abstract class AQuery extends Command {
 
         final String dot = context.query == null ? "plan.dot" :
             context.query.name().replaceAll("\\..*?$", ".dot");
-        IO.get(dot).write(ao.toArray());
+        new IOFile(dot).write(ao.toArray());
 
         if(prop.is(Prop.DOTDISPLAY))
           new ProcessBuilder(prop.get(Prop.DOTTY), dot).start();
@@ -217,7 +217,7 @@ abstract class AQuery extends Command {
         info(ao.toString());
       }
     } catch(final Exception ex) {
-      Util.debug(ex);
+      Util.stack(ex);
     }
   }
 

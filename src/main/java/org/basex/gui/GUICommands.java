@@ -31,7 +31,7 @@ import org.basex.gui.dialog.DialogColors;
 import org.basex.gui.dialog.DialogCreate;
 import org.basex.gui.dialog.DialogEdit;
 import org.basex.gui.dialog.DialogExport;
-import org.basex.gui.dialog.DialogFontChooser;
+import org.basex.gui.dialog.DialogFonts;
 import org.basex.gui.dialog.DialogHelp;
 import org.basex.gui.dialog.DialogInfo;
 import org.basex.gui.dialog.DialogInsert;
@@ -44,12 +44,17 @@ import org.basex.gui.dialog.DialogServer;
 import org.basex.gui.dialog.DialogTreeOptions;
 import org.basex.gui.view.ViewData;
 import org.basex.io.IO;
+import org.basex.io.IOFile;
+import org.basex.query.func.Function;
 import org.basex.query.item.ANode;
+import org.basex.query.item.Itr;
 import org.basex.query.item.NodeType;
+import org.basex.query.item.Str;
 import org.basex.util.Array;
-import org.basex.util.StringList;
 import org.basex.util.Token;
 import org.basex.util.Util;
+import org.basex.util.list.IntList;
+import org.basex.util.list.StringList;
 
 /**
  * This enumeration encapsulates all commands that are triggered by
@@ -71,11 +76,8 @@ public enum GUICommands implements GUICommand {
       if(!dialog.ok()) return;
       final String in = gui.gprop.get(GUIProp.CREATEPATH);
       final String db = gui.gprop.get(GUIProp.CREATENAME);
-      if(in.isEmpty()) {
-        DialogProgress.execute(gui, PROGCREATE, new CreateDB(db));
-      } else {
-        DialogProgress.execute(gui, PROGCREATE, new CreateDB(db, in));
-      }
+      DialogProgress.execute(dialog, PROGCREATE,
+          new CreateDB(db, in.isEmpty() ? null : in));
     }
   },
 
@@ -107,7 +109,7 @@ public enum GUICommands implements GUICommand {
     @Override
     public void execute(final GUI gui) {
       final DialogAdd dialog = new DialogAdd(gui);
-      if(dialog.ok()) DialogProgress.execute(gui, "", dialog.cmd());
+      if(dialog.ok()) DialogProgress.execute(dialog, "", dialog.cmd());
     }
   },
 
@@ -116,7 +118,7 @@ public enum GUICommands implements GUICommand {
     @Override
     public void execute(final GUI gui) {
       final DialogInput d = new DialogInput("", DROPTITLE, gui, 0);
-      if(d.ok()) DialogProgress.execute(gui, "", new Delete(d.input()));
+      if(d.ok()) DialogProgress.execute(d, "", new Delete(d.input()));
     }
   },
 
@@ -127,15 +129,16 @@ public enum GUICommands implements GUICommand {
       final DialogExport dialog = new DialogExport(gui);
       if(!dialog.ok()) return;
 
-      final IO root = IO.get(dialog.path());
+      final IOFile root = new IOFile(dialog.path());
 
       // check if existing files will be overwritten
       if(root.exists()) {
         IO file = null;
         boolean overwrite = false;
         final Data d = gui.context.data;
-        for(final int pre : d.doc()) {
-          file = root.merge(Token.string(d.text(pre, true)));
+        final IntList il = d.doc();
+        for(int i = 0, is = il.size(); i < is; i++) {
+          file = root.merge(Token.string(d.text(il.get(i), true)));
           if(file.exists()) {
             if(overwrite) {
               // more than one file will be overwritten; check remaining tests
@@ -173,7 +176,7 @@ public enum GUICommands implements GUICommand {
           d.meta.textindex = ind[0];
           d.meta.attrindex = ind[1];
           d.meta.ftindex   = ind[2];
-          DialogProgress.execute(gui, INFOOPT, new Optimize());
+          DialogProgress.execute(info, INFOOPT, new Optimize());
         } else {
           Command[] cmd = {};
           if(ind[0] != d.meta.pathindex)
@@ -185,7 +188,7 @@ public enum GUICommands implements GUICommand {
           if(ind[3] != d.meta.ftindex)
             cmd = Array.add(cmd, cmd(ind[3], CmdIndex.FULLTEXT));
 
-          DialogProgress.execute(gui, PROGINDEX, cmd);
+          DialogProgress.execute(info, PROGINDEX, cmd);
         }
       }
     }
@@ -222,7 +225,7 @@ public enum GUICommands implements GUICommand {
   EDITNEW(GUIXQNEW + DOTS, "% shift N", GUIXQNEWTT, false, false) {
     @Override
     public void execute(final GUI gui) {
-      gui.query.newFile();
+      gui.editor.newFile();
     }
   },
 
@@ -230,7 +233,7 @@ public enum GUICommands implements GUICommand {
   EDITOPEN(GUIXQOPEN + DOTS, "% R", GUIXQOPENTT, false, false) {
     @Override
     public void execute(final GUI gui) {
-      gui.query.open();
+      gui.editor.open();
     }
   },
 
@@ -238,12 +241,12 @@ public enum GUICommands implements GUICommand {
   EDITSAVE(GUISAVE, "% S", GUISAVETT, false, false) {
     @Override
     public void execute(final GUI gui) {
-      gui.query.save();
+      gui.editor.save();
     }
 
     @Override
     public void refresh(final GUI gui, final AbstractButton b) {
-      b.setEnabled(gui.query != null && gui.query.saveable());
+      b.setEnabled(gui.editor != null && gui.editor.saveable());
     }
   },
 
@@ -251,7 +254,7 @@ public enum GUICommands implements GUICommand {
   EDITSAVEAS(GUISAVEAS + DOTS, "% shift S", GUISAVETT, false, false) {
     @Override
     public void execute(final GUI gui) {
-      gui.query.saveAs();
+      gui.editor.saveAs();
     }
   },
 
@@ -259,7 +262,7 @@ public enum GUICommands implements GUICommand {
   EDITCLOSE(GUIXQCLOSE, "% shift W", GUIXQCLOSETT, false, false) {
     @Override
     public void execute(final GUI gui) {
-      gui.query.close(null);
+      gui.editor.close(null);
     }
   },
 
@@ -439,14 +442,14 @@ public enum GUICommands implements GUICommand {
   SHOWXQUERY(GUISHOWXQUERY, "% E", GUISHOWXQUERYTT, false, true) {
     @Override
     public void execute(final GUI gui) {
-      gui.gprop.invert(GUIProp.SHOWXQUERY);
+      gui.gprop.invert(GUIProp.SHOWEDITOR);
       gui.layoutViews();
     }
 
     @Override
     public void refresh(final GUI gui, final AbstractButton b) {
       super.refresh(gui, b);
-      b.setSelected(gui.gprop.is(GUIProp.SHOWXQUERY));
+      b.setSelected(gui.gprop.is(GUIProp.SHOWEDITOR));
     }
   },
 
@@ -711,7 +714,7 @@ public enum GUICommands implements GUICommand {
   FONTS(GUIFONTS, null, GUIFONTSTT, false, false) {
     @Override
     public void execute(final GUI gui) {
-      new DialogFontChooser(gui);
+      new DialogFonts(gui);
     }
   },
 
@@ -840,7 +843,8 @@ public enum GUICommands implements GUICommand {
       for(final int pre : ctx.current.list) r &= ctx.data.kind(pre) == Data.DOC;
       if(r) {
         // if yes, jump to database root
-        gui.notify.context(new Nodes(ctx.data.doc(), ctx.data), false, null);
+        gui.notify.context(
+            new Nodes(ctx.data.doc().toArray(), ctx.data), false, null);
       } else {
         // otherwise, jump to parent nodes
         gui.execute(new Cs(".."));
@@ -861,7 +865,8 @@ public enum GUICommands implements GUICommand {
       final Context ctx = gui.context;
       if(ctx.root()) return;
       // if yes, jump to database root
-      gui.notify.context(new Nodes(ctx.data.doc(), ctx.data), false, null);
+      gui.notify.context(
+          new Nodes(ctx.data.doc().toArray(), ctx.data), false, null);
     }
 
     @Override
@@ -956,6 +961,8 @@ public enum GUICommands implements GUICommand {
    * @return function string
    */
   static String openPre(final Nodes n, final int i) {
-    return "db:open-pre('" + n.data.meta.name + "', " + n.list[i] + ")";
+    System.out.println("? ");
+    return Function.DBOPENPRE.get(null, Str.get(n.data.meta.name),
+        Itr.get(n.list[i])).toString();
   }
 }

@@ -1,6 +1,6 @@
 package org.basex.query.util.format;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.query.util.Err.*;
 import static org.basex.util.Token.*;
 import java.util.HashMap;
@@ -13,9 +13,9 @@ import org.basex.query.item.Item;
 import org.basex.query.item.Itr;
 import org.basex.util.Array;
 import org.basex.util.InputInfo;
-import org.basex.util.IntSet;
 import org.basex.util.TokenBuilder;
-import org.basex.util.TokenList;
+import org.basex.util.hash.IntSet;
+import org.basex.util.list.TokenList;
 
 /**
  * Formatter for decimal numbers.
@@ -27,7 +27,7 @@ public final class DecFormatter extends FormatUtil {
   /** Decimal-digit-family (mandatory-digit-sign). */
   private final String digits;
   /** Active characters. */
-  private final String active;;
+  private final String active;
 
   /** Infinity. */
   private String inf = "Infinity";

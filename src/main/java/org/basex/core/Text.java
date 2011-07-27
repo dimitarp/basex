@@ -50,7 +50,7 @@ public interface Text {
   /** Mail. */
   String MAIL = NAMELC + "-talk@mailman.uni-konstanz.de";
   /** Code version. */
-  String VERSION = "6.6.3 beta";
+  String VERSION = "6.7.1 beta";
   /** Company info. */
   String COMPANY = NAME + " Team";
   /** Title and version. */
@@ -102,7 +102,7 @@ public interface Text {
     "  -p<num>    Set server port" + NL +
     "  -P<pass>   Specify user password" + NL +
     "  -q<expr>   Execute XQuery expression" + NL +
-    "  -s<pars>  Set serialization parameter(s)" + NL +
+    "  -s<pars>   Set serialization parameter(s)" + NL +
     "  -U<name>   Specify user name" + NL +
     "  -v/V       Show (all) process info" + NL +
     "  -w         Retain whitespaces from source files" + NL +
@@ -157,7 +157,7 @@ public interface Text {
   /** Connection error. */
   String SERVERERROR = lang("srv_connect");
   /** Access denied. */
-  String SERVERLOGIN = lang("srv_login");
+  String SERVERDENIED = lang("srv_denied");
   /** User name. */
   String SERVERUSER = lang("srv_user");
   /** Password. */
@@ -328,7 +328,7 @@ public interface Text {
   /** Command help. */
   String[] HELPSHOW = {
     "[" + CmdShow.BACKUPS + "|" + CmdShow.DATABASES + "|" + CmdShow.EVENTS +
-    "|" + CmdShow.SESSIONS + "|" + CmdShow.USERS + "|" + "]",
+    "|" + CmdShow.SESSIONS + "|" + CmdShow.USERS + "]",
     lang("ch_show1"),
     lang("ch_show21") + NL +
     LI + CmdShow.DATABASES + ": " + lang("ch_show22") + NL +
@@ -474,6 +474,10 @@ public interface Text {
   String FILEWHICH = lang("pc_filenf");
   /** Path not found. */
   String PATHWHICH = lang("pc_pathnf");
+  /** Skipped corrupt files. */
+  String SKIPCORRUPT = lang("pc_skipped");
+  /** Info on skipped corrupt files. */
+  String SKIPINFO = lang("pc_skipinfo");
   /** Missing database name. */
   String DBWHICH = lang("pc_dbnf");
   /** Language not supported. */
@@ -521,8 +525,6 @@ public interface Text {
   String DBOPENED = lang("db_opened");
   /** Database exported. */
   String DBEXPORTED = lang("db_exported");
-  /** Database not exported. */
-  String DBNOTEXPORTED = lang("db_notexported");
   /** Database not deleted. */
   String DBNOTDELETED = lang("db_notdeleted");
   /** Database exists already. */
@@ -656,8 +658,8 @@ public interface Text {
   String USERALTER = lang("ad_useralter");
   /** User unknown. */
   String USERKNOWN = lang("ad_userknown");
-  /** No password specified. */
-  String PASSNO = lang("ad_passno");
+  /** Password is no valid MD5 hash. */
+  String USERMD5 = lang("ad_usermd5");
   /** Admin user. */
   String USERADMIN = lang("ad_admin");
   /** Killed sessions. */
@@ -680,12 +682,10 @@ public interface Text {
   String EVENTWAT = lang("ad_eventatt");
   /** Unwatch Event. */
   String EVENTUNWAT = lang("ad_eventdet");
-
-  // REPO COMMANDS ========================================================
   /** Package deleted. */
-  String REPODEL = lang("repo_delete");
+  String REPODEL = lang("ad_repodelete");
   /** Package installed. */
-  String REPOINST = lang("repo_install");
+  String REPOINST = lang("ad_repoinstall");
 
   // GENERAL COMMANDS =========================================================
 
@@ -735,8 +735,6 @@ public interface Text {
   /** Error info. */
   String INFOBROSERERR = lang("info_browsererror");
 
-  // The following strings are dynamically bound by the SET command
-
   /** Info on query info. */
  String INFOQUERY = lang("info_query");
   /** Info on debug mode. */
@@ -745,8 +743,6 @@ public interface Text {
   String INFOSERIALIZE = lang("info_serialize");
   /** Info on whitespace chopping. */
   String INFOCHOP = lang("info_chop");
-  /** Info on entity parsing. */
-  String INFOENTITY = lang("info_entities");
   /** Info on text indexing. */
   String INFOTEXTINDEX = lang("info_txtindex");
   /** Info on attribute indexing. */
@@ -1135,12 +1131,14 @@ public interface Text {
   String CREATEADVTITLE = lang("dc_advtitle");
   /** Whitespaces information. */
   String CREATECHOP = lang("dc_chop");
-  /** Entities information. */
-  String CREATEENTITIES = lang("dc_entities");
   /** DTD information. */
   String CREATEDTD = lang("dc_dtd");
   /** Internal parser. */
   String CREATEINTPARSE = lang("dc_intparse");
+  /** Parse archives. */
+  String CREATEARCHIVES = lang("dc_archives");
+  /** Skip corrupt files. */
+  String CREATECORRUPT = lang("dc_corrupt");
   /** SAX parsing information. */
   String CREATEFORMAT = lang("dc_createformat") + COLS;
 
@@ -1319,8 +1317,6 @@ public interface Text {
   String OVERFILE = lang("dx_overfile");
   /** Dialog title for exporting nodes. */
   String OUTINDENT = lang("dx_indent");
-  /** Dialog title for exporting nodes. */
-  String INVPATH = lang("dx_invpath");
 
   /** Dialog title for inserting new data. */
   String INSERTTITLE = lang("dn_title");
@@ -1405,10 +1401,11 @@ public interface Text {
   String DEVELOPER = lang("da_dev") + ": Christian Gr\u00FCn";
   /** Contributors info. */
   String CONTRIBUTE1 = lang("da_cont1") +
-  ": Andreas Weiler, Michael Seiferle, Lukas Kircher,";
+  ": Michael Seiferle, Alexander Holupirek,";
   /** Developer names. */
-  String CONTRIBUTE2 = "Leo W\u00F6rteler, Alexander Holupirek, " +
-    lang("da_cont2");
+  String CONTRIBUTE2 = "Leo W\u00F6rteler, Rositsa Shadura, Dimitar Popov,";
+  /** Developer names. */
+  String CONTRIBUTE3 = "Lukas Kircher, Andreas Weiler " + lang("da_cont2");
   /** Translation. */
   String TRANSLATION = lang("da_translation") + COLS;
 

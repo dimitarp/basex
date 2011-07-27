@@ -1,8 +1,8 @@
 package org.basex.core;
 
+import static org.basex.core.Text.*;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -14,10 +14,12 @@ import java.util.Iterator;
 import java.util.StringTokenizer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+
+import org.basex.io.IO;
 import org.basex.io.IOFile;
-import org.basex.util.StringList;
 import org.basex.util.Token;
 import org.basex.util.Util;
+import org.basex.util.list.StringList;
 
 /**
  * This class loads language specific texts when the {@link #lang}
@@ -46,7 +48,7 @@ public final class Lang {
   private Lang() { }
 
   /** Reads the language file. */
-  static { read(Prop.language, CHECK); }
+  static { read(Util.language, CHECK); }
 
   /**
    * Reads the specified language file.
@@ -65,14 +67,13 @@ public final class Lang {
       } else {
         final BufferedReader br = new BufferedReader(new InputStreamReader(
             is, Token.UTF8));
-        String line;
-        while((line = br.readLine()) != null) {
+        for(String line; (line = br.readLine()) != null;) {
           final int i = line.indexOf('=');
           if(i == -1 || line.startsWith("#")) continue;
           final String key = line.substring(0, i);
           String val = line.substring(i + 1);
           if(val.contains("\\n")) val = val.replaceAll("\\\\n", Prop.NL);
-          if(Prop.langkeys) val = "[" + key + ": " + val + "]";
+          if(Util.langkeys) val = "[" + key + COLS + val + "]";
           if(TETXTS.get(key) == null) {
             TETXTS.put(key, val);
           } else if(chk) {
@@ -97,7 +98,7 @@ public final class Lang {
       if(CHECK && check.size() != 0) {
         final Iterator<String> it = check.keySet().iterator();
         while(it.hasNext()) Util.errln("%." + SUFFIX + ": '%' not used",
-            Prop.language, it.next());
+            Util.language, it.next());
       }
       return null;
     }
@@ -105,7 +106,7 @@ public final class Lang {
     final String val = TETXTS.get(key);
     if(val == null) {
       if(TETXTS.size() != 0) Util.errln("%." + SUFFIX + ": '%' missing",
-          Prop.language, key);
+          Util.language, key);
       return "[" + key + "]";
     }
     if(CHECK) check.remove(key);
@@ -150,9 +151,9 @@ public final class Lang {
           creds.add(credits(cont));
         }
       } else {
-        for(final File f : new File(url.getFile()).listFiles()) {
-          langs.add(f.getName().replaceAll("." + SUFFIX, ""));
-          creds.add(credits(new IOFile(f).content()));
+        for(final IO f : new IOFile(url.getFile()).children()) {
+          langs.add(f.name().replaceAll("." + SUFFIX, ""));
+          creds.add(credits(f.content()));
         }
       }
     } catch(final IOException ex) {

@@ -4,10 +4,10 @@ import static org.basex.core.Text.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
-import org.basex.build.ParserProp;
 import org.basex.build.file.CSVParser;
 import org.basex.build.file.HTMLParser;
-import org.basex.build.xml.CatalogResolverWrapper;
+import org.basex.build.file.ParserProp;
+import org.basex.build.xml.CatalogWrapper;
 import org.basex.core.Prop;
 import org.basex.data.DataText;
 import org.basex.gui.GUIConstants;
@@ -21,7 +21,7 @@ import org.basex.gui.layout.BaseXLabel;
 import org.basex.gui.layout.BaseXTextField;
 import org.basex.gui.layout.TableLayout;
 import org.basex.io.IO;
-import org.basex.util.StringList;
+import org.basex.util.list.StringList;
 
 /**
  * Parsing options dialog.
@@ -34,8 +34,6 @@ public final class DialogParsing extends BaseXBack {
   public final BaseXCombo parser;
   /** Internal XML parsing. */
   private final BaseXCheckBox intparse;
-  /** Entities mode. */
-  private final BaseXCheckBox entities;
   /** DTD mode. */
   private final BaseXCheckBox dtd;
   /** Whitespace chopping. */
@@ -82,7 +80,7 @@ public final class DialogParsing extends BaseXBack {
    */
   public DialogParsing(final Dialog d) {
     dialog = d;
-    main = new BaseXBack(new TableLayout(3, 1)).border(4);
+    main = new BaseXBack(new TableLayout(3, 1)).border(8);
 
     final Prop prop = dialog.gui.context.prop;
     try {
@@ -101,8 +99,7 @@ public final class DialogParsing extends BaseXBack {
     parser.setSelectedItem(prop.get(Prop.PARSER));
 
     intparse = new BaseXCheckBox(CREATEINTPARSE, prop.is(Prop.INTPARSE), 0, d);
-    dtd = new BaseXCheckBox(CREATEDTD, prop.is(Prop.DTD), d);
-    entities = new BaseXCheckBox(CREATEENTITIES, prop.is(Prop.ENTITY), 12, d);
+    dtd = new BaseXCheckBox(CREATEDTD, prop.is(Prop.DTD), 12, d);
     chop = new BaseXCheckBox(CREATECHOP, prop.is(Prop.CHOP), 0, d);
     cfile = new BaseXTextField(prop.get(Prop.CATFILE), d);
     browsec = new BaseXButton(BUTTONBROWSE, d);
@@ -120,7 +117,7 @@ public final class DialogParsing extends BaseXBack {
     cencoding = DialogExport.encoding(d, props.get(ParserProp.ENCODING));
     tencoding = DialogExport.encoding(d, props.get(ParserProp.ENCODING));
 
-    xmlopts = new BaseXBack(new TableLayout(9, 1));
+    xmlopts = new BaseXBack(new TableLayout(8, 1));
     csvopts = new BaseXBack(new TableLayout(2, 1));
     textopts = new BaseXBack(new TableLayout(3, 1));
     createOptionsPanels();
@@ -137,13 +134,12 @@ public final class DialogParsing extends BaseXBack {
     xmlopts.add(intparse);
     xmlopts.add(new BaseXLabel(INTPARSEINFO, true, false));
     xmlopts.add(dtd);
-    xmlopts.add(entities);
     xmlopts.add(chop);
     xmlopts.add(new BaseXLabel(CHOPPINGINFO, false, false).border(0, 0, 8, 0));
     xmlopts.add(new BaseXLabel());
 
-    // CatalogResolving
-    final boolean rsen = CatalogResolverWrapper.available();
+    // catalog resolver
+    final boolean rsen = CatalogWrapper.available();
     final BaseXBack fl = new BaseXBack(new TableLayout(2, 2, 8, 0));
     usecat.setEnabled(rsen);
     fl.add(usecat);
@@ -236,8 +232,7 @@ public final class DialogParsing extends BaseXBack {
       final boolean ip = intparse.isSelected();
       final boolean uc = usecat.isSelected();
       intparse.setEnabled(!uc);
-      entities.setEnabled(ip);
-      usecat.setEnabled(!ip && CatalogResolverWrapper.available());
+      usecat.setEnabled(!ip && CatalogWrapper.available());
       cfile.setEnabled(uc);
       browsec.setEnabled(uc);
     }
@@ -257,7 +252,6 @@ public final class DialogParsing extends BaseXBack {
     props.set(ParserProp.LINES, lines.isSelected());
     dialog.gui.set(Prop.PARSEROPT, props.toString());
     dialog.gui.set(Prop.CHOP, chop.isSelected());
-    dialog.gui.set(Prop.ENTITY, entities.isSelected());
     dialog.gui.set(Prop.DTD, dtd.isSelected());
     dialog.gui.set(Prop.INTPARSE, intparse.isSelected());
     dialog.gui.set(Prop.PARSER, parser.getSelectedItem().toString());

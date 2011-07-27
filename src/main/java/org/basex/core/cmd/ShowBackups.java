@@ -10,7 +10,7 @@ import org.basex.core.Commands.Cmd;
 import org.basex.core.Commands.CmdShow;
 import org.basex.io.IO;
 import org.basex.util.Table;
-import org.basex.util.TokenList;
+import org.basex.util.list.TokenList;
 
 /**
  * Evaluates the 'show backups' command and shows available backups.
@@ -33,7 +33,7 @@ public final class ShowBackups extends Command {
     table.header.add(INFODBNAME);
     table.header.add(INFODBSIZE);
 
-    for(final IO f : prop.dbpath().children()) {
+    for(final IO f : mprop.dbpath().children()) {
       if(!f.name().endsWith(IO.ZIPSUFFIX)) continue;
       final TokenList tl = new TokenList();
       tl.add(f.name());

@@ -1,6 +1,6 @@
 package org.basex.query.expr;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.item.Item;
@@ -97,5 +97,11 @@ public final class Switch extends Arr {
       sb.append(" " + RETURN + " " + expr[i]);
     }
     return sb.toString();
+  }
+
+  @Override
+  Expr markTailCalls() {
+    for(int i = 2; i < expr.length; i++) expr[i] = expr[i].markTailCalls();
+    return this;
   }
 }

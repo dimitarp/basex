@@ -15,7 +15,7 @@ import org.basex.util.Token;
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
  */
-public class Itr extends Item {
+public class Itr extends Num {
   /** Constant values. */
   private static final Itr[] NUMS;
   /** Integer value. */
@@ -130,22 +130,12 @@ public class Itr extends Item {
       case USH: return (int) val;
       case LNG:
       case UIN: return val;
-      default:  return new BigInteger(Token.string(atom(null)));
+      default:  return new BigInteger(toString());
     }
   }
 
   @Override
-  public final SeqType type() {
-    return SeqType.ITR;
-  }
-
-  @Override
-  public final int hash(final InputInfo ii) {
-    return (int) val;
-  }
-
-  @Override
-  public boolean sameAs(final Expr cmp) {
+  public final boolean sameAs(final Expr cmp) {
     if(!(cmp instanceof Itr)) return false;
     final Itr i = (Itr) cmp;
     return type == i.type && val == i.val;
@@ -171,10 +161,5 @@ public class Itr extends Item {
     } catch(final NumberFormatException ex) {
       throw NUMS[0].castErr(val, ii);
     }
-  }
-
-  @Override
-  public String toString() {
-    return string(atom(null));
   }
 }

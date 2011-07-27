@@ -15,7 +15,6 @@ import org.basex.util.InputInfo;
  * @author Leo Woerteler
  */
 final class Branch extends TrieNode {
-
   /** Child array. */
   private final TrieNode[] kids;
   /** Bit array with a bit set for every used slot. */
@@ -232,5 +231,11 @@ final class Branch extends TrieNode {
 
     // everything OK
     return true;
+  }
+
+  @Override
+  StringBuilder toString(final StringBuilder sb) {
+    for(int i = 0; i < KIDS; i++) if(kids[i] != null) kids[i].toString(sb);
+    return sb;
   }
 }

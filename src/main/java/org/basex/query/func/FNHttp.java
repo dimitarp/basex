@@ -28,26 +28,25 @@ public final class FNHttp extends FuncCall {
 
   @Override
   public Iter iter(final QueryContext ctx) throws QueryException {
+    checkAdmin(ctx);
 
-    // Get request node
-     final ANode request = expr[0].item(ctx, input) == null ? null
-     : checkNode(expr[0].item(ctx, input));
+    // get request node
+    final ANode request = expr[0].item(ctx, input) == null ? null :
+      checkNode(expr[0].item(ctx, input));
 
-    // Get HTTP URI
-    final byte[] href = expr.length >= 2 ? checkEStr(expr[1].item(ctx, input))
-        : null;
+    // get HTTP URI
+    final byte[] href = expr.length >= 2 ?
+        checkEStr(expr[1].item(ctx, input)) : null;
 
-    // Get parameter $bodies
+    // get parameter $bodies
     ItemCache cache = null;
     if(expr.length == 3) {
       final Iter bodies = expr[2].iter(ctx);
       cache = new ItemCache();
-      Item i;
-      while((i = bodies.next()) != null)
-        cache.add(i);
+      for(Item i; (i = bodies.next()) != null;) cache.add(i);
     }
 
-    // Send HTTP request
+    // send HTTP request
     return HTTPClient.sendRequest(href, request,
         cache, input, ctx.context.prop);
   }

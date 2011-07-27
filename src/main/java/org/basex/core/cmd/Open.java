@@ -51,7 +51,8 @@ public final class Open extends Command {
   }
 
   @Override
-  public boolean newData() {
+  public boolean newData(final Context ctx) {
+    new Close().run(ctx);
     return true;
   }
 
@@ -68,10 +69,10 @@ public final class Open extends Command {
     Data data = ctx.pin(name);
     if(data == null) {
       // check if document exists
-      if(!ctx.prop.dbexists(name))
+      if(!ctx.mprop.dbexists(name))
         throw new IOException(Util.info(DBNOTFOUND, name));
 
-      data = new DiskData(name, ctx.prop);
+      data = new DiskData(name, ctx);
       ctx.pin(data);
     }
     // check permissions

@@ -1,22 +1,25 @@
 package org.basex.core.cmd;
 
 import static org.basex.core.Text.*;
+import static org.basex.util.Token.*;
+
 import java.io.IOException;
 import org.basex.build.Builder;
 import org.basex.build.DiskBuilder;
 import org.basex.build.MemBuilder;
 import org.basex.build.Parser;
 import org.basex.core.Command;
+import org.basex.core.Context;
 import org.basex.core.ProgressException;
 import org.basex.core.Prop;
 import org.basex.core.User;
 import org.basex.data.Data;
 import org.basex.data.MemData;
-import org.basex.index.FTBuilder;
 import org.basex.index.IndexBuilder;
 import org.basex.index.IndexToken.IndexType;
-import org.basex.index.PathBuilder;
-import org.basex.index.ValueBuilder;
+import org.basex.index.ft.FTBuilder;
+import org.basex.index.path.PathBuilder;
+import org.basex.index.value.ValueBuilder;
 import org.basex.util.Util;
 
 /**
@@ -25,11 +28,11 @@ import org.basex.util.Util;
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
  */
-abstract class ACreate extends Command {
+public abstract class ACreate extends Command {
   /** Builder instance. */
   private Builder builder;
   /** Flag for creating new data instances. */
-  private boolean newData;
+  private boolean closing;
 
   /**
    * Protected constructor, specifying command arguments.
@@ -37,7 +40,7 @@ abstract class ACreate extends Command {
    */
   protected ACreate(final String... a) {
     this(User.CREATE, a);
-    newData = true;
+    closing = true;
   }
 
   /**
@@ -50,8 +53,9 @@ abstract class ACreate extends Command {
   }
 
   @Override
-  public boolean newData() {
-    return newData;
+  public boolean newData(final Context ctx) {
+    if(closing) new Close().run(ctx);
+    return closing;
   }
 
   @Override
@@ -80,9 +84,10 @@ abstract class ACreate extends Command {
       if(context.pinned(db)) return error(DBLOCKED, db);
 
       final boolean mem = prop.is(Prop.MAINMEM);
-      builder = mem ? new MemBuilder(p, prop) : new DiskBuilder(p, prop);
+      builder = mem ? new MemBuilder(db, p, prop) :
+        new DiskBuilder(db, p, context);
 
-      Data data = progress(builder).build(db);
+      Data data = progress(builder).build();
       if(mem) {
         context.openDB(data);
         context.pin(data);
@@ -97,7 +102,7 @@ abstract class ACreate extends Command {
         if(prop.is(Prop.FTINDEX))   index(IndexType.FULLTEXT,  data);
         data.flush();
       }
-      return info(DBCREATED, db, perf);
+      return info(p.info() + DBCREATED, db, perf);
     } catch(final ProgressException ex) {
       throw ex;
     } catch(final IOException ex) {
@@ -105,13 +110,13 @@ abstract class ACreate extends Command {
       abort();
       final String msg = ex.getMessage();
       return error(msg != null && msg.length() != 0 ? msg :
-        Util.info(PARSEERR, p.file));
+        Util.info(PARSEERR, p.src));
     } catch(final Exception ex) {
-      // Known exceptions:
+      // known exceptions:
       // - IllegalArgumentException (UTF8, zip files)
       Util.debug(ex);
       abort();
-      return error(Util.info(PARSEERR, p.file));
+      return error(Util.info(PARSEERR, p.src));
     }
   }
 
@@ -134,6 +139,18 @@ abstract class ACreate extends Command {
    */
   protected final void index(final IndexType type, final Data data)
       throws IOException {
+    index(type, data, this);
+  }
+
+  /**
+   * Builds the specified index.
+   * @param type index to be built
+   * @param data data reference
+   * @param cmd calling command
+   * @throws IOException I/O exception
+   */
+  protected static void index(final IndexType type, final Data data,
+      final ACreate cmd) throws IOException {
 
     if(data instanceof MemData) return;
     IndexBuilder ib = null;
@@ -145,7 +162,7 @@ abstract class ACreate extends Command {
       default:        throw Util.notexpected();
     }
     data.closeIndex(type);
-    data.setIndex(type, progress(ib).build());
+    data.setIndex(type, (cmd == null ? ib : cmd.progress(ib)).build());
   }
 
   /**
@@ -154,7 +171,29 @@ abstract class ACreate extends Command {
    * @param path input path
    * @return normalized path
    */
-  protected static final String path(final String path) {
+  public static final String path(final String path) {
     return path.replaceAll("[\\\\/]+", "/").replaceAll("^/|/$", "");
+  }
+
+  /**
+   * Generate a new name for a document.
+   * @param d data
+   * @param pre pre value of the document
+   * @param src source path
+   * @param trg target path
+   * @return new name
+   */
+  public static byte[] newName(final Data d, final int pre, final byte[] src,
+      final byte[] trg) {
+
+    final byte[] path = d.text(pre, true);
+    byte[] target = trg;
+    byte[] name = substring(path, src.length);
+    if(name.length != 0) {
+      // change file path: replace all paths with the target path
+      if(startsWith(name, '/')) name = substring(name, 1);
+      target = trg.length != 0 ? concat(trg, SLASH, name) : name;
+    }
+    return target;
   }
 }

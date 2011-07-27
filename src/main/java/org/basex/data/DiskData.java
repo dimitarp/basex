@@ -5,21 +5,24 @@ import static org.basex.util.Token.*;
 import java.io.File;
 import java.io.IOException;
 import org.basex.build.DiskBuilder;
+import org.basex.core.Context;
 import org.basex.core.Prop;
-import org.basex.index.FTIndex;
+import org.basex.index.IdPreMap;
 import org.basex.index.Index;
 import org.basex.index.IndexToken.IndexType;
+import org.basex.index.ft.FTIndex;
+import org.basex.index.path.PathSummary;
+import org.basex.index.value.DiskValues;
 import org.basex.index.Names;
-import org.basex.index.DiskValues;
-import org.basex.io.DataAccess;
-import org.basex.io.DataInput;
-import org.basex.io.DataOutput;
 import org.basex.io.IO;
-import org.basex.io.TableDiskAccess;
+import org.basex.io.in.DataInput;
+import org.basex.io.out.DataOutput;
+import org.basex.io.random.DataAccess;
+import org.basex.io.random.TableDiskAccess;
 import org.basex.util.Compress;
-import org.basex.util.IntList;
 import org.basex.util.Token;
-import org.basex.util.TokenObjMap;
+import org.basex.util.hash.TokenObjMap;
+import org.basex.util.list.IntList;
 import org.basex.util.Util;
 
 /**
@@ -46,14 +49,14 @@ public final class DiskData extends Data {
   /**
    * Default constructor.
    * @param db name of database
-   * @param pr database properties
+   * @param ctx database context
    * @throws IOException IO Exception
    */
-  public DiskData(final String db, final Prop pr) throws IOException {
-    meta = new MetaData(db, pr);
+  public DiskData(final String db, final Context ctx) throws IOException {
+    meta = new MetaData(db, ctx);
 
-    final int cats = pr.num(Prop.CATEGORIES);
-    final DataInput in = new DataInput(meta.file(DATAINFO));
+    final int cats = ctx.prop.num(Prop.CATEGORIES);
+    final DataInput in = new DataInput(meta.dbfile(DATAINFO));
     try {
       // read meta data and indexes
       meta.read(in);
@@ -64,7 +67,7 @@ public final class DiskData extends Data {
         else if(k.equals(DBATTS)) atnindex = new Names(in, cats);
         else if(k.equals(DBPATH)) pthindex = new PathSummary(in);
         else if(k.equals(DBNS))   ns = new Namespaces(in);
-        else if(k.equals(DBDOCS)) meta.docindex = docindex.read(in);
+        else if(k.equals(DBDOCS)) docindex.read(in);
       }
       // open data and indexes
       init();
@@ -102,11 +105,11 @@ public final class DiskData extends Data {
   @Override
   public void init() throws IOException {
     table = new TableDiskAccess(meta, DATATBL);
-    texts = new DataAccess(meta.file(DATATXT));
-    values = new DataAccess(meta.file(DATAATV));
+    texts = new DataAccess(meta.dbfile(DATATXT));
+    values = new DataAccess(meta.dbfile(DATAATV));
     super.init();
     // if the ID -> PRE mapping is available restore it from disk
-    final File idpfile = meta.file(DATAIDP);
+    final File idpfile = meta.dbfile(DATAIDP);
     idmap = idpfile.exists() && idpfile.length() > 0L ?
         new IdPreMap(idpfile) :
         new IdPreMap(meta.lastid);
@@ -117,7 +120,7 @@ public final class DiskData extends Data {
    * @throws IOException I/O exception
    */
   private void write() throws IOException {
-    final DataOutput out = new DataOutput(meta.file(DATAINFO));
+    final DataOutput out = new DataOutput(meta.dbfile(DATAINFO));
     meta.write(out);
     out.writeString(DBTAGS);
     tagindex.write(out);
@@ -128,7 +131,7 @@ public final class DiskData extends Data {
     out.writeString(DBNS);
     ns.write(out);
     out.writeString(DBDOCS);
-    docindex.write(this, out);
+    docindex.write(out);
     out.write(0);
     out.close();
   }
@@ -142,7 +145,7 @@ public final class DiskData extends Data {
       values.flush();
       if(txtindex != null) ((DiskValues) txtindex).flush();
       if(atvindex != null) ((DiskValues) atvindex).flush();
-      idmap.write(meta.file(DATAIDP));
+      idmap.write(meta.dbfile(DATAIDP));
       meta.dirty = false;
     } catch(final IOException ex) {
       Util.stack(ex);
@@ -173,7 +176,7 @@ public final class DiskData extends Data {
         if(ftxindex != null) { ftxindex.close(); ftxindex = null; }
         break;
       default:
-        // path index will not be closed
+        // other indexes will not be closed
         break;
     }
   }

@@ -4,10 +4,10 @@ import static org.basex.query.util.Err.*;
 
 import java.io.IOException;
 
-import org.basex.data.Serializer;
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import org.basex.query.item.AtomType;
 import org.basex.query.item.Bln;
 import org.basex.query.item.Dbl;
@@ -23,11 +23,12 @@ import org.basex.query.item.SeqType;
 import org.basex.query.item.Str;
 import org.basex.query.item.Value;
 import org.basex.query.iter.ItemCache;
+import org.basex.query.iter.ValueIter;
 import org.basex.query.util.Err;
 import org.basex.util.InputInfo;
 import org.basex.util.Token;
-import org.basex.util.TokenBuilder;
 import org.basex.util.Util;
+import org.basex.util.hash.TokenObjMap;
 
 /**
  * The map item.
@@ -36,17 +37,15 @@ import org.basex.util.Util;
  * @author Leo Woerteler
  */
 public final class Map extends FItem {
+  /** the empty map. */
+  public static final Map EMPTY = new Map(TrieNode.EMPTY);
   /** Number of bits per level, maximum is 5 because {@code 1 << 5 == 32}. */
   static final int BITS = 5;
 
   /** Wrapped immutable map. */
   private final TrieNode root;
-  /** the empty map. */
-  public static final Map EMPTY = new Map(TrieNode.EMPTY);
-
   /** Key sequence. */
   private Value keys;
-
   /** Size. */
   private Itr size;
 
@@ -84,7 +83,10 @@ public final class Map extends FItem {
    */
   private Item key(final Item it, final InputInfo ii) throws QueryException {
     // no empty sequence allowed
-    if(it == null) XPEMPTY.thrw(ii, desc());
+    if(it == null) throw XPEMPTY.thrw(ii, desc());
+
+    // function items can't be keys
+    if(it instanceof FItem) throw FNATM.thrw(ii, it.desc());
 
     // NaN can't be stored as key, as it isn't equal to anything
     if(it == Flt.NAN || it == Dbl.NAN) return null;
@@ -158,22 +160,6 @@ public final class Map extends FItem {
   public boolean hasType(final MapType t) {
     return root.hasType(t.keyType == AtomType.AAT ? null : t.keyType,
         t.ret.eq(SeqType.ITEM_ZM) ? null : t.ret);
-  }
-
-  @Override
-  public String toString() {
-    try {
-      final TokenBuilder tb = new TokenBuilder("map { ");
-      final Value ks = keys();
-      for(long i = 0, len = ks.size(); i < len; i++) {
-        final Item k = ks.itemAt(i);
-        if(tb.size() > 6) tb.add(", ");
-        tb.add(k.toString()).add(":=").add(get(k, null).toString());
-      }
-      return tb.add(" }").toString();
-    } catch(final QueryException ex) {
-      throw Util.notexpected(ex);
-    }
   }
 
   @Override
@@ -256,6 +242,24 @@ public final class Map extends FItem {
     return root.deep(ii, o.root);
   }
 
+  /**
+   * Converts the map to a map with tokens as keys and java objects as values.
+   * @param ii input info
+   * @return token map
+   * @throws QueryException query exception
+   */
+  public TokenObjMap<Object> tokenJavaMap(final InputInfo ii)
+      throws QueryException {
+
+    final TokenObjMap<Object> tm = new TokenObjMap<Object>();
+    final ValueIter vi = keys().iter();
+    for(Item k; (k = vi.next()) != null;) {
+      if(!k.str()) FUNCMP.thrw(ii, desc(), AtomType.STR, k.type);
+      tm.add(k.atom(null), get(k, ii).toJava());
+    }
+    return tm;
+  }
+
   @Override
   public int hash(final InputInfo ii) throws QueryException {
     return root.hash(ii);
@@ -283,5 +287,13 @@ public final class Map extends FItem {
       Util.notexpected(ex);
     }
     ser.closeElement();
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = root.toString(new StringBuilder("map{ "));
+    // remove superfluous comma
+    if(root.size > 0) sb.deleteCharAt(sb.length() - 2);
+    return sb.append("}").toString();
   }
 }

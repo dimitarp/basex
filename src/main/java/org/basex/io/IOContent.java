@@ -1,11 +1,14 @@
 package org.basex.io;
 
 import java.io.ByteArrayInputStream;
+
+import org.basex.io.in.ArrayInput;
+import org.basex.io.in.BufferInput;
 import org.basex.util.Token;
 import org.xml.sax.InputSource;
 
 /**
- * Byte contents, wrapped into an IO representation.
+ * {@link IO} reference, representing a byte array.
  *
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen

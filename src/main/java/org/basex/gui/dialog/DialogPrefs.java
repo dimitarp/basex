@@ -4,8 +4,10 @@ import static org.basex.core.Text.*;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+
+import org.basex.core.MainProp;
 import org.basex.core.Lang;
-import org.basex.core.Prop;
+import org.basex.core.cmd.Close;
 import org.basex.data.Data;
 import org.basex.gui.GUI;
 import org.basex.gui.GUIProp;
@@ -17,7 +19,7 @@ import org.basex.gui.layout.BaseXFileChooser;
 import org.basex.gui.layout.BaseXLabel;
 import org.basex.gui.layout.BaseXTextField;
 import org.basex.gui.layout.TableLayout;
-import org.basex.io.IO;
+import org.basex.io.IOFile;
 
 /**
  * Dialog window for changing some project's preferences.
@@ -60,9 +62,9 @@ public final class DialogPrefs extends Dialog {
 
     BaseXBack p = new BaseXBack(new TableLayout(1, 2, 8, 0));
 
-    final Prop prop = gui.context.prop;
+    final MainProp mprop = gui.context.mprop;
     final GUIProp gprop = gui.gprop;
-    path = new BaseXTextField(prop.get(Prop.DBPATH), this);
+    path = new BaseXTextField(mprop.dbpath().path(), this);
     path.addKeyListener(keys);
 
     final BaseXButton button = new BaseXButton(BUTTONBROWSE, this);
@@ -70,7 +72,7 @@ public final class DialogPrefs extends Dialog {
     button.addActionListener(new ActionListener() {
       @Override
       public void actionPerformed(final ActionEvent e) {
-        final IO file = new BaseXFileChooser(DIALOGFC, path.getText(),
+        final IOFile file = new BaseXFileChooser(DIALOGFC, path.getText(),
             gui).select(BaseXFileChooser.Mode.DOPEN);
         if(file != null) path.setText(file.dir());
       }
@@ -105,7 +107,7 @@ public final class DialogPrefs extends Dialog {
     p = new BaseXBack(new TableLayout(1, 2, 12, 0));
 
     lang = new BaseXCombo(this, LANGS[0]);
-    lang.setSelectedItem(prop.get(Prop.LANG));
+    lang.setSelectedItem(mprop.get(MainProp.LANGUAGE));
 
     p.add(lang);
     creds = new BaseXLabel(" ");
@@ -130,10 +132,13 @@ public final class DialogPrefs extends Dialog {
 
   @Override
   public void close() {
-    final Prop prop = gui.context.prop;
-    prop.set(Prop.DBPATH, path.getText());
-    prop.set(Prop.LANG, lang.getSelectedItem().toString());
-    prop.write();
+    final MainProp mprop = gui.context.mprop;
+    mprop.set(MainProp.LANGUAGE, lang.getSelectedItem().toString());
+    // new database path: close existing database
+    final String dbpath = path.getText().trim();
+    if(!mprop.get(MainProp.DBPATH).equals(dbpath)) gui.execute(new Close());
+    mprop.set(MainProp.DBPATH, dbpath);
+    mprop.write();
     final GUIProp gprop = gui.gprop;
     gprop.set(GUIProp.MOUSEFOCUS, focus.isSelected());
     gprop.set(GUIProp.SHOWNAME, names.isSelected());

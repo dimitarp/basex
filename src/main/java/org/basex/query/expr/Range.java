@@ -1,8 +1,10 @@
 package org.basex.query.expr;
 
+import static org.basex.query.QueryText.*;
+
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
-import org.basex.query.QueryTokens;
+import org.basex.query.QueryText;
 import org.basex.query.item.Empty;
 import org.basex.query.item.Item;
 import org.basex.query.item.Itr;
@@ -42,6 +44,7 @@ public final class Range extends Arr {
       if(v != null) {
         size = v[1] - v[0] + 1;
         // use iterative evaluation at runtime instead of range sequence
+        // to avoid prevent intermediary result materialization
         e = size < 1 ? Empty.SEQ : size == 1 ? Itr.get(v[0]) : this;
       }
     }
@@ -91,6 +94,6 @@ public final class Range extends Arr {
 
   @Override
   public String toString() {
-    return toString(" " + QueryTokens.TO + " ");
+    return PAR1 + toString(" " + QueryText.TO + " ") + PAR2;
   }
 }

@@ -10,7 +10,7 @@ public abstract class IndexIterator {
   /**
    * Empty iterator.
    */
-  static final IndexIterator EMPTY = new IndexIterator() {
+  public static final IndexIterator EMPTY = new IndexIterator() {
     @Override
     public boolean more() { return false; }
     @Override
@@ -43,7 +43,7 @@ public abstract class IndexIterator {
    * after this method has been called.
    * @return result number of results
    */
-  int size() {
+  public int size() {
     int c = 0;
     while(more()) ++c;
     return c;

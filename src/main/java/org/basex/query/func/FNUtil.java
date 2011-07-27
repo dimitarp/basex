@@ -2,30 +2,32 @@ package org.basex.query.func;
 
 import static org.basex.query.util.Err.*;
 import static org.basex.util.Token.*;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.zip.CRC32;
+
 import org.basex.io.IO;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.expr.Expr;
+import org.basex.query.item.AtomType;
 import org.basex.query.item.B64;
 import org.basex.query.item.Dbl;
 import org.basex.query.item.Hex;
 import org.basex.query.item.Item;
 import org.basex.query.item.Itr;
-import org.basex.query.item.AtomType;
 import org.basex.query.item.ItrSeq;
 import org.basex.query.item.Str;
 import org.basex.query.item.Value;
 import org.basex.query.iter.Iter;
 import org.basex.util.Array;
-import org.basex.util.ByteList;
 import org.basex.util.InputInfo;
 import org.basex.util.Performance;
 import org.basex.util.Util;
+import org.basex.util.list.ByteList;
 
 /**
  * Project specific functions.
@@ -84,7 +86,7 @@ public final class FNUtil extends FuncCall {
   /**
    * Performs the eval function.
    * @param ctx query context
-   * @return iterator
+   * @return resulting value
    * @throws QueryException query exception
    */
   private Value eval(final QueryContext ctx) throws QueryException {
@@ -92,25 +94,10 @@ public final class FNUtil extends FuncCall {
   }
 
   /**
-   * Performs the query function.
-   * @param ctx query context
-   * @return iterator
-   * @throws QueryException query exception
-   */
-  private Value run(final QueryContext ctx) throws QueryException {
-    final IO io = checkIO(expr[0], ctx);
-    try {
-      return eval(ctx, io.content());
-    } catch(final IOException ex) {
-      throw NODOC.thrw(input, ex);
-    }
-  }
-
-  /**
    * Evaluates the specified string.
    * @param ctx query context
    * @param qu query string
-   * @return iterator
+   * @return resulting value
    * @throws QueryException query exception
    */
   private Value eval(final QueryContext ctx, final byte[] qu)
@@ -123,14 +110,34 @@ public final class FNUtil extends FuncCall {
   }
 
   /**
+   * Performs the run function.
+   * @param ctx query context
+   * @return resulting value
+   * @throws QueryException query exception
+   */
+  private Value run(final QueryContext ctx) throws QueryException {
+    final IO io = checkIO(expr[0], ctx);
+    try {
+      return eval(ctx, io.content());
+    } catch(final IOException ex) {
+      throw NODOC.thrw(input, ex);
+    }
+  }
+
+  /**
    * Extracts the bytes from the given xs:base64Binary data.
    * @param ctx query context
-   * @return iterator
+   * @return resulting value
    * @throws QueryException query exception
    */
   private Value bytes(final QueryContext ctx) throws QueryException {
-    return ItrSeq.get(((B64) checkType(expr[0].item(ctx, input),
-        AtomType.B64)).toJava(), AtomType.BYT);
+    final byte[] bytes = ((B64) checkType(expr[0].item(ctx, input),
+        AtomType.B64)).toJava();
+
+    final int bl = bytes.length;
+    final long[] tmp = new long[bl];
+    for(int i = 0; i < bl; i++) tmp[i] = bytes[i];
+    return ItrSeq.get(tmp, AtomType.BYT);
   }
 
   /**
@@ -175,7 +182,6 @@ public final class FNUtil extends FuncCall {
     Performance.gc(2);
     final double d = Performance.mem() - l;
 
-    // [LW][CG] (why) is that necessary?
     // loop through all results to avoid premature result disposal
     final Iter ir = val.iter();
     while(ir.next() != null);
@@ -341,7 +347,7 @@ public final class FNUtil extends FuncCall {
 
   @Override
   public boolean uses(final Use u) {
-    return u == Use.CTX && (def == Function.MB || def == Function.MS
-        || def == Function.EVAL || def == Function.RUN) || super.uses(u);
+    return u == Use.CTX && (def == Function.EVAL || def == Function.RUN ||
+      def == Function.MB || def == Function.MS) || super.uses(u);
   }
 }

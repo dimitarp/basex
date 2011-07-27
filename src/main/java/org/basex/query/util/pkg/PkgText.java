@@ -2,6 +2,9 @@ package org.basex.query.util.pkg;
 
 import static org.basex.util.Token.*;
 
+import org.basex.core.Text;
+import org.basex.io.IO;
+
 /**
  * This class assembles textual information for package handling.
  *
@@ -10,13 +13,13 @@ import static org.basex.util.Token.*;
  */
 public interface PkgText {
   /** Package descriptor. */
-  String DESCRIPTOR = "expath-pkg.xml";
+  String DESCRIPTOR = "expath-pkg" + IO.XMLSUFFIX;
+  /**Jar descriptor. */
+  String JARDESC = Text.NAMELC + IO.XMLSUFFIX;
 
   /** <package/> root element. */
   /** Element package. */
   byte[] PACKAGE = token("package");
-  /** Element module. */
-  byte[] MODULE = token("module");
 
   /** <package/> attributes. */
   /** Attribute name. */
@@ -60,8 +63,14 @@ public interface PkgText {
   /** Attribute file. */
   byte[] FILE = token("file");
 
+  /** Jar descriptor children. */
+  /** <jar/> element. */
+  byte[] JAR = token("jar");
+  /** <class/> element. */
+  byte[] CLASS = token("class");
+
   /** Not expected initialization error. */
-  String NOTEXP = "Missing package descriptor for package '%'";
+  String MISSDESC = "Missing package descriptor for package '%'";
   /** Attribute missing. */
   String MISSATTR = "'%' attribute missing in '%' element";
   /** Invalid attribute. */
@@ -69,7 +78,11 @@ public interface PkgText {
   /** Invalid element. */
   String WHICHELEM = "Invalid element %";
   /** Secondary package missing. */
-  String MISSSECOND = "Name of secondary package missing";
+  String MISSSECOND = "Dependency not completely specified.";
   /** Component missing. */
   String MISSCOMP = "Component '%' not specified";
+  /** No jars registered. */
+  String NOJARS = "No jars specified";
+  /** No public classes registered. */
+  String NOCLASS = "No public classes specified";
 }

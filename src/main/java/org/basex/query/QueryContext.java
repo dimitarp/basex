@@ -1,14 +1,13 @@
 package org.basex.query;
 
 import static org.basex.core.Text.*;
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.query.util.Err.*;
 import static org.basex.util.Token.*;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Set;
 
 import org.basex.core.Context;
 import org.basex.core.Progress;
@@ -17,10 +16,10 @@ import org.basex.data.Data;
 import org.basex.data.FTPosData;
 import org.basex.data.Nodes;
 import org.basex.data.Result;
-import org.basex.data.Serializer;
-import org.basex.data.SerializerException;
-import org.basex.data.SerializerProp;
 import org.basex.io.IO;
+import org.basex.io.serial.Serializer;
+import org.basex.io.serial.SerializerException;
+import org.basex.io.serial.SerializerProp;
 import org.basex.query.expr.Expr;
 import org.basex.query.expr.ParseExpr;
 import org.basex.query.item.DBNode;
@@ -41,14 +40,14 @@ import org.basex.query.util.Var;
 import org.basex.query.util.Variables;
 import org.basex.query.util.format.DecFormatter;
 import org.basex.util.InputInfo;
-import org.basex.util.IntList;
 import org.basex.util.Token;
 import org.basex.util.TokenBuilder;
-import org.basex.util.TokenMap;
-import org.basex.util.TokenObjMap;
 import org.basex.util.Util;
 import org.basex.util.ft.FTLexer;
 import org.basex.util.ft.FTOpt;
+import org.basex.util.hash.TokenMap;
+import org.basex.util.hash.TokenObjMap;
+import org.basex.util.list.IntList;
 
 /**
  * This abstract query expression provides the architecture for a compiled
@@ -104,7 +103,8 @@ public final class QueryContext extends Progress {
   public Tim time;
 
   /** Decimal-format declarations. */
-  public TokenObjMap<DecFormatter> decFormats = new TokenObjMap<DecFormatter>();
+  public final TokenObjMap<DecFormatter> decFormats =
+    new TokenObjMap<DecFormatter>();
   /** Default function namespace. */
   public byte[] nsFunc = FNURI;
   /** Default element namespace. */
@@ -133,10 +133,10 @@ public final class QueryContext extends Progress {
   public byte ftoknum;
 
   /** Copied nodes, resulting from transform expression. */
-  public final Set<Data> copiedNods = new HashSet<Data>();
+  public final HashSet<Data> copiedNods = new HashSet<Data>();
   /** Pending updates. */
-  public Updates updates = new Updates(false);
-  /** Indicates if this query performs updates. */
+  public final Updates updates = new Updates();
+  /** Indicates if this query might perform updates. */
   public boolean updating;
 
   /** Compilation flag: current node has leaves. */
@@ -159,6 +159,11 @@ public final class QueryContext extends Progress {
   /** Initial context value. */
   Expr initExpr;
 
+  /** Number of successive tail calls. */
+  public int tailCalls;
+  /** Maximum number of successive tail calls. */
+  public final int maxCalls;
+
   /** String container for query background information. */
   private final TokenBuilder info = new TokenBuilder();
   /** Info flag. */
@@ -170,7 +175,7 @@ public final class QueryContext extends Progress {
 
   /**
    * Constructor.
-   * @param ctx context reference
+   * @param ctx database context
    */
   public QueryContext(final Context ctx) {
     resource = new QueryResources(this);
@@ -179,6 +184,7 @@ public final class QueryContext extends Progress {
     xquery3 = ctx.prop.is(Prop.XQUERY3);
     inf = ctx.prop.is(Prop.QUERYINFO) || Util.debug;
     if(ctx.query != null) baseURI = Uri.uri(token(ctx.query.url()));
+    maxCalls = ctx.prop.num(Prop.TAILCALLS);
   }
 
   /**
@@ -307,9 +313,8 @@ public final class QueryContext extends Progress {
   public Value value() throws QueryException {
     try {
       final Value v = value(root);
-
       if(updating) {
-        updates.apply(this);
+        updates.applyUpdates(this);
         if(context.data != null) context.update();
       }
       return v;
@@ -327,12 +332,12 @@ public final class QueryContext extends Progress {
    */
   protected void plan(final Serializer ser) throws IOException {
     // only show root node if functions or variables exist
-    //final boolean r = funcs.size() != 0 || vars.global().size != 0;
-    ser.openElement(PLAN);
+    final boolean r = funcs.size() != 0 || vars.global().size != 0;
+    if(r) ser.openElement(PLAN);
     funcs.plan(ser);
     vars.plan(ser);
     root.plan(ser);
-    ser.closeElement();
+    if(r) ser.closeElement();
   }
 
   /**
@@ -377,7 +382,7 @@ public final class QueryContext extends Progress {
 
   /**
    * Copies properties of the specified context.
-   * @param ctx context
+   * @param ctx query context
    */
   public void copy(final QueryContext ctx) {
     baseURI = ctx.baseURI;

@@ -12,8 +12,8 @@ import org.basex.core.cmd.CreateDB;
 import org.basex.data.Data;
 import org.basex.data.Nodes;
 import org.basex.data.Result;
-import org.basex.data.XMLSerializer;
-import org.basex.io.ArrayOutput;
+import org.basex.io.out.ArrayOutput;
+import org.basex.io.serial.XMLSerializer;
 import org.basex.query.QueryException;
 import org.basex.query.QueryProcessor;
 import org.basex.query.item.DBNode;
@@ -103,7 +103,9 @@ final class BXPathExpression implements XPathExpression {
 
     try {
       final ArrayOutput ao = new ArrayOutput();
-      item.serialize(new XMLSerializer(ao));
+      final XMLSerializer xml = new XMLSerializer(ao);
+      item.serialize(xml);
+      xml.close();
       final String val = ao.toString();
       if(res == XPathConstants.NUMBER) return Double.valueOf(val);
       if(res == XPathConstants.STRING) return val;

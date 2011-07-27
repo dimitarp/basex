@@ -1,10 +1,12 @@
 package org.basex.query.item;
 
+import static org.basex.data.DataText.*;
+
 import org.basex.query.QueryException;
 import org.basex.query.expr.Expr;
 import org.basex.util.InputInfo;
 import org.basex.util.Token;
-import org.basex.util.Util;
+import org.basex.util.list.ByteList;
 
 /**
  * String item.
@@ -83,24 +85,29 @@ public class Str extends Item {
   }
 
   @Override
-  public SeqType type() {
-    return SeqType.STR;
-  }
-
-  @Override
-  public boolean sameAs(final Expr cmp) {
+  public final boolean sameAs(final Expr cmp) {
     if(!(cmp instanceof Str)) return false;
     final Str i = (Str) cmp;
     return type == i.type && Token.eq(val, i.val);
   }
 
   @Override
-  public final String toString() {
-    return Util.info("\"%\"", val);
+  public final String toJava() {
+    return Token.string(val);
   }
 
   @Override
-  public String toJava() {
-    return Token.string(val);
+  public final String toString() {
+    final ByteList tb = new ByteList();
+    tb.add('"');
+    for(final byte v : val) {
+      switch(v) {
+        case '&': tb.add(E_AMP); break;
+        case '>': tb.add(E_GT); break;
+        case '<': tb.add(E_LT); break;
+        default: tb.add(v);
+      }
+    }
+    return tb.add('"').toString();
   }
 }

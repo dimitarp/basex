@@ -1,10 +1,10 @@
 package org.basex.query.expr;
 
 import static org.basex.query.QueryText.*;
-import static org.basex.query.QueryTokens.*;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.func.Function;
@@ -17,6 +17,7 @@ import org.basex.query.util.ValueList;
 import org.basex.query.util.Var;
 import org.basex.util.Array;
 import org.basex.util.InputInfo;
+import org.basex.util.list.ObjList;
 
 /**
  * GFLWOR clause.
@@ -67,17 +68,17 @@ public class GFLWOR extends ParseExpr {
    * @return GFLWOR instance
    */
   public static GFLWOR get(final ForLet[] f, final Expr w, final OrderBy[] o,
-      final Var[] g, final Expr r, final InputInfo ii) {
+      final Var[][] g, final Expr r, final InputInfo ii) {
 
     if(o == null && g == null) return new FLWR(f, w, r, ii);
     final Order ord = o == null ? null : new Order(ii, o);
-    final Group grp = g == null ? null : new Group(ii, g);
+    final Group grp = g == null ? null : new Group(ii, g[0], g[1], g[2]);
     return new GFLWOR(f, w, ord, grp, r, ii);
   }
 
   @Override
   public Expr comp(final QueryContext ctx) throws QueryException {
-    compForLet(ctx);
+    compHoist(ctx);
     compWhere(ctx);
 
     final boolean grp = ctx.grouping;
@@ -121,16 +122,15 @@ public class GFLWOR extends ParseExpr {
     ctx.vars.reset(vs);
     ctx.grouping = grp;
 
-    // check if return always yields an empty sequence
-    if(ret == Empty.SEQ) {
-      ctx.compInfo(OPTFLWOR);
-      return ret;
-    }
-
     // remove FLWOR expression if WHERE clause always returns false
     if(empty) {
       ctx.compInfo(OPTREMOVE, desc(), where);
       return Empty.SEQ;
+    }
+    // check if return always yields an empty sequence
+    if(ret == Empty.SEQ) {
+      ctx.compInfo(OPTFLWOR);
+      return ret;
     }
 
     // remove declarations of statically bound or unused variables
@@ -176,28 +176,28 @@ public class GFLWOR extends ParseExpr {
     }
     type = SeqType.get(ret.type().type, size);
 
-    compForLet(ctx);
+    compHoist(ctx);
     return this;
   }
 
   /**
-   * Relocates for/let clauses. Avoids repeated calls to clauses that only
-   * return a single value. This method is called before and after the
-   * optimizations.
+   * Hoists loop-invariant code. Avoids repeated evaluation of independent
+   * variables that return a single value. This method is called twice
+   * (before and after all other optimizations).
    * @param ctx query context
    */
-  private void compForLet(final QueryContext ctx) {
+  private void compHoist(final QueryContext ctx) {
     // modification counter
     int m = 0;
     for(int i = 1; i < fl.length; i++) {
       final ForLet in = fl[i];
       // move clauses upwards that contain a single value.
       // expressions that depend on the current context (e.g. math:random())
-      // or fragment constructors creating unique nodes are left alone
+      // or fragment constructors creating unique nodes are ignored
       if(in.size() != 1 || in.uses(Use.CTX) || in.uses(Use.CNS)) continue;
 
-      // find most outer clause that has no variables which are used
-      // in the clause to be moved
+      // find most outer clause that declares no variables that are used in the
+      // inner clause
       int p = -1;
       for(int o = i; o-- != 0 && in.count(fl[o]) == 0; p = o);
       if(p == -1) continue;
@@ -210,7 +210,7 @@ public class GFLWOR extends ParseExpr {
   }
 
   /**
-   * Rewrites a where clause to predicates.
+   * Rewrites a where clause to one or more predicates.
    * @param ctx query context
    */
   private void compWhere(final QueryContext ctx) {
@@ -276,13 +276,13 @@ public class GFLWOR extends ParseExpr {
     for(int f = 0; f < fl.length; ++f) iter[f] = ctx.iter(fl[f]);
 
     // evaluate pre grouping tuples
-    ArrayList<Item[]> keys = null;
+    ObjList<Item[]> keys = null;
     ValueList vals = null;
     if(order != null) {
-      keys = new ArrayList<Item[]>();
+      keys = new ObjList<Item[]>();
       vals = new ValueList();
     }
-    if(group != null) group.init(fl, order);
+    if(group != null) group.init(order);
     iter(ctx, iter, 0, keys, vals);
     ctx.vars.reset(vs);
 
@@ -297,7 +297,7 @@ public class GFLWOR extends ParseExpr {
 
   /**
    * Performs a recursive iteration on the specified variable position.
-   * @param ctx root reference
+   * @param ctx query context
    * @param it iterator
    * @param p variable position
    * @param ks sort keys
@@ -305,7 +305,7 @@ public class GFLWOR extends ParseExpr {
    * @throws QueryException query exception
    */
   private void iter(final QueryContext ctx, final Iter[] it, final int p,
-      final ArrayList<Item[]> ks, final ValueList vs) throws QueryException {
+      final ObjList<Item[]> ks, final ValueList vs) throws QueryException {
     final boolean more = p + 1 != fl.length;
     while(it[p].next() != null) {
       if(more) {

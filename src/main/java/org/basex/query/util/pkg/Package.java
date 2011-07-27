@@ -3,10 +3,9 @@ package org.basex.query.util.pkg;
 import static org.basex.util.Token.*;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.basex.util.TokenBuilder;
+import org.basex.util.list.ObjList;
 
 /**
  * Package.
@@ -15,17 +14,14 @@ import org.basex.util.TokenBuilder;
  * @author Rositsa Shadura
  */
 public final class Package {
-  /** Separator between name and version in unique package name. */
-  private static final char NAMESEP = '-';
-
   /** List of dependencies. */
-  public final List<Dependency> dep = new ArrayList<Dependency>();
+  public final ObjList<Dependency> dep = new ObjList<Dependency>();
   /** Package components. */
-  public final List<Component> comps = new ArrayList<Component>();
-  /** Package uri. */
-  byte[] name;
+  public final ObjList<Component> comps = new ObjList<Component>();
   /** Package short name. */
   public byte[] abbrev;
+  /** Package uri. */
+  byte[] name;
   /** Package version. */
   byte[] version;
   /** Version of packaging specification the package conforms to. */
@@ -39,27 +35,27 @@ public final class Package {
    * Returns unique package name consisting of package uri and package version.
    * @return result
    */
-  byte[] getUniqueName() {
-    return new TokenBuilder(name).add(NAMESEP).add(version).finish();
+  byte[] uniqueName() {
+    return new TokenBuilder().add(name).add('-').add(version).finish();
   }
 
   /**
-   * Extracts package name from unique package name.
+   * Extracts the package name from a unique package name.
    * @param pkgName unique package name: name-version
    * @return package name
    */
-  public static byte[] getName(final byte[] pkgName) {
-    final int idx = lastIndexOf(pkgName, NAMESEP);
+  public static byte[] name(final byte[] pkgName) {
+    final int idx = lastIndexOf(pkgName, '-');
     return idx == -1 ? pkgName : subtoken(pkgName, 0, idx);
   }
 
   /**
-   * Extracts package version from unique package name.
+   * Extracts the package version from a unique package name.
    * @param pkgName unique package name: name-version
    * @return package version
    */
-  public static byte[] getVersion(final byte[] pkgName) {
-    final int idx = lastIndexOf(pkgName, NAMESEP);
+  public static byte[] version(final byte[] pkgName) {
+    final int idx = lastIndexOf(pkgName, '-');
     return subtoken(pkgName, idx + 1, pkgName.length);
   }
 
@@ -88,9 +84,8 @@ public final class Package {
      * @param version version
      * @return unique name
      */
-    public byte[] getName(final byte[] version) {
-      final TokenBuilder tb = new TokenBuilder();
-      return tb.add(pkg).add(NAMESEP).add(version).finish();
+    public byte[] name(final byte[] version) {
+      return new TokenBuilder().add(pkg).add('-').add(version).finish();
     }
   }
 
@@ -113,7 +108,7 @@ public final class Package {
      * Extracts component's file name from component's path.
      * @return component's name
      */
-    String getName() {
+    String name() {
       final String path = string(file);
       final int i = path.lastIndexOf(File.separator);
       return i == -1 ? path : path.substring(i + 1, path.length());

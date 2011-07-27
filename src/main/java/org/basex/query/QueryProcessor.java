@@ -1,7 +1,6 @@
 package org.basex.query;
 
 import static org.basex.core.Text.*;
-import static org.basex.query.QueryTokens.*;
 import static org.basex.query.util.Err.*;
 import static org.basex.util.Token.*;
 
@@ -15,9 +14,9 @@ import org.basex.core.Progress;
 import org.basex.core.Prop;
 import org.basex.data.Nodes;
 import org.basex.data.Result;
-import org.basex.data.Serializer;
-import org.basex.data.SerializerException;
-import org.basex.data.XMLSerializer;
+import org.basex.io.serial.Serializer;
+import org.basex.io.serial.SerializerException;
+import org.basex.io.serial.XMLSerializer;
 import org.basex.query.expr.Expr;
 import org.basex.query.func.JavaFunc;
 import org.basex.query.item.Atm;
@@ -276,25 +275,19 @@ public final class QueryProcessor extends Progress {
 
   /**
    * Checks if the specified query performs updates.
-   * @param ctx context reference
+   * @param ctx database context
    * @param qu query string
    * @return result of check
    */
   public static boolean updating(final Context ctx, final String qu) {
-    // quick check for update keywords
-    for(final String s : UPDATES) {
-      if(qu.indexOf(s) != -1) {
-        // keyword found; parse query to get sure
-        try {
-          final QueryProcessor qp = new QueryProcessor(qu, ctx);
-          qp.parse();
-          return qp.ctx.updating;
-        } catch(final QueryException ex) {
-          return true;
-        }
-      }
+    // keyword found; parse query to get sure
+    try {
+      final QueryProcessor qp = new QueryProcessor(qu, ctx);
+      qp.parse();
+      return qp.ctx.updating;
+    } catch(final QueryException ex) {
+      return true;
     }
-    return false;
   }
 
   /**

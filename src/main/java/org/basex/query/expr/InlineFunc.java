@@ -1,8 +1,9 @@
 package org.basex.query.expr;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.item.FuncItem;
@@ -38,7 +39,9 @@ public final class InlineFunc extends UserFunc {
   @Override
   public Expr comp(final QueryContext ctx) throws QueryException {
     super.comp(ctx);
-    return this;
+
+    // only evaluate if the closure is empty, so we don't lose variables
+    return expr.hasFreeVars(ctx) ? this : optPre(item(ctx, input), ctx);
   }
 
   @Override
@@ -56,6 +59,21 @@ public final class InlineFunc extends UserFunc {
   @Override
   public Iter iter(final QueryContext ctx) {
     return value(ctx).iter();
+  }
+
+  @Override
+  public boolean uses(final Use u) {
+    return u == Use.X30 || super.uses(u);
+  }
+
+  @Override
+  public boolean removable(final Var v) {
+    return false;
+  }
+
+  @Override
+  public Expr remove(final Var v) {
+    throw Util.notexpected(v);
   }
 
   @Override
@@ -78,20 +96,5 @@ public final class InlineFunc extends UserFunc {
     tb.append(PAR2).append(' ');
     if(ret != null) tb.append("as ").append(ret.toString()).append(' ');
     return tb.append("{ ").append(expr).append(" }").toString();
-  }
-
-  @Override
-  public boolean uses(final Use u) {
-    return u == Use.X30 || super.uses(u);
-  }
-
-  @Override
-  public boolean removable(final Var v) {
-    return false;
-  }
-
-  @Override
-  public Expr remove(final Var v) {
-    throw Util.notexpected(v);
   }
 }

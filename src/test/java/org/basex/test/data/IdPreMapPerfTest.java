@@ -2,7 +2,7 @@ package org.basex.test.data;
 
 import java.util.Random;
 
-import org.basex.data.IdPreMap;
+import org.basex.index.IdPreMap;
 import org.basex.test.data.IdPreMapBulkTestBase.DummyIdPreMap;
 import org.basex.util.Performance;
 import org.basex.util.Util;

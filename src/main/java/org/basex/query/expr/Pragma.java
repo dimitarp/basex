@@ -1,8 +1,9 @@
 package org.basex.query.expr;
 
 import java.io.IOException;
-import static org.basex.query.QueryTokens.*;
-import org.basex.data.Serializer;
+import static org.basex.query.QueryText.*;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.item.QNm;
 import org.basex.util.InputInfo;
 import org.basex.util.TokenBuilder;

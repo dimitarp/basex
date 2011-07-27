@@ -2,34 +2,37 @@ package org.basex.gui.dialog;
 
 import static org.basex.core.Text.*;
 import static org.basex.data.DataText.*;
+
 import java.awt.BorderLayout;
 import java.awt.Font;
 import java.io.IOException;
+
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.EtchedBorder;
+
+import org.basex.core.Command;
 import org.basex.core.Context;
 import org.basex.core.cmd.AlterDB;
-import org.basex.core.cmd.CreateBackup;
-import org.basex.core.cmd.Close;
 import org.basex.core.cmd.Copy;
+import org.basex.core.cmd.CreateBackup;
 import org.basex.core.cmd.DropDB;
 import org.basex.core.cmd.InfoDB;
 import org.basex.core.cmd.List;
 import org.basex.core.cmd.Restore;
 import org.basex.data.MetaData;
 import org.basex.gui.GUI;
-import org.basex.gui.GUIConstants;
 import org.basex.gui.layout.BaseXBack;
 import org.basex.gui.layout.BaseXButton;
+import org.basex.gui.layout.BaseXEditor;
 import org.basex.gui.layout.BaseXLabel;
 import org.basex.gui.layout.BaseXLayout;
-import org.basex.gui.layout.BaseXListChooser;
-import org.basex.gui.layout.BaseXEditor;
-import org.basex.io.DataInput;
-import org.basex.util.StringList;
+import org.basex.gui.layout.BaseXList;
+import org.basex.io.in.DataInput;
 import org.basex.util.Token;
 import org.basex.util.Util;
+import org.basex.util.list.ObjList;
+import org.basex.util.list.StringList;
 
 /**
  * Open database dialog.
@@ -39,7 +42,7 @@ import org.basex.util.Util;
  */
 public final class DialogOpen extends Dialog {
   /** List of currently available databases. */
-  private final BaseXListChooser choice;
+  private final BaseXList choice;
   /** Information panel. */
   private final BaseXLabel doc;
   /** Information panel. */
@@ -74,9 +77,9 @@ public final class DialogOpen extends Dialog {
     // create database chooser
     final StringList db = List.list(main.context);
 
-    choice = new BaseXListChooser(db.toArray(), this);
+    choice = new BaseXList(db.toArray(), this, !m);
     set(choice, BorderLayout.CENTER);
-    choice.setSize(130, 440);
+    choice.setSize(160, 440);
 
     final BaseXBack info = new BaseXBack(new BorderLayout());
     info.setBorder(new CompoundBorder(new EtchedBorder(),
@@ -106,7 +109,7 @@ public final class DialogOpen extends Dialog {
     open = new BaseXButton(BUTTONOPEN, this);
     drop = new BaseXButton(BUTTONDROP, this);
     buttons = manage ?
-        newButtons(this, backup, restore, copy, rename, drop, BUTTONOK) :
+        newButtons(this, drop, rename, copy, backup, restore, BUTTONOK) :
         newButtons(this, open, BUTTONCANCEL);
     p.add(buttons, BorderLayout.EAST);
     pp.add(p, BorderLayout.SOUTH);
@@ -119,11 +122,11 @@ public final class DialogOpen extends Dialog {
   }
 
   /**
-   * Returns the database name.
+   * Returns the name of the selected database.
    * @return database name
    */
   public String db() {
-    return ok ? choice.getValue() : null;
+    return choice.getValue();
   }
 
   /**
@@ -131,84 +134,76 @@ public final class DialogOpen extends Dialog {
    * @return result of check
    */
   public boolean nodb() {
-    return choice.getIndex() == -1;
+    return choice.getList().length == 0;
   }
 
   @Override
   public void action(final Object cmp) {
     final Context ctx = gui.context;
+    if(refresh) {
+      // rebuild databases and focus list chooser
+      choice.setData(List.list(ctx).toArray());
+      choice.requestFocusInWindow();
+      refresh = false;
+    }
+
+    final StringList dbs = choice.getValues();
     final String db = choice.getValue().trim();
-    final String opendb = ctx.data != null ? ctx.data.meta.name : null;
-    ok = true;
-    if(refresh) choice.setData(List.list(ctx).toArray());
-    refresh = false;
+    final ObjList<Command> cmds = new ObjList<Command>();
+    boolean o = dbs.size() > 0;
+    ok = manage || o;
+
     if(cmp == open) {
       close();
+    } else if(cmp == drop) {
+      if(!Dialog.confirm(gui, Util.info(DROPCONF, dbs.size()))) return;
+      refresh = true;
+      for(final String s : dbs) cmds.add(new DropDB(s));
     } else if(cmp == rename) {
       final DialogInput dr = new DialogInput(db, RENAMETITLE, gui, 1);
       if(!dr.ok() || dr.input().equals(db)) return;
-      final AlterDB cmd = new AlterDB(db, dr.input());
-      if(cmd.run(ctx)) {
-        gui.notify.init();
-      } else {
-        Dialog.error(gui, cmd.info());
-      }
-      choice.setData(List.list(ctx).toArray());
-      action(null);
+      refresh = true;
+      cmds.add(new AlterDB(db, dr.input()));
     } else if(cmp == copy) {
       final DialogInput dc = new DialogInput(db, COPYTITLE, gui, 2);
       if(!dc.ok() || dc.input().equals(db)) return;
-      setCursor(GUIConstants.CURSORWAIT);
-      DialogProgress.execute(this, "", new Copy(db, dc.input()));
-      setCursor(GUIConstants.CURSORARROW);
       refresh = true;
-    } else if(cmp == drop) {
-      if(db.isEmpty() || !Dialog.confirm(gui, Util.info(DROPCONF, db))) return;
-      if(db.equals(opendb)) {
-        new Close().run(ctx);
-        gui.notify.init();
-      }
-      DropDB.drop(db, ctx.prop);
-      choice.setData(List.list(ctx).toArray());
-      choice.requestFocusInWindow();
-      if(choice.getValue().isEmpty()) {
-        doc.setText("");
-        detail.setText(Token.EMPTY);
-      }
-      action(null);
+      cmds.add(new Copy(db, dc.input()));
     } else if(cmp == backup) {
-      setCursor(GUIConstants.CURSORWAIT);
-      DialogProgress.execute(this, "", new CreateBackup(db));
-      setCursor(GUIConstants.CURSORARROW);
+      for(final String s : dbs) cmds.add(new CreateBackup(s));
     } else if(cmp == restore) {
-      setCursor(GUIConstants.CURSORWAIT);
-      DialogProgress.execute(this, "", new Restore(db));
-      setCursor(GUIConstants.CURSORARROW);
-      if(db.equals(opendb)) gui.notify.init();
+      for(final String s : dbs) cmds.add(new Restore(s));
     } else {
       // update components
-      ok = ctx.prop.dbexists(db);
-      enableOK(buttons, BUTTONDROP, ok);
-      if(ok) {
-        doc.setText(db);
+      enableOK(buttons, BUTTONOPEN, o);
+      enableOK(buttons, BUTTONBACKUP, o);
+      enableOK(buttons, BUTTONDROP, o);
+      o = ctx.mprop.dbexists(db);
+      if(o) {
+        // refresh info view
         DataInput in = null;
-        final MetaData meta = new MetaData(db, ctx.prop);
+        final MetaData meta = new MetaData(db, ctx);
         try {
-          in = new DataInput(meta.file(DATAINFO));
+          in = new DataInput(meta.dbfile(DATAINFO));
           meta.read(in);
           detail.setText(InfoDB.db(meta, true, true, true));
         } catch(final IOException ex) {
           detail.setText(Token.token(ex.getMessage()));
-          ok = manage;
+          o = manage;
         } finally {
           if(in != null) try { in.close(); } catch(final IOException ex) { }
         }
       }
-      enableOK(buttons, BUTTONOPEN, ok);
-      enableOK(buttons, BUTTONRENAME, ok);
-      enableOK(buttons, BUTTONBACKUP, ok);
-      enableOK(buttons, BUTTONCOPY, ok);
-      enableOK(buttons, BUTTONRESTORE, ok && Restore.list(db, ctx).size() != 0);
+      enableOK(buttons, BUTTONRENAME, o);
+      enableOK(buttons, BUTTONCOPY, o);
+      o = true;
+      for(final String s : dbs) o &= Restore.list(s, ctx).size() != 0;
+      enableOK(buttons, BUTTONRESTORE, o);
+    }
+
+    // run all commands
+    if(cmds.size() != 0) {
+      DialogProgress.execute(this, "", cmds.toArray(new Command[cmds.size()]));
     }
   }
 

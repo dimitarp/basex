@@ -1,11 +1,13 @@
 package org.basex.data;
 
 import org.basex.core.Prop;
+import org.basex.index.IdPreMap;
 import org.basex.index.Index;
 import org.basex.index.IndexToken.IndexType;
-import org.basex.index.MemValues;
+import org.basex.index.path.PathSummary;
+import org.basex.index.value.MemValues;
 import org.basex.index.Names;
-import org.basex.io.TableMemAccess;
+import org.basex.io.random.TableMemAccess;
 import org.basex.util.Token;
 
 /**
@@ -28,9 +30,9 @@ public final class MemData extends Data {
   public MemData(final Names tag, final Names att, final Namespaces n,
       final PathSummary s, final Prop pr) {
 
-    meta = new MetaData("", pr);
+    meta = new MetaData(pr);
     idmap = new IdPreMap(meta.lastid);
-    table = new TableMemAccess(meta, null, 16);
+    table = new TableMemAccess(meta);
     txtindex = new MemValues(idmap);
     atvindex = new MemValues(idmap);
     tagindex = tag;

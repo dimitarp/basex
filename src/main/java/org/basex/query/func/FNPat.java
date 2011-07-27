@@ -1,7 +1,7 @@
 package org.basex.query.func;
 
 import static org.basex.query.util.Err.*;
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.util.Token.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,9 +20,9 @@ import org.basex.query.iter.Iter;
 import org.basex.query.iter.NodeCache;
 import org.basex.query.iter.ItemCache;
 import org.basex.util.Atts;
-import org.basex.util.ByteList;
 import org.basex.util.InputInfo;
 import org.basex.util.TokenBuilder;
+import org.basex.util.list.ByteList;
 
 /**
  * String pattern functions.

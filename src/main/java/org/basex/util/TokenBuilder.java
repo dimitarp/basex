@@ -3,6 +3,9 @@ package org.basex.util;
 import static org.basex.util.Token.*;
 import java.util.Arrays;
 
+import org.basex.util.list.ByteList;
+import org.basex.util.list.ElementList;
+
 /**
  * This class serves as an efficient constructor for byte arrays.
  * It bears some resemblance to Java's {@link java.lang.StringBuilder}.
@@ -325,15 +328,6 @@ public final class TokenBuilder {
     if(s != 0 && s != size) Array.move(chars, s, -s, size - s);
     size -= s;
     return this;
-  }
-
-  /**
-   * Returns true if the token only contains whitespaces.
-   * @return result of check
-   */
-  public boolean wsp() {
-    for(int i = 0; i < size; ++i) if(!ws(chars[i])) return false;
-    return true;
   }
 
   /**

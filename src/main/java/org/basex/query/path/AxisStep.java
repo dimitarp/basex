@@ -1,31 +1,33 @@
 package org.basex.query.path;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.query.util.Err.*;
+
 import java.io.IOException;
-import java.util.ArrayList;
+
 import org.basex.data.Data;
-import org.basex.data.Serializer;
-import org.basex.data.PathNode;
+import org.basex.index.path.PathNode;
+import org.basex.io.serial.Serializer;
 import org.basex.data.StatsKey;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.expr.Expr;
 import org.basex.query.expr.Preds;
+import org.basex.query.item.ANode;
 import org.basex.query.item.Empty;
 import org.basex.query.item.Item;
-import org.basex.query.item.ANode;
 import org.basex.query.item.NodeType;
 import org.basex.query.item.SeqType;
 import org.basex.query.item.Type;
 import org.basex.query.item.Value;
-import org.basex.query.iter.NodeCache;
 import org.basex.query.iter.AxisIter;
+import org.basex.query.iter.NodeCache;
 import org.basex.query.iter.NodeIter;
 import org.basex.query.path.Test.Name;
 import org.basex.util.Array;
 import org.basex.util.InputInfo;
 import org.basex.util.Token;
+import org.basex.util.list.ObjList;
 
 /**
  * Location Step expression.
@@ -80,7 +82,7 @@ public class AxisStep extends Preds {
   }
 
   @Override
-  public Expr comp(final QueryContext ctx) throws QueryException {
+  public final Expr comp(final QueryContext ctx) throws QueryException {
     if(!test.comp(ctx)) return Empty.SEQ;
 
     // leaf flag indicates that a context node can be replaced by a text() step
@@ -161,7 +163,7 @@ public class AxisStep extends Preds {
    * @param data data reference
    * @return path nodes, or {@code null} if size cannot be evaluated
    */
-  final ArrayList<PathNode> size(final ArrayList<PathNode> nodes,
+  final ObjList<PathNode> size(final ObjList<PathNode> nodes,
       final Data data) {
 
     // skip steps with predicates or different namespaces
@@ -187,7 +189,7 @@ public class AxisStep extends Preds {
     final boolean desc = axis == Axis.DESC;
     if(!desc && axis != Axis.CHILD) return null;
 
-    final ArrayList<PathNode> out = new ArrayList<PathNode>();
+    final ObjList<PathNode> out = new ObjList<PathNode>();
     for(final PathNode pn : nodes) {
       data.pthindex.desc(pn, out, name, kind, desc);
     }

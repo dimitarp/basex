@@ -20,9 +20,10 @@ import org.basex.query.item.Uri;
 import org.basex.query.item.Value;
 import org.basex.util.Array;
 import org.basex.util.InputInfo;
+import org.basex.util.list.IntList;
 
 /**
- * This class provides access to resources.
+ * This class provides access to resources used by an XQuery expression.
  *
  * @author BaseX Team 2005-11, BSD License
  */
@@ -60,8 +61,9 @@ public final class QueryResources {
     if(!ctx.context.perm(User.READ, d.meta)) PERMNO.thrw(null, CmdPerm.READ);
 
     // assign initial context value
+    // (if database only contains an empty root node, assign empty sequence)
     ctx.value = d.empty() ? Empty.SEQ :
-      DBNodeSeq.get(nodes.list, d, nodes.root, nodes.root);
+      DBNodeSeq.get(new IntList(nodes.list), d, nodes.root, nodes.root);
 
     // create default collection: use initial node set if it contains all
     // documents of the database. otherwise, create new node set
@@ -99,10 +101,8 @@ public final class QueryResources {
     }
 
     try {
-      // open database
-      final Data d = Open.open(in, ctx.context);
-      addData(d);
-      return d;
+      // open and add new data reference
+      return addData(Open.open(in, ctx.context));
     } catch(final IOException ex) {
       throw NODB.thrw(ii, in);
     }
@@ -129,14 +129,13 @@ public final class QueryResources {
     // check if a database with the same file path has already been opened
     final IO io = IO.get(in);
     for(int d = 0; d < datas; ++d) {
-      if(IO.get(data[d].meta.path).eq(io)) return data[d];
+      if(IO.get(data[d].meta.original).eq(io)) return data[d];
     }
 
     // retrieve and add new data reference
     Data d = doc(in, ctx.baseURI == Uri.EMPTY, col, ii);
     if(d == null) d = doc(ctx.base().merge(in).path(), true, col, ii);
-    addData(d);
-    return d;
+    return addData(d);
   }
 
   /**
@@ -227,14 +226,16 @@ public final class QueryResources {
   /**
    * Adds a data reference to the global list.
    * @param d data reference to be added
+   * @return data reference
    */
-  private void addData(final Data d) {
+  private Data addData(final Data d) {
     if(datas == data.length) {
       final Data[] tmp = new Data[Array.newSize(datas)];
       System.arraycopy(data, 0, tmp, 0, datas);
       data = tmp;
     }
     data[datas++] = d;
+    return d;
   }
 
   /**

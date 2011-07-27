@@ -1,16 +1,17 @@
 package org.basex.query.item;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 
 import java.io.IOException;
 import org.basex.data.Data;
-import org.basex.data.Serializer;
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.expr.Expr;
 import org.basex.query.iter.ValueIter;
 import org.basex.util.InputInfo;
 import org.basex.util.Token;
 import org.basex.util.Util;
+import org.basex.util.list.IntList;
 
 /**
  * Sequence, containing at least two ordered database nodes.
@@ -49,11 +50,12 @@ public final class DBNodeSeq extends Seq {
    * @param c indicates if values include all document nodes
    * @return resulting item or sequence
    */
-  public static Value get(final int[] v, final Data d, final boolean docs,
+  public static Value get(final IntList v, final Data d, final boolean docs,
       final boolean c) {
-    final int s = v.length;
-    return s == 0 ? Empty.SEQ : s == 1 ? new DBNode(d, v[0]) :
-      new DBNodeSeq(v, d, docs ? NodeType.DOC : NodeType.NOD, c);
+
+    final int s = v.size();
+    return s == 0 ? Empty.SEQ : s == 1 ? new DBNode(d, v.get(0)) :
+      new DBNodeSeq(v.toArray(), d, docs ? NodeType.DOC : NodeType.NOD, c);
   }
 
   @Override
@@ -61,19 +63,10 @@ public final class DBNodeSeq extends Seq {
     return data;
   }
 
-  /***
-   * Creates a new database node.
-   * @param i index
-   * @return node
-   */
-  DBNode node(final int i) {
-    return new DBNode(data, pres[i]);
-  }
-
   @Override
   public Object toJava() {
     final Object[] obj = new Object[(int) size];
-    for(int s = 0; s != size; ++s) obj[s] = node(s).toJava();
+    for(int s = 0; s != size; ++s) obj[s] = itemAt(s).toJava();
     return obj;
   }
 
@@ -82,9 +75,9 @@ public final class DBNodeSeq extends Seq {
     return new ValueIter() {
       int c = -1;
       @Override
-      public Item next() { return ++c < size ? node(c) : null; }
+      public Item next() { return ++c < size ? itemAt(c) : null; }
       @Override
-      public Item get(final long i) { return node((int) i); }
+      public Item get(final long i) { return itemAt((int) i); }
       @Override
       public long size() { return size; }
       @Override
@@ -96,7 +89,7 @@ public final class DBNodeSeq extends Seq {
 
   @Override
   public Item ebv(final QueryContext ctx, final InputInfo ii) {
-    return node(0);
+    return itemAt(0);
   }
 
   @Override
@@ -117,39 +110,25 @@ public final class DBNodeSeq extends Seq {
   }
 
   @Override
-  public void plan(final Serializer ser) throws IOException {
-    ser.openElement(Token.token(Util.name(this)), SIZE, Token.token(size));
-    for(int v = 0; v != Math.min(size, 5); ++v) node(v).plan(ser);
-    ser.closeElement();
-  }
-
-  @Override
-  public String toString() {
-    final StringBuilder sb = new StringBuilder(PAR1);
-    for(int v = 0; v != size; ++v) {
-      if(v != 0) sb.append(SEP);
-      sb.append(node(v));
-      if(sb.length() > 32 && v + 1 != size) {
-        sb.append(SEP).append(DOTS);
-        break;
-      }
-    }
-    return sb.append(PAR2).toString();
-  }
-
-  @Override
   public int writeTo(final Item[] arr, final int start) {
     for(int i = 0; i < pres.length; i++) arr[i + start] = itemAt(i);
     return pres.length;
   }
 
   @Override
-  public Item itemAt(final long pos) {
+  public DBNode itemAt(final long pos) {
     return new DBNode(data, pres[(int) pos]);
   }
 
   @Override
   public boolean homogenous() {
     return false;
+  }
+
+  @Override
+  public void plan(final Serializer ser) throws IOException {
+    ser.openElement(Token.token(Util.name(this)), SIZE, Token.token(size));
+    for(int v = 0; v != Math.min(size, 5); ++v) itemAt(v).plan(ser);
+    ser.closeElement();
   }
 }

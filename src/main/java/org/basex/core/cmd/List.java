@@ -7,11 +7,11 @@ import org.basex.core.Context;
 import org.basex.core.Command;
 import org.basex.core.User;
 import org.basex.data.MetaData;
-import org.basex.io.DataInput;
-import org.basex.io.IO;
-import org.basex.util.StringList;
+import org.basex.io.IOFile;
+import org.basex.io.in.DataInput;
 import org.basex.util.Table;
-import org.basex.util.TokenList;
+import org.basex.util.list.StringList;
+import org.basex.util.list.TokenList;
 
 /**
  * Evaluates the 'list' command and shows all available databases.
@@ -43,13 +43,13 @@ public final class List extends Command {
       String file = null;
       long size = 0;
       int ndocs = 0;
-      final MetaData meta = new MetaData(name, prop);
+      final MetaData meta = new MetaData(name, context);
       try {
-        in = new DataInput(meta.file(DATAINFO));
+        in = new DataInput(meta.dbfile(DATAINFO));
         meta.read(in);
         size = meta.dbsize();
         ndocs = meta.ndocs;
-        if(context.perm(User.READ, meta)) file = meta.path.toString();
+        if(context.perm(User.READ, meta)) file = meta.original.toString();
       } catch(final IOException ex) {
         file = INFODBERR;
       } finally {
@@ -71,12 +71,12 @@ public final class List extends Command {
 
   /**
    * Returns a list of all databases.
-   * @param ctx context reference
+   * @param ctx database context
    * @return available databases
    */
   public static StringList list(final Context ctx) {
     final StringList db = new StringList();
-    for(final IO f : ctx.prop.dbpath().children()) {
+    for(final IOFile f : ctx.mprop.dbpath().children()) {
       if(f.name().startsWith(".")) continue;
       if(f.isDir()) db.add(f.name());
     }

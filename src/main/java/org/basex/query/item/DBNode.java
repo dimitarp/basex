@@ -1,6 +1,6 @@
 package org.basex.query.item;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import static org.basex.util.Token.*;
 import java.io.IOException;
 
@@ -8,8 +8,8 @@ import org.basex.build.MemBuilder;
 import org.basex.build.Parser;
 import org.basex.core.Prop;
 import org.basex.data.Data;
-import org.basex.data.Serializer;
 import org.basex.io.IO;
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryException;
 import org.basex.query.expr.Expr;
 import org.basex.query.iter.AxisIter;
@@ -88,7 +88,7 @@ public class DBNode extends ANode {
    * @throws IOException I/O exception
    */
   public DBNode(final Parser parser, final Prop prop) throws IOException {
-    this(MemBuilder.build(parser, prop, ""), 0);
+    this(MemBuilder.build("", parser, prop), 0);
   }
 
   /**
@@ -105,7 +105,7 @@ public class DBNode extends ANode {
   }
 
   @Override
-  public Data data() {
+  public final Data data() {
     return data;
   }
 
@@ -116,7 +116,7 @@ public class DBNode extends ANode {
   }
 
   @Override
-  public long itr(final InputInfo ii) throws QueryException {
+  public final long itr(final InputInfo ii) throws QueryException {
     final boolean txt = type == NodeType.TXT || type == NodeType.COM;
     if(txt || type == NodeType.ATT) {
       final long l = data.textItr(pre, txt);
@@ -126,7 +126,7 @@ public class DBNode extends ANode {
   }
 
   @Override
-  public double dbl(final InputInfo ii) throws QueryException {
+  public final double dbl(final InputInfo ii) throws QueryException {
     final boolean txt = type == NodeType.TXT || type == NodeType.COM;
     if(txt || type == NodeType.ATT) {
       final double d = data.textDbl(pre, txt);
@@ -181,7 +181,7 @@ public class DBNode extends ANode {
   @Override
   public final byte[] base() {
     if(type != NodeType.DOC) return EMPTY;
-    final String dir = data.meta.path;
+    final String dir = data.meta.original;
     final String name = string(data.text(pre, true));
     return token(dir.isEmpty() ? name : IO.get(dir).merge(name).url());
   }
@@ -352,7 +352,7 @@ public class DBNode extends ANode {
   }
 
   @Override
-  public AxisIter foll() {
+  public final AxisIter foll() {
     return new AxisIter() {
       private final DBNode node = copy();
       final int s = data.meta.size;
@@ -371,13 +371,13 @@ public class DBNode extends ANode {
   }
 
   @Override
-  public AxisIter follSibl() {
+  public final AxisIter follSibl() {
     return new AxisIter() {
       private final DBNode node = copy();
       int k = data.kind(pre);
       private final int pp = data.parent(pre, k);
-      final int s = pp + data.size(pp, data.kind(pp));
-      int p = pre + data.size(pre, k);
+      final int s = pp == -1 ? 0 : pp + data.size(pp, data.kind(pp));
+      int p = pp == -1 ? 0 : pre + data.size(pre, k);
 
       @Override
       public ANode next() {

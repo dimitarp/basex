@@ -1,8 +1,9 @@
 package org.basex.query.expr;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.item.QNm;
@@ -19,7 +20,6 @@ import org.basex.util.Token;
  * @author Leo Woerteler
  */
 public final class PartFunApp extends UserFunc {
-
   /**
    * Function constructor for static calls.
    * @param ii input info
@@ -57,8 +57,7 @@ public final class PartFunApp extends UserFunc {
   public Expr comp(final QueryContext ctx) throws QueryException {
     super.comp(ctx);
     // defer creation of function item because of closure
-    // [LW] can we skip this if closure is empty?
-    return new InlineFunc(input, ret, args, expr);
+    return new InlineFunc(input, ret, args, expr).comp(ctx);
   }
 
   @Override

@@ -3,15 +3,15 @@ package org.basex.query;
 import static org.basex.core.Text.*;
 
 import org.basex.core.BaseXException;
-import org.basex.data.SerializerException;
 import org.basex.io.IO;
+import org.basex.io.serial.SerializerException;
 import org.basex.query.item.Empty;
 import org.basex.query.item.Value;
 import org.basex.query.util.Err;
 import org.basex.util.InputInfo;
 import org.basex.util.InputParser;
-import org.basex.util.StringList;
 import org.basex.util.TokenBuilder;
+import org.basex.util.list.StringList;
 
 /**
  * This class indicates exceptions during query parsing or evaluation.
@@ -101,6 +101,14 @@ public final class QueryException extends Exception {
   }
 
   /**
+   * Returns the file.
+   * @return error line
+   */
+  public IO file() {
+    return file;
+  }
+
+  /**
    * Returns suggestions for code completions.
    * @return suggestions
    */
@@ -165,7 +173,7 @@ public final class QueryException extends Exception {
     final TokenBuilder tb = new TokenBuilder();
     if(lineCol != null) {
       tb.add(STOPPED).add(' ').addExt(LINEINFO, lineCol[0]);
-      if(lineCol[1] != 0) tb.add(QueryTokens.SEP).addExt(COLINFO, lineCol[1]);
+      if(lineCol[1] != 0) tb.add(QueryText.SEP).addExt(COLINFO, lineCol[1]);
       if(file != null) tb.add(' ').addExt(FILEINFO, file);
       tb.add(COL).add(NL);
     }

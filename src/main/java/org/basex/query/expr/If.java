@@ -1,9 +1,9 @@
 package org.basex.query.expr;
 
 import static org.basex.query.QueryText.*;
-import static org.basex.query.QueryTokens.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.func.FuncCall;
@@ -48,19 +48,6 @@ public final class If extends Arr {
     // if A then B else B -> B (errors in A will be ignored)
     if(expr[1].sameAs(expr[2])) return optPre(expr[1], ctx);
 
-    // if A then true() else false() -> boolean(A)
-    if(expr[1] == Bln.TRUE && expr[2] == Bln.FALSE) {
-      ctx.compInfo(OPTWRITE, this);
-      return compBln(expr[0]);
-    }
-
-    // if A then false() else true() -> not(A)
-    if(expr[1].type().eq(SeqType.BLN) && expr[2] == Bln.TRUE) {
-      ctx.compInfo(OPTWRITE, this);
-      final Expr e = Function.NOT.get(input, expr[0]);
-      return expr[1] == Bln.FALSE ? e : new Or(input, e, expr[1]);
-    }
-
     // if not(A) then B else C -> if A then C else B
     if(expr[0].isFun(Function.NOT)) {
       ctx.compInfo(OPTWRITE, this);
@@ -68,6 +55,20 @@ public final class If extends Arr {
       final Expr tmp = expr[1];
       expr[1] = expr[2];
       expr[2] = tmp;
+    }
+
+    // if A then true() else false() -> boolean(A)
+    if(expr[1] == Bln.TRUE && expr[2] == Bln.FALSE) {
+      ctx.compInfo(OPTWRITE, this);
+      return compBln(expr[0]);
+    }
+
+    // if A then false() else true() -> not(A)
+    // if A then B else true() -> not(A) or B
+    if(expr[1].type().eq(SeqType.BLN) && expr[2] == Bln.TRUE) {
+      ctx.compInfo(OPTWRITE, this);
+      final Expr e = Function.NOT.get(input, expr[0]);
+      return expr[1] == Bln.FALSE ? e : new Or(input, e, expr[1]);
     }
 
     type = expr[1].type().intersect(expr[2].type());
@@ -122,5 +123,12 @@ public final class If extends Arr {
   public String toString() {
     return IF + '(' + expr[0] + ") " + THEN + ' ' + expr[1] + ' ' +
       ELSE + ' ' + expr[2];
+  }
+
+  @Override
+  Expr markTailCalls() {
+    expr[1] = expr[1].markTailCalls();
+    expr[2] = expr[2].markTailCalls();
+    return this;
   }
 }

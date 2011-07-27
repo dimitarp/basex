@@ -1,7 +1,8 @@
 package org.basex.query.expr;
 
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.item.FItem;
@@ -42,6 +43,7 @@ public final class DynFuncCall extends Arr {
       if(ft.ret != null) type = ft.ret;
     }
 
+    // maps can only contain fully evaluated Values, so this is safe
     if(values() && expr[expr.length - 1] instanceof Map)
       return optPre(value(ctx), ctx);
 
@@ -78,7 +80,7 @@ public final class DynFuncCall extends Arr {
 
   /**
    * Evaluates and checks the function item.
-   * @param ctx context
+   * @param ctx query context
    * @return function item
    * @throws QueryException query exception
    */

@@ -1,8 +1,9 @@
 package org.basex.query.expr;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
 import org.basex.query.item.Bln;
@@ -69,7 +70,7 @@ public final class Quantifier extends ParseExpr {
 
   /**
    * Performs a recursive iteration on the specified variable position.
-   * @param ctx root reference
+   * @param ctx query context
    * @param it iterator
    * @param p variable position
    * @return satisfied flag

@@ -18,6 +18,8 @@ import javax.swing.WindowConstants;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.EtchedBorder;
+
+import org.basex.core.AProp;
 import org.basex.core.BaseXException;
 import org.basex.core.CommandParser;
 import org.basex.core.Context;
@@ -49,7 +51,7 @@ import org.basex.gui.view.plot.PlotView;
 import org.basex.gui.view.table.TableView;
 import org.basex.gui.view.text.TextView;
 import org.basex.gui.view.tree.TreeView;
-import org.basex.io.ArrayOutput;
+import org.basex.io.out.ArrayOutput;
 import org.basex.query.QueryException;
 import org.basex.util.Performance;
 import org.basex.util.Token;
@@ -73,7 +75,7 @@ public final class GUI extends AGUI {
   /** Filter button. */
   public final BaseXButton filter;
   /** Search view. */
-  public final EditorView query;
+  public final EditorView editor;
   /** Info view. */
   public final InfoView info;
 
@@ -123,7 +125,7 @@ public final class GUI extends AGUI {
 
   /**
    * Default constructor.
-   * @param ctx context reference
+   * @param ctx database context
    * @param gprops gui properties
    */
   public GUI(final Context ctx, final GUIProp gprops) {
@@ -238,11 +240,11 @@ public final class GUI extends AGUI {
     // create views
     notify = new ViewNotifier(this);
     text = new TextView(notify);
-    query = new EditorView(notify);
+    editor = new EditorView(notify);
     info = new InfoView(notify);
 
     // create panels for closed and opened database mode
-    views = new ViewContainer(this, text, query, info,
+    views = new ViewContainer(this, text, editor, info,
         new FolderView(notify), new PlotView(notify), new TableView(notify),
         new MapView(notify), new TreeView(notify), new ExploreView(notify)
     );
@@ -275,7 +277,7 @@ public final class GUI extends AGUI {
   @Override
   public void dispose() {
     // close opened queries
-    if(!query.confirm()) return;
+    if(!editor.confirm()) return;
 
     final boolean max = getExtendedState() == MAXIMIZED_BOTH;
     gprop.set(GUIProp.MAXSTATE, max);
@@ -298,10 +300,10 @@ public final class GUI extends AGUI {
       // run as command: command mode or exclamation mark as first character
       final int i = cmd ? 0 : 1;
       if(i == in.length()) return;
+
       try {
         // parse and run all commands
-        for(final Command c : new CommandParser(in.substring(i),
-            context).parse()) if(!exec(c, true)) break;
+        execute(true, new CommandParser(in.substring(i), context).parse());
       } catch(final QueryException ex) {
         if(!info.visible()) GUICommands.SHOWINFO.execute(this);
         info.setInfo(ex.getMessage(), null, null, false);
@@ -311,7 +313,7 @@ public final class GUI extends AGUI {
       xquery(in, true);
     } else {
       final String qu = Find.find(in, context, gprop.is(GUIProp.FILTERRT));
-      execute(new XQuery(qu), true);
+      execute(true, new XQuery(qu));
     }
   }
 
@@ -328,7 +330,7 @@ public final class GUI extends AGUI {
     final int u = ns.uri(Token.EMPTY, 0);
     if(u != 0) in = Util.info("declare default element namespace \"%\"; %",
         ns.uri(u), in);
-    execute(new XQuery(in), main);
+    execute(main, new XQuery(in));
   }
 
   /**
@@ -337,20 +339,24 @@ public final class GUI extends AGUI {
    * @param cmd command to be launched
    */
   public void execute(final Command cmd) {
-    execute(cmd, true);
+    execute(true, cmd);
   }
 
   /**
-   * Launches the specified command in a separate thread.
+   * Launches the specified commands in a separate thread.
    * The command is ignored if an update operation takes place.
-   * @param cmd command to be launched
    * @param main call from main window
+   * @param cmd command to be launched
    */
-  public void execute(final Command cmd, final boolean main) {
+  public void execute(final boolean main, final Command... cmd) {
+    // ignore command if updates take place
     if(updating) return;
+
     new Thread() {
       @Override
-      public void run() { exec(cmd, main); }
+      public void run() {
+        for(final Command c : cmd) if(!exec(c, main)) break;
+      }
     }.start();
   }
 
@@ -377,14 +383,14 @@ public final class GUI extends AGUI {
       final Performance perf = new Performance();
 
       // reset current context if realtime filter is activated
+      final Data data = context.data;
       if(gprop.is(GUIProp.FILTERRT) && context.current != null &&
           !context.root()) {
-          context.current = new Nodes(context.data.doc(), context.data);
+          context.current = new Nodes(data.doc().toArray(), data);
       }
 
       // cache some variables before executing the command
       final Nodes current = context.current;
-      final Data data = context.data;
       command = c;
 
       // execute command and cache result
@@ -393,8 +399,12 @@ public final class GUI extends AGUI {
       updating = up;
 
       // resets the query editor
-      if(main && query.visible()) query.reset();
+      if(editor.visible()) {
+        if(main) editor.reset();
+        else if(c instanceof XQuery) editor.start();
+      }
 
+      // evaluate command
       String inf = null;
       try {
         c.execute(context, ao);
@@ -413,8 +423,8 @@ public final class GUI extends AGUI {
 
       // show feedback in query editor
       boolean feedback = main;
-      if(!main && query.visible() && c instanceof XQuery) {
-        query.info(inf.startsWith(PROGERR) ? PROGERR : inf, ok);
+      if(!main && editor.visible() && c instanceof XQuery) {
+        editor.info(inf.startsWith(PROGERR) ? PROGERR : inf, ok);
         feedback = true;
       }
 
@@ -501,7 +511,26 @@ public final class GUI extends AGUI {
   * @param val value
   */
  public void set(final Object[] pr, final Object val) {
-   if(!context.prop.sameAs(pr, val)) {
+   set(context.prop, pr, val);
+ }
+
+ /**
+  * Sets an admin property and displays the command in the info view.
+  * @param pr property to be set
+  * @param val value
+  */
+ public void setAdmin(final Object[] pr, final Object val) {
+   set(context.prop, pr, val);
+ }
+
+ /**
+  * Sets a property and displays the command in the info view.
+  * @param prop property instance
+  * @param pr property to be set
+  * @param val value
+  */
+ private void set(final AProp prop, final Object[] pr, final Object val) {
+   if(!prop.sameAs(pr, val)) {
      final Set cmd = new Set(pr, val);
      cmd.run(context);
      info.setInfo(cmd.info(), cmd, null, true);

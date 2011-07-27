@@ -1,10 +1,12 @@
 package org.basex.query.expr;
 
-import static org.basex.query.QueryTokens.*;
+import static org.basex.query.QueryText.*;
 import java.io.IOException;
-import org.basex.data.Serializer;
+
+import org.basex.io.serial.Serializer;
 import org.basex.query.QueryContext;
 import org.basex.query.QueryException;
+import org.basex.query.item.SeqType;
 import org.basex.query.iter.Iter;
 import org.basex.query.util.Var;
 import org.basex.util.InputInfo;
@@ -20,6 +22,8 @@ import org.basex.util.Util;
 public final class Group extends ParseExpr {
   /** Group by specification. */
   private final Var[] groupby;
+  /** Non-grouping variables. */
+  private final Var[][] nongroup;
   /** Grouping partition. **/
   GroupPartition gp;
 
@@ -27,27 +31,32 @@ public final class Group extends ParseExpr {
    * Constructor.
    * @param ii input info
    * @param gb group by expression
+   * @param ng non-grouping variables
+   * @param ngc copies of non-grouping variables
    */
-  public Group(final InputInfo ii, final Var[] gb) {
+  public Group(final InputInfo ii, final Var[] gb, final Var[] ng,
+      final Var[] ngc) {
     super(ii);
     groupby = gb;
+    nongroup = new Var[][]{ ng, ngc };
   }
 
   /**
    * Initializes the grouping partition.
-   * @param fl for/let clauses
    * @param ob order by specifier
-   * @throws QueryException exception
    */
-  void init(final ForLet[] fl, final Order ob) throws QueryException {
-    final Var[] fs = new Var[fl.length];
-    for(int i = 0; i < fl.length; ++i) fs[i] = fl[i].var;
-    gp = new GroupPartition(groupby, fs, ob, input);
+  void init(final Order ob) {
+    gp = new GroupPartition(groupby, nongroup, ob, input);
   }
 
   @Override
   public Expr comp(final QueryContext ctx) throws QueryException {
-    for(final Var g : groupby) g.comp(ctx);
+    for(final Var g : groupby) {
+      g.comp(ctx);
+      if(g.ret != null) g.ret = SeqType.get(g.ret.type, 1);
+    }
+
+    for(final Var v : nongroup[1]) ctx.vars.add(v);
     return this;
   }
 
@@ -66,6 +75,7 @@ public final class Group extends ParseExpr {
   public int count(final Var v) {
     int c = 0;
     for(final Var g : groupby) c += g.count(v);
+    for(final Var g : nongroup[0]) c += g.count(v);
     return c;
   }
 
@@ -73,6 +83,7 @@ public final class Group extends ParseExpr {
   public boolean removable(final Var v) {
     // don't allow removal if variable is used
     for(final Var g : groupby) if(g.count(v) != 0) return false;
+    for(final Var g : nongroup[0]) if(g.count(v) != 0) return false;
     return true;
   }
 

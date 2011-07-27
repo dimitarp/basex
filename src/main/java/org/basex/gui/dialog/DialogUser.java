@@ -22,11 +22,11 @@ import org.basex.gui.layout.BaseXTable;
 import org.basex.gui.layout.BaseXTextField;
 import org.basex.gui.layout.TableLayout;
 import org.basex.server.Session;
-import org.basex.util.StringList;
 import org.basex.util.Table;
 import org.basex.util.Token;
-import org.basex.util.TokenList;
 import org.basex.util.Util;
+import org.basex.util.list.StringList;
+import org.basex.util.list.TokenList;
 
 /**
  * Panel for displaying information about global/local users.
@@ -182,7 +182,7 @@ final class DialogUser extends BaseXBack {
         setData();
       } else if(cmp == create || cmp == user || cmp == pass) {
         final String u = user.getText();
-        final String p = new String(pass.getPassword());
+        final String p = Token.md5(new String(pass.getPassword()));
         sess.execute(new CreateUser(u, p));
         msg = sess.info();
         setData();
@@ -206,7 +206,7 @@ final class DialogUser extends BaseXBack {
         final DialogPass dp = new DialogPass(dia.gui);
         if(dp.ok()) {
           sess.execute(new AlterUser(table.getValueAt(
-              table.getSelectedRow(), 0).toString(), dp.pass()));
+              table.getSelectedRow(), 0).toString(), Token.md5(dp.pass())));
           msg = sess.info();
         }
       } else if(cmp == add) {
