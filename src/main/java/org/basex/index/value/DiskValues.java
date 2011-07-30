@@ -248,6 +248,7 @@ public final class DiskValues implements Index {
    * @throws IOException I/O exception
    */
   public void flush() throws IOException {
+    idxl.writeInt(0, size);
     idxl.flush();
     idxr.flush();
   }

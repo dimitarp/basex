@@ -510,7 +510,7 @@ public abstract class Data {
     update();
 
     if(kind == PI) {
-      text(pre, trim(concat(name, SPACE, atom(pre))), true);
+      updateText(pre, trim(concat(name, SPACE, atom(pre))), kind);
     } else {
       // update/set namespace reference
       final int ou = ns.uri(name, pre);
@@ -540,8 +540,8 @@ public abstract class Data {
     update();
     if(kind == DOC) docindex.update();
 
-    text(pre, kind == PI ? trim(concat(name(pre, kind), SPACE, value)) : value,
-        kind != ATTR);
+    updateText(pre, kind == PI ? trim(concat(name(pre, kind), SPACE, value)) :
+      value, kind);
   }
 
   /**
@@ -685,6 +685,7 @@ public abstract class Data {
     if(empty) {
       doc(1, EMPTY);
       table.set(0, buffer());
+      idmap.insert(0, id(0), 1);
     }
   }
 
@@ -910,10 +911,10 @@ public abstract class Data {
    * Updates the specified text or attribute value.
    * @param pre pre value
    * @param value content
-   * @param txt text (text, comment or pi) or attribute flag
+   * @param kind node kind
    */
-  protected abstract void text(final int pre, final byte[] value,
-      final boolean txt);
+  protected abstract void updateText(final int pre, final byte[] value,
+      final int kind);
 
   /**
    * Sets the distance.
@@ -968,7 +969,7 @@ public abstract class Data {
    */
   public final void doc(final int size, final byte[] value) {
     final int i = newID();
-    final long v = index(value, i, true);
+    final long v = index(value, i, DOC);
     s(DOC); s(0); s(0); s(v >> 32);
     s(v >> 24); s(v >> 16); s(v >> 8); s(v);
     s(size >> 24); s(size >> 16); s(size >> 8); s(size);
@@ -1007,7 +1008,7 @@ public abstract class Data {
 
     // build and insert new entry
     final int i = newID();
-    final long v = index(value, i, true);
+    final long v = index(value, i, kind);
     s(kind); s(0); s(0); s(v >> 32);
     s(v >> 24); s(v >> 16); s(v >> 8); s(v);
     s(dist >> 24); s(dist >> 16); s(dist >> 8); s(dist);
@@ -1027,7 +1028,7 @@ public abstract class Data {
 
     // add attribute to text storage
     final int i = newID();
-    final long v = index(value, i, false);
+    final long v = index(value, i, ATTR);
     final int n = ne ? 1 << 7 : 0;
     s(Math.min(IO.MAXATTS, dist) << 3 | ATTR);
     s(n | (byte) (name >> 8)); s(name); s(v >> 32);
@@ -1074,11 +1075,11 @@ public abstract class Data {
    * Indexes a text and returns the reference.
    * @param value text to be indexed
    * @param id id value
-   * @param text text/attribute flag
+   * @param kind node kind
    * @return reference
    */
   protected abstract long index(final byte[] value, final int id,
-      final boolean text);
+      final int kind);
 
   /** Notify the index structures that an update operation is started. */
   protected void indexBegin() { }

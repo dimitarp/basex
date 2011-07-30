@@ -297,6 +297,7 @@ public final class MetaData {
     dirty = true;
     // reset of flags might be skipped if id/pre mapping is supported
     ftindex = false;
+    pathindex = false;
   }
 
   /** Invalidate indexes. */

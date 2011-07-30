@@ -93,15 +93,16 @@ public final class MemData extends Data {
   // UPDATE OPERATIONS ========================================================
 
   @Override
-  public void text(final int pre, final byte[] val, final boolean txt) {
+  public void updateText(final int pre, final byte[] val, final int kind) {
+    final boolean txt = kind != ATTR;
     final int id = id(pre);
     ((MemValues) (txt ? txtindex : atvindex)).delete(text(pre, txt), id);
-    textOff(pre, index(val, id, txt));
+    textOff(pre, index(val, id, kind));
   }
 
   @Override
-  protected long index(final byte[] txt, final int id, final boolean text) {
-    return ((MemValues) (text ? txtindex : atvindex)).index(txt, id);
+  protected long index(final byte[] txt, final int id, final int kind) {
+    return ((MemValues) (kind == ATTR ? atvindex : txtindex)).index(txt, id);
   }
 
   @Override

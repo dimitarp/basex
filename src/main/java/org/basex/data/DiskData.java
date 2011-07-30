@@ -252,12 +252,14 @@ public final class DiskData extends Data {
 
   // UPDATE OPERATIONS ========================================================
   @Override
-  protected void text(final int pre, final byte[] val, final boolean txt) {
+  protected void updateText(final int pre, final byte[] val, final int kind) {
+    final boolean txt = kind != ATTR;
     // update indexes
     final int id = id(pre);
     final byte[] oldval = text(pre, txt);
     final DiskValues index = (DiskValues) (txt ? txtindex : atvindex);
-    if(index != null) index.replace(oldval, val, id);
+    // don't index document names
+    if(index != null && kind != DOC) index.replace(oldval, val, id);
 
     final long v = Token.toSimpleInt(val);
     if(v != Integer.MIN_VALUE) {
@@ -315,16 +317,17 @@ public final class DiskData extends Data {
   }
 
   @Override
-  protected long index(final byte[] txt, final int id, final boolean text) {
+  protected long index(final byte[] txt, final int id, final int kind) {
     final DataAccess da;
     final TokenObjMap<IntList> m;
 
-    if(text) {
-      da = texts;
-      m = meta.textindex ? txts : null;
-    } else {
+    if(kind == ATTR) {
       da = values;
       m = meta.attrindex ? atvs : null;
+    } else {
+      da = texts;
+      // don't index document names
+      m = meta.textindex && kind != DOC ? txts : null;
     }
 
     // add text to map to index later
