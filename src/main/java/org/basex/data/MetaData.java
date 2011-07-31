@@ -294,15 +294,14 @@ public final class MetaData {
   void update() {
     // update database timestamp
     time = System.currentTimeMillis();
+    uptodate = false;
     dirty = true;
     // reset of flags might be skipped if id/pre mapping is supported
     ftindex = false;
-    pathindex = false;
   }
 
   /** Invalidate indexes. */
   void invalidateIndexes() {
-    uptodate = false;
     textindex = false;
     attrindex = false;
   }
