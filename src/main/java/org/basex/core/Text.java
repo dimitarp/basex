@@ -49,12 +49,14 @@ public interface Text {
   String UPDATE_URL = URL + "/products/download/all-downloads/";
   /** Mail. */
   String MAIL = NAMELC + "-talk@mailman.uni-konstanz.de";
-  /** Code version. */
-  String VERSION = "6.7.1 beta";
+  /** Code version (must contain major, minor and optional patch number). */
+  String VERSION = "6.7.2 beta";
   /** Company info. */
   String COMPANY = NAME + " Team";
   /** Title and version. */
   String TITLE = NAME + ' ' + VERSION;
+  /** Default language. */
+  String LANGUAGE = "English";
 
   // CONSOLE INFO =============================================================
 
