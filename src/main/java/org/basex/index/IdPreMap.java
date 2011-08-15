@@ -107,9 +107,9 @@ public class IdPreMap {
    * @return PRE or -1 if the ID is already deleted
    */
   public int pre(final int id) {
-    // no updates or id is not affected by updates:
+    // no updates or id is not affected by updates
     if(rows == 0 || id < pres[0]) return id;
-    // id was inserted by update:
+    // id was inserted by update
     if(id > baseid) {
       // int i = sortedIndexOf(idix, 0, id);
       // if(i < 0) {
@@ -124,7 +124,7 @@ public class IdPreMap {
         if(fids[i] < id && id <= nids[i]) return pres[i] + id - fids[i];
       }
     }
-    // id is affected by updates:
+    // id is affected by updates
     final int i = sortedLastIndexOf(oids, id);
     return id + incs[i < 0 ? -i - 2 : i];
   }
@@ -159,53 +159,58 @@ public class IdPreMap {
    */
   public void insert(final int pre, final int id, final int c) {
     if(rows == 0 && pre == id && id == baseid + 1) {
+      // no mapping and we append at the end => nothing to do
       baseid += c;
       return;
     }
 
-    int i = 0;
+    int pos = 0;
     int inc = c;
     int oid = pre;
 
     if(rows > 0) {
-      i = sortedIndexOf(pres, pre);
-      if(i < 0) {
-        i = -i - 1;
-        if(i != 0) {
-          // check if inserting into an existing id interval:
-          final int prevcnt = nids[i - 1] - fids[i - 1] + 1;
-          final int prevpre = pres[i - 1];
+      pos = Arrays.binarySearch(pres, 0, rows, pre);
+      if(pos < 0) {
+        pos = -pos - 1;
+        if(pos != 0) {
+          // check if inserting into an existing id interval
+          final int prev = pos - 1;
+          final int prevcnt = nids[prev] - fids[prev] + 1;
+          final int prevpre = pres[prev];
+
           if(pre < prevpre + prevcnt) {
-            // split the id interval:
-            final int s = pre - prevpre;
-            final int fid = fids[i - 1] + s;
-            add(i, pre, fid, nids[i - 1], incs[i - 1], oids[i - 1]);
-            // addid(i, fid, false);
-            // decrement the number of ids:
-            nids[i - 1] = fids[i - 1] + s - 1;
-            // decrement the correcting value:
-            incs[i - 1] += s - prevcnt;
-            oid = oids[i - 1];
-            inc += incs[i - 1];
+            // split the id interval
+            final int split = pre - prevpre;
+            final int fid = fids[prev] + split;
+
+            // add a new next interval
+            add(pos, pre, fid, nids[prev], incs[prev], oids[prev]);
+
+            // shrink the previous interval
+            nids[prev] = fid - 1;
+            incs[prev] -= prevcnt - split;
+
+            oid = oids[prev];
+            inc += incs[prev];
           } else {
-            oid = pre - incs[i - 1];
-            inc += incs[i - 1];
+            oid = pre - incs[prev];
+            inc += incs[prev];
           }
         }
-      } else if(i > 0) {
-        oid = oids[i];
-        inc += incs[i - 1];
+      } else if(pos > 0) {
+        oid = oids[pos];
+        inc += incs[pos - 1];
       }
-      add(i, pre, id, id + c - 1, inc, oid);
-      // addid(i, id, true);
-      for(int k = i + 1; k < rows; ++k) {
+
+      // apply correction to all subsequent intervals
+      for(int k = pos; k < rows; ++k) {
         pres[k] += c;
         incs[k] += c;
       }
-    } else {
-      add(i, pre, id, id + c - 1, inc, oid);
-      // addid(i, id, true);
     }
+
+    // add the new interval
+    add(pos, pre, id, id + c - 1, inc, oid);
   }
 
   /**
@@ -224,9 +229,8 @@ public class IdPreMap {
    * @param c number of deleted records
    */
   public void delete(final int pre, final int id, final int c) {
-    int oid = id;
-    // if nothing has been modified and we delete from the end, nothing to do:
-    if(rows == 0 && pre == oid && oid == baseid) {
+    if(rows == 0 && pre == id && id - c == baseid + 1) {
+      // no mapping and we delete at the end => nothing to do
       baseid += c;
       return;
     }
@@ -234,6 +238,7 @@ public class IdPreMap {
     // [DP] Refactor!
     int i = 0;
     int inc = c;
+    int oid = id;
 
     if(rows > 0) {
       final int pre1 = pre;
@@ -249,6 +254,7 @@ public class IdPreMap {
       if(!found2) i2 = -i2 - 1;
 
       if(i1 >= rows) {
+        // no other intervals are affected => append the new one
         add(i1, pre, -1, -1, incs[i1 - 1] + inc, oid);
         return;
       }
@@ -265,7 +271,7 @@ public class IdPreMap {
         max2 = pres[i2] + nids[i2] - fids[i2];
       }
 
-      // 1. apply the correction to all subsequent records:
+      // apply correction to all subsequent intervals
       for(int k = found2 ? i2 + 1 : i2; k < rows; ++k) {
         pres[k] += c;
         incs[k] += c;
@@ -274,58 +280,46 @@ public class IdPreMap {
       if(i1 == i2) {
         // pre1 <= pre2 <= max2
         if(pre1 <= min1) {
-          if(max2 < pre2) {
-            // TODO
-            throw new RuntimeException("i1==i2 && pre1<=min1 && max2<pre2");
-          } else if(pre2 == max2) {
+          if(pre2 == max2) {
             if(i2 + 1 < rows && pres[i2 + 1] == pre) {
-              remove(i2, i2);
+              // remove the interval if the next one (already changed) is the same
+              remove(i1, i2);
             } else {
-              pres[i2] = pre;
               incs[i2] += c;
+              pres[i2] = pre;
               fids[i2] = -1;
               nids[i2] = -1;
+              //remove(i1, i2 - 1);
             }
           } else if(min2 <= pre2 && pre2 < max2) {
-            final int s2 = pre2 - min2 + 1;
-            fids[i2] += s2;
             incs[i2] += c;
-            pres[i1] = pre;
+            pres[i2] = pre;
+            fids[i2] += pre2 - min2 + 1;
+            //remove(i1, i2 - 1);
           } else if(pre2 < min2 - 1) {
-            // add a new entry at i1
+            // the interval is not adjacent to next one => should be added
             add(i1, pre, -1, -1, i1 > 0 ? incs[i1 - 1] + c : c, oid);
           }
-        } else if(min1 < pre1 && pre1 <= max1) {
-          if(max2 < pre2) {
-            // TODO
-            throw new RuntimeException(
-                "i1==i2 && min1<pre1 && pre1<=max1 && max2<pre2");
-          } else if(pre2 == max2) {
+        } else if(min1 < pre1) {
+          if(pre2 == max2) {
             final int s1 = max1 - pre1 + 1;
             nids[i1] -= s1;
             incs[i1] -= s1;
           } else if(min2 < pre2 && pre2 < max2) {
-            // split the interval
-            final int s2 = pre2 - min2 + 1;
-            final int fid = fids[i2] + s2;
+            final int fid = fids[i2] + pre2 - min2 + 1;
             add(i2 + 1, pre2 + c + 1, fid, nids[i2], incs[i1] + c, oids[i2]);
-            // addid(i2 + 1, fid, false);
-
             final int s1 = max1 - pre1 + 1;
             nids[i1] -= s1;
             incs[i1] -= s1;
           }
-        } else if(max1 < pre1) {
-          // TODO
-          throw new RuntimeException("i1 == i2 && max1 < pre1");
         }
       } else if(i1 < i2) {
         // pre1 <= max1 < pre2 <= max2
         // min1 <= max1 < min2 <= max2
         if(pre1 <= min1) {
           if(pre2 == max2) {
-            // remove i2
             if(i2 + 1 < rows && pres[i2 + 1] == pre) {
+              // remove the interval if the next one (already changed) is the same
               remove(i1, i2);
             } else {
               incs[i2] += c;
@@ -335,19 +329,16 @@ public class IdPreMap {
               remove(i1, i2 - 1);
             }
           } else if(min2 <= pre2 && pre2 < max2) {
-            // update the entry correspondingly
-            final int s2 = pre2 - min2 + 1;
-            fids[i2] += s2;
             incs[i2] += c;
             pres[i2] = pre;
-
+            fids[i2] += pre2 - min2 + 1;
             remove(i1, i2 - 1);
           } else if(pre2 < min2) {
-            --i2;
-            if(i2 + 1 < rows && pres[i2 + 1] == pre) {
-              remove(i1, i2);
+            if(i2 < rows && pres[i2] == pre) {
+              // remove the interval if the next one (already changed) is the same
+              remove(i1, --i2);
             } else {
-              incs[i2] += c;
+              incs[--i2] += c;
               pres[i2] = pre;
               fids[i2] = -1;
               nids[i2] = -1;
@@ -358,29 +349,21 @@ public class IdPreMap {
           if(pre2 == max2) {
             inc += incs[i2];
             oid = oids[i2];
-
             remove(i1 + 1, i2);
-
-            final int s1 = max1 - pre1 + 1;
-            nids[i1] -= s1;
+            nids[i1] -= max1 - pre1 + 1;
             incs[i1] = inc;
             oids[i1] = oid;
           } else if(min2 <= pre2 && pre2 < max2) {
-            // update the entry correspondingly
-            final int s2 = pre2 - min2 + 1;
-            fids[i2] += s2;
+            fids[i2] += pre2 - min2 + 1;
             incs[i2] += c;
             pres[i2] = pre;
-
             remove(i1 + 1, i2 - 1);
-
             final int s1 = max1 - pre1 + 1;
             nids[i1] -= s1;
             incs[i1] -= s1;
           } else if(pre2 < min2) {
             incs[i1] = incs[i2 - 1] + c;
             remove(i1 + 1, i2 - 1);
-
             final int s1 = max1 - pre1 + 1;
             nids[i1] -= s1;
           }
@@ -414,17 +397,6 @@ public class IdPreMap {
    */
   public int size() {
     return rows;
-  }
-
-  /**
-   * Searches the specified element via binary search. Note that all elements
-   * must be sorted.
-   * @param a array to search into
-   * @param e element to be found
-   * @return index of the search key, or the negative insertion point - 1
-   */
-  private int sortedIndexOf(final int[] a, final int e) {
-    return Arrays.binarySearch(a, 0, rows, e);
   }
 
   /**

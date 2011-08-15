@@ -79,6 +79,8 @@ public final class IdPreMapBulkFixedTest extends IdPreMapBulkTestBase {
   public void testDelete20() { delete(1, -2); delete(2, -1); check(); }
   /** Delete test. */ @Test
   public void testDelete21() { delete(2, -2); delete(2, -1); check(); }
+  /** Delete test. */ @Test
+  public void testDelete22() { delete(0, -2); delete(0, -2); check(); }
 
   /** Insert some records. */
   private void insertRecords() {
