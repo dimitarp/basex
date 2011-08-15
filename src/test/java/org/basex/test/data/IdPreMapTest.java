@@ -95,12 +95,12 @@ public final class IdPreMapTest {
    * @param q query
    */
   private static void checkMapping(final int i, final String q) {
-    for(int pre = 0; pre < context.data.meta.size; ++pre) {
-      final int id = context.data.id(pre);
+    for(int pre = 0; pre < context.data().meta.size; ++pre) {
+      final int id = context.data().id(pre);
       assertEquals("Wrong PRE value for ID " + id + ":", pre,
-          context.data.preold(id));
+          context.data().preold(id));
       assertEquals("Wrong PRE value for ID " + id + " in map ([" + i + "] " + q
-          + "):", pre, context.data.pre(id));
+          + "):", pre, context.data().pre(id));
     }
   }
 }

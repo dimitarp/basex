@@ -129,7 +129,7 @@ public abstract class Data {
   public abstract void close() throws IOException;
 
   /**
-   * Flushes the table data.
+   * Flushes the database.
    */
   public abstract void flush();
 
@@ -169,7 +169,7 @@ public abstract class Data {
    * @param token index token reference
    * @return pre array
    */
-  public final synchronized IndexIterator iter(final IndexToken token) {
+  public final IndexIterator iter(final IndexToken token) {
     switch(token.type()) {
       case TEXT:      return txtindex.iter(token);
       case ATTRIBUTE: return atvindex.iter(token);
@@ -183,7 +183,7 @@ public abstract class Data {
    * @param token text to be found
    * @return number of hits
    */
-  public final synchronized int count(final IndexToken token) {
+  public final int count(final IndexToken token) {
     switch(token.type()) {
       case TEXT:      return txtindex.count(token);
       case ATTRIBUTE: return atvindex.count(token);
@@ -215,7 +215,7 @@ public abstract class Data {
    * @param type index type
    * @return info
    */
-  public final synchronized byte[] info(final IndexType type) {
+  public final byte[] info(final IndexType type) {
     switch(type) {
       case TAG:       return tagindex.info();
       case ATTNAME:   return atnindex.info();
@@ -636,15 +636,19 @@ public abstract class Data {
     // size of the subtree to delete
     int k = kind(pre);
     int s = size(pre, k);
+    // indicates if database is empty
     final boolean empty = pre == 0 && s == meta.size;
     // update document index: delete specified entry
     if(!empty) docindex.delete(pre, s);
 
+    // delete child records from indexes
+    indexDelete(pre, s);
+
+    /// explicitly delete text or attribute value
+    if(k != DOC && k != ELEM) delete(pre, k != ATTR);
+
     // update namespaces
     ns.delete(pre, s);
-
-    // delete child records from indexes:
-    indexDelete(pre, s);
 
     // reduce size of ancestors
     int par = pre;
@@ -937,6 +941,22 @@ public abstract class Data {
     if(kind == ELEM) table.write1(pre, 0, value << 3 | ELEM);
   }
 
+  /**
+   * Inserts the internal buffer to the storage
+   * without updating the table structure.
+   * @param pre insert position
+   */
+  public final void insert(final int pre) {
+    table.insert(pre, buffer());
+  }
+
+  /**
+   * Deletes the specified text entry.
+   * @param pre pre value
+   * @param text text (text, comment or pi) or attribute flag
+   */
+  protected abstract void delete(final int pre, final boolean text);
+
   // INSERTS WITHOUT TABLE UPDATES ============================================
 
   /** Buffer for caching new table entries. */
@@ -951,15 +971,6 @@ public abstract class Data {
   public final void buffer(final int size) {
     final int bs = size << IO.NODEPOWER;
     if(b.length != bs) b = new byte[bs];
-  }
-
-  /**
-   * Inserts the internal buffer to the storage
-   * without updating the table structure.
-   * @param pre insert position
-   */
-  public final void insert(final int pre) {
-    table.insert(pre, buffer());
   }
 
   /**

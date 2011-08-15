@@ -93,6 +93,10 @@ public final class MemData extends Data {
   // UPDATE OPERATIONS ========================================================
 
   @Override
+  protected void delete(final int pre, final boolean text) {
+  }
+
+  @Override
   public void updateText(final int pre, final byte[] val, final int kind) {
     final boolean txt = kind != ATTR;
     final int id = id(pre);

@@ -96,7 +96,7 @@ public final class DiskValues implements Index {
     final int ix = get(tok.get());
     if(ix < 0) return IndexIterator.EMPTY;
     final long pos = idxr.read5(ix * 5L);
-    return iter(idxl.readNum(pos), idxl.pos());
+    return iter(idxl.readNum(pos), idxl.cursor());
   }
 
   @Override
@@ -122,7 +122,7 @@ public final class DiskValues implements Index {
    * @return compressed values
    */
   byte[] nextValues() {
-    return idxr.pos() >= idxr.length() ? EMPTY :
+    return idxr.cursor() >= idxr.length() ? EMPTY :
       idxl.readBytes(idxr.read5(), idxl.read4());
   }
 
@@ -137,7 +137,7 @@ public final class DiskValues implements Index {
     long p = ps;
     for(int l = 0, v = 0; l < s; ++l) {
       v += idxl.readNum(p);
-      p = idxl.pos();
+      p = idxl.cursor();
       pres.add(data.pre(v));
     }
     return iter(pres.sort());
@@ -248,7 +248,7 @@ public final class DiskValues implements Index {
    * @throws IOException I/O exception
    */
   public void flush() throws IOException {
-    idxl.writeInt(0, size);
+    idxl.write4(0, size);
     idxl.flush();
     idxr.flush();
   }
