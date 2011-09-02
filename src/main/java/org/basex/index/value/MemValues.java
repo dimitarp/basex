@@ -95,7 +95,8 @@ public final class MemValues extends TokenSet implements Index {
 
   @Override
   public int count(final IndexToken it) {
-    return iter(it).size();
+    final int i = id(it.get());
+    return i == 0 ? 0 : len[i];
   }
 
   @Override

@@ -6,11 +6,13 @@ import java.io.IOException;
 
 import org.basex.core.Prop;
 import org.basex.data.Data;
+import org.basex.io.IOFile;
 import org.basex.io.in.DataInput;
 import org.basex.io.out.DataOutput;
 import org.basex.util.Array;
 import org.basex.util.Util;
 import org.basex.util.list.IntList;
+import org.basex.util.list.StringList;
 
 /**
  * This index contains references to all document nodes in a database.
@@ -54,7 +56,7 @@ public final class DocIndex implements Index {
    * @throws IOException I/O exception
    */
   public void write(final DataOutput out) throws IOException {
-    out.writeDiffs(doc());
+    out.writeDiffs(docs());
   }
 
   /**
@@ -62,7 +64,7 @@ public final class DocIndex implements Index {
    * A single dummy node is returned if the database is empty.
    * @return document nodes
    */
-  public synchronized IntList doc() {
+  public synchronized IntList docs() {
     if(docs == null) {
       update();
       docs = new IntList();
@@ -71,24 +73,6 @@ public final class DocIndex implements Index {
       data.meta.dirty = true;
     }
     return docs;
-  }
-
-  @Override
-  public IndexIterator iter(final IndexToken token) {
-    throw Util.notexpected();
-  }
-
-  @Override
-  public int count(final IndexToken token) {
-    throw Util.notexpected();
-  }
-
-  @Override
-  public void close() { }
-
-  @Override
-  public byte[] info() {
-    return EMPTY;
   }
 
   /**
@@ -106,11 +90,11 @@ public final class DocIndex implements Index {
       dpre += d.size(dpre, k);
     }
 
-    final IntList doc = doc();
-    int i = doc.sortedIndexOf(pre);
+    final IntList il = docs();
+    int i = il.sortedIndexOf(pre);
     if(i < 0) i = -i - 1;
-    doc.insert(i, pres.toArray());
-    doc.move(dsize, i + pres.size());
+    il.insert(i, pres.toArray());
+    il.move(dsize, i + pres.size());
     update();
   }
 
@@ -120,11 +104,11 @@ public final class DocIndex implements Index {
    * @param size number of deleted nodes
    */
   public void delete(final int pre, final int size) {
-    final IntList doc = doc();
-    int i = doc.sortedIndexOf(pre);
+    final IntList il = docs();
+    int i = il.sortedIndexOf(pre);
     if(i < 0) i = -i - 1;
-    else doc.delete(i);
-    doc.move(-size, i);
+    else il.delete(i);
+    il.move(-size, i);
     update();
   }
 
@@ -151,12 +135,12 @@ public final class DocIndex implements Index {
    * @param path input path
    * @return root nodes
    */
-  public synchronized IntList doc(final String path) {
+  public synchronized IntList docs(final String path) {
     // no documents: return empty list
     if(data.empty()) return new IntList(0);
 
     // empty path: return all documents
-    final IntList doc = doc();
+    final IntList doc = docs();
     if(path.isEmpty()) return doc;
 
     // initialize and sort document paths
@@ -185,6 +169,22 @@ public final class DocIndex implements Index {
   }
 
   /**
+   * Returns the references to all binary files matching the specified path.
+   * @param path input path
+   * @return root nodes
+   */
+  public synchronized StringList files(final String path) {
+    final StringList sl = new StringList();
+    final String exact = Prop.WIN ? path.toLowerCase() : path;
+    final String start = path.endsWith("/") ? exact : exact + '/';
+    for(final String s : new IOFile(data.meta.binaries()).descendants()) {
+      final String lc = Prop.WIN ? s.toLowerCase() : s;
+      if(exact.isEmpty() || lc.equals(exact) || lc.startsWith(start)) sl.add(s);
+    }
+    return sl;
+  }
+
+  /**
    * Returns the first position matching the specified path.
    * @param v value to be found
    * @return position or negative insertion value - 1
@@ -204,5 +204,25 @@ public final class DocIndex implements Index {
       else h = m - 1;
     }
     return l;
+  }
+
+  @Override
+  public void close() { }
+
+  // Unsupported methods ======================================================
+
+  @Override
+  public IndexIterator iter(final IndexToken token) {
+    throw Util.notexpected();
+  }
+
+  @Override
+  public int count(final IndexToken token) {
+    throw Util.notexpected();
+  }
+
+  @Override
+  public byte[] info() {
+    throw Util.notexpected();
   }
 }

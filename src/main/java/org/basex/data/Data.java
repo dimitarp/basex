@@ -16,14 +16,16 @@ import org.basex.index.Index;
 import org.basex.index.IndexIterator;
 import org.basex.index.IndexToken;
 import org.basex.index.IndexToken.IndexType;
-import org.basex.index.path.PathSummary;
 import org.basex.index.Names;
+import org.basex.index.path.PathSummary;
 import org.basex.io.IO;
 import org.basex.io.random.TableAccess;
 import org.basex.util.Atts;
 import org.basex.util.TokenBuilder;
+import org.basex.util.Util;
 import org.basex.util.hash.TokenMap;
 import org.basex.util.list.IntList;
+import org.basex.util.list.StringList;
 
 /**
  * This class provides access to the database storage.
@@ -91,10 +93,8 @@ public abstract class Data {
   public Names atnindex;
   /** Namespace index. */
   public Namespaces ns;
-  /** Path summary. */
+  /** Path summary index. */
   public PathSummary pthindex;
-  /** Document index. */
-  public DocIndex docindex = new DocIndex(this);
 
   /** Index reference for a name attribute. */
   public int nameID;
@@ -109,6 +109,8 @@ public abstract class Data {
   protected Index atvindex;
   /** Full-text index instance. */
   protected Index ftxindex;
+  /** Document index. */
+  protected final DocIndex docindex = new DocIndex(this);
   /** ID->PRE mapping. */
   protected IdPreMap idmap;
 
@@ -170,12 +172,7 @@ public abstract class Data {
    * @return pre array
    */
   public final IndexIterator iter(final IndexToken token) {
-    switch(token.type()) {
-      case TEXT:      return txtindex.iter(token);
-      case ATTRIBUTE: return atvindex.iter(token);
-      case FULLTEXT:  return ftxindex.iter(token);
-      default:        return null;
-    }
+    return index(token.type()).iter(token);
   }
 
   /**
@@ -184,12 +181,7 @@ public abstract class Data {
    * @return number of hits
    */
   public final int count(final IndexToken token) {
-    switch(token.type()) {
-      case TEXT:      return txtindex.count(token);
-      case ATTRIBUTE: return atvindex.count(token);
-      case FULLTEXT:  return ftxindex.count(token);
-      default:        return Integer.MAX_VALUE;
-    }
+    return index(token.type()).count(token);
   }
 
   /**
@@ -197,17 +189,26 @@ public abstract class Data {
    * A single dummy is returned if the database is empty.
    * @return root nodes
    */
-  public final IntList doc() {
-    return docindex.doc();
+  public final IntList docs() {
+    return docindex.docs();
   }
 
   /**
    * Returns the pre values of the document nodes for the specified path.
-   * @param input input path
+   * @param path input path
    * @return root nodes
    */
-  public final IntList doc(final String input) {
-    return docindex.doc(input);
+  public final IntList docs(final String path) {
+    return docindex.docs(path);
+  }
+
+  /**
+   * Returns the paths of all binary files matching the specified path.
+   * @param path input path
+   * @return root nodes
+   */
+  public final StringList files(final String path) {
+    return docindex.files(path);
   }
 
   /**
@@ -216,14 +217,23 @@ public abstract class Data {
    * @return info
    */
   public final byte[] info(final IndexType type) {
+    return index(type).info();
+  }
+
+  /**
+   * Returns the index reference for the specified index type.
+   * @param type index type
+   * @return index
+   */
+  protected final Index index(final IndexType type) {
     switch(type) {
-      case TAG:       return tagindex.info();
-      case ATTNAME:   return atnindex.info();
-      case TEXT:      return txtindex.info();
-      case ATTRIBUTE: return atvindex.info();
-      case FULLTEXT:  return ftxindex.info();
-      case PATH:      return pthindex.info(this);
-      default:        return EMPTY;
+      case TAG:       return tagindex;
+      case ATTNAME:   return atnindex;
+      case TEXT:      return txtindex;
+      case ATTRIBUTE: return atvindex;
+      case FULLTEXT:  return ftxindex;
+      case PATH:      return pthindex;
+      default:        throw Util.notexpected();
     }
   }
 

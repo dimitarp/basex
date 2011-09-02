@@ -11,6 +11,7 @@ import org.basex.core.CommandParser;
 import org.basex.core.Context;
 import org.basex.core.cmd.Add;
 import org.basex.core.cmd.CreateDB;
+import org.basex.core.cmd.Exit;
 import org.basex.core.cmd.Replace;
 import org.basex.query.QueryException;
 import org.basex.util.Util;
@@ -83,6 +84,7 @@ public final class LocalSession extends Session {
         i.next().closeListener();
         i.remove();
       }
+      execute(new Exit());
     } catch(final BaseXException ex) { Util.debug(ex); }
   }
 

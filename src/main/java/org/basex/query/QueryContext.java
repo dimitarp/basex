@@ -274,7 +274,7 @@ public final class QueryContext extends Progress {
     try {
       final Value v = value(root);
       if(updating) {
-        updates.applyUpdates(this);
+        updates.applyUpdates();
         if(context.data() != null) context.update();
       }
       return v;
@@ -297,7 +297,7 @@ public final class QueryContext extends Progress {
     Item it;
 
     // check if all results belong to the database of the input context
-    if(nodes != null) {
+    if(serProp == null && nodes != null) {
       final IntList pre = new IntList();
 
       while((it = ir.next()) != null) {

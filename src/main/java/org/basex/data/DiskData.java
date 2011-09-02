@@ -65,7 +65,7 @@ public final class DiskData extends Data {
         if(k.isEmpty()) break;
         if(k.equals(DBTAGS))      tagindex = new Names(in, cats);
         else if(k.equals(DBATTS)) atnindex = new Names(in, cats);
-        else if(k.equals(DBPATH)) pthindex = new PathSummary(in);
+        else if(k.equals(DBPATH)) pthindex = new PathSummary(this, in);
         else if(k.equals(DBNS))   ns = new Namespaces(in);
         else if(k.equals(DBDOCS)) docindex.read(in);
       }
@@ -97,6 +97,7 @@ public final class DiskData extends Data {
     tagindex = nm;
     atnindex = at;
     pthindex = ps;
+    pthindex.finish(this);
     ns = n;
     init();
     flush();
@@ -138,7 +139,7 @@ public final class DiskData extends Data {
 
   @Override
   public synchronized void flush() {
-    if(!meta.prop.is(Prop.FORCEFLUSH)) return;
+    if(!meta.prop.is(Prop.AUTOFLUSH)) return;
     try {
       if(meta.dirty) write();
       table.flush();
@@ -166,19 +167,16 @@ public final class DiskData extends Data {
 
   @Override
   public synchronized void closeIndex(final IndexType type) throws IOException {
+    final Index index = index(type);
+    if(index == null) return;
+
+    index.close();
     switch(type) {
-      case TEXT:
-        if(txtindex != null) { txtindex.close(); txtindex = null; }
-        break;
-      case ATTRIBUTE:
-        if(atvindex != null) { atvindex.close(); atvindex = null; }
-        break;
-      case FULLTEXT:
-        if(ftxindex != null) { ftxindex.close(); ftxindex = null; }
-        break;
-      default:
-        // other indexes will not be closed
-        break;
+      case TEXT:      txtindex = null; break;
+      case ATTRIBUTE: atvindex = null; break;
+      case FULLTEXT:  ftxindex = null; break;
+      case PATH:      pthindex.close(); break;
+      default:        break;
     }
   }
 
@@ -190,7 +188,7 @@ public final class DiskData extends Data {
       case ATTRIBUTE: atvindex = index; break;
       case FULLTEXT:  ftxindex = index; break;
       case PATH:      pthindex = (PathSummary) index; break;
-      default: break;
+      default:        break;
     }
   }
 

@@ -196,6 +196,13 @@ public final class FNDbTest extends AdvancedQueryTest {
 
     query(fun + "('db', '" + FLDR + "', '', 'test/dir')");
     query("count(collection('db/test/dir'))", NFLDR);
+
+    query("for $f in file:list('" + FLDR + "') " +
+          "return " + fun + "('db', $f, '', 'dir')");
+    query("count(collection('db/dir'))", NFLDR);
+
+    query("for $i in 1 to 3 return " + fun + "('db', '<root/>', 'doc' || $i)");
+    query("count(for $i in 1 to 3 return collection('db/doc' || $i))", "3");
   }
 
   /**
@@ -257,7 +264,6 @@ public final class FNDbTest extends AdvancedQueryTest {
   @Test
   public void dbOptimize() {
     final String fun = check(Function.DBOPTIMIZE);
-
     query(fun + "('db')");
     query(fun + "('db', true())");
   }
