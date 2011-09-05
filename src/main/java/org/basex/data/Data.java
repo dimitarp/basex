@@ -25,7 +25,7 @@ import org.basex.util.TokenBuilder;
 import org.basex.util.Util;
 import org.basex.util.hash.TokenMap;
 import org.basex.util.list.IntList;
-import org.basex.util.list.StringList;
+import org.basex.util.list.TokenList;
 
 /**
  * This class provides access to the database storage.
@@ -207,7 +207,7 @@ public abstract class Data {
    * @param path input path
    * @return root nodes
    */
-  public final StringList files(final String path) {
+  public final TokenList files(final String path) {
     return docindex.files(path);
   }
 

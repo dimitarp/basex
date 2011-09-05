@@ -6,14 +6,17 @@ import static org.basex.util.Token.*;
 import java.io.IOException;
 
 import org.basex.core.Commands.CmdIndexInfo;
+import org.basex.core.Prop;
 import org.basex.core.User;
 import org.basex.core.cmd.ACreate;
+import org.basex.core.cmd.Delete;
 import org.basex.core.cmd.Info;
 import org.basex.core.cmd.InfoDB;
 import org.basex.core.cmd.InfoIndex;
 import org.basex.core.cmd.List;
 import org.basex.data.Data;
 import org.basex.index.IndexToken.IndexType;
+import org.basex.io.IOFile;
 import org.basex.io.out.ArrayOutput;
 import org.basex.io.serial.SerializerException;
 import org.basex.io.serial.XMLSerializer;
@@ -22,6 +25,8 @@ import org.basex.query.QueryException;
 import org.basex.query.expr.Expr;
 import org.basex.query.expr.IndexAccess;
 import org.basex.query.item.ANode;
+import org.basex.query.item.B64;
+import org.basex.query.item.Bln;
 import org.basex.query.item.DBNode;
 import org.basex.query.item.DBNodeSeq;
 import org.basex.query.item.Empty;
@@ -30,26 +35,29 @@ import org.basex.query.item.Itr;
 import org.basex.query.item.QNm;
 import org.basex.query.item.Str;
 import org.basex.query.item.Value;
-import org.basex.query.iter.ItemCache;
 import org.basex.query.iter.Iter;
 import org.basex.query.iter.NodeIter;
 import org.basex.query.iter.ValueIter;
 import org.basex.query.path.NameTest;
 import org.basex.query.up.primitives.Add;
+import org.basex.query.up.primitives.DBDelete;
+import org.basex.query.up.primitives.DBOptimize;
+import org.basex.query.up.primitives.DBPut;
 import org.basex.query.up.primitives.DeleteNode;
-import org.basex.query.up.primitives.Optimize;
 import org.basex.query.up.primitives.ReplaceValue;
 import org.basex.query.util.IndexContext;
 import org.basex.util.InputInfo;
 import org.basex.util.Token;
 import org.basex.util.list.IntList;
 import org.basex.util.list.ObjList;
+import org.basex.util.list.TokenList;
 
 /**
  * Database functions.
  *
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
+ * @author Dimitar Popov
  */
 public final class FNDb extends FuncCall {
   /**
@@ -77,8 +85,17 @@ public final class FNDb extends FuncCall {
   }
 
   @Override
+  public Value value(final QueryContext ctx) throws QueryException {
+    switch(def) {
+      case DBOPEN: return open(ctx);
+      default:     return super.value(ctx);
+    }
+  }
+
+  @Override
   public Item item(final QueryContext ctx, final InputInfo ii)
       throws QueryException {
+
     switch(def) {
       case DBEVENT:    return event(ctx);
       case DBOPENID:   return open(ctx, true);
@@ -90,15 +107,11 @@ public final class FNDb extends FuncCall {
       case DBRENAME:   return rename(ctx);
       case DBREPLACE:  return replace(ctx);
       case DBOPTIMIZE: return optimize(ctx);
+      case DBPUT:      return put(ctx);
+      case DBGET:      return get(ctx);
+      case DBISRAW:    return isRaw(ctx);
+      case DBISXML:    return isXML(ctx);
       default:         return super.item(ctx, ii);
-    }
-  }
-
-  @Override
-  public Value value(final QueryContext ctx) throws QueryException {
-    switch(def) {
-      case DBOPEN: return open(ctx);
-      default:     return super.value(ctx);
     }
   }
 
@@ -198,23 +211,59 @@ public final class FNDb extends FuncCall {
    * @throws QueryException query exception
    */
   private Iter list(final QueryContext ctx) throws QueryException {
-    final ItemCache ic = new ItemCache();
-    if(expr.length == 0) {
-      for(final String s : List.list(ctx.context)) ic.add(Str.get(s));
+    final TokenList tl = new TokenList();
+    final int el = expr.length;
+    if(el == 0) {
+      for(final String s : List.list(ctx.context)) tl.add(s);
     } else {
-      final byte[] str = checkStr(expr[0], ctx);
-      final int s = indexOf(str, '/');
-      final byte[] db = s == -1 ? str : substring(str, 0, s);
-      final byte[] path = s == -1 ? EMPTY : substring(str, s + 1);
-
-      // retrieve data instance; will be closed after query execution
-      final Data data = ctx.resource.data(db, input);
-      final IntList il = data.docs(string(path));
-      for(int i = 0, is = il.size(); i < is; i++) {
-        ic.add(Str.get(data.text(il.get(i), true)));
-      }
+      final Data data = data(0, ctx);
+      final String path = string(el == 1 ? EMPTY : checkStr(expr[1], ctx));
+      // add xml resources
+      final IntList il = data.docs(path);
+      final int is = il.size();
+      for(int i = 0; i < is; i++) tl.add(data.text(il.get(i), true));
+      // add binary resources
+      for(final byte[] file : data.files(path)) tl.add(file);
     }
-    return ic;
+    tl.sort(!Prop.WIN);
+
+    return new Iter() {
+      int pos;
+      @Override
+      public Item get(final long i) { return Str.get(tl.get((int) i)); }
+      @Override
+      public Item next() { return pos < size() ? get(pos++) : null; }
+      @Override
+      public boolean reset() { pos = 0; return true; }
+      @Override
+      public long size() { return tl.size(); }
+    };
+  }
+
+  /**
+   * Performs the is-raw function.
+   * @param ctx query context
+   * @return result
+   * @throws QueryException query exception
+   */
+  private Bln isRaw(final QueryContext ctx) throws QueryException {
+    final Data data = data(0, ctx);
+    final String path = string(path(checkStr(expr[1], ctx)));
+    final IOFile io = data.meta.binary(path);
+    return Bln.get(io.exists() && !io.isDir());
+  }
+
+  /**
+   * Performs the is-xml function.
+   * @param ctx query context
+   * @return result
+   * @throws QueryException query exception
+   */
+  private Bln isXML(final QueryContext ctx) throws QueryException {
+    final Data data = data(0, ctx);
+    final String path = string(path(checkStr(expr[1], ctx)));
+    return Bln.get(data.docs(path).size() == 1);
+    // check if path is exact
   }
 
   /**
@@ -325,12 +374,16 @@ public final class FNDb extends FuncCall {
     checkWrite(ctx);
 
     final Data data = data(0, ctx);
-    final byte[] target = path(checkStr(expr[1], ctx));
-    final IntList il = data.docs(string(target));
-    for(int i = 0, is = il.size(); i < is; i++) {
-      final int pre = il.get(i);
-      ctx.updates.add(new DeleteNode(pre, data, input), ctx);
+    final String path = string(path(checkStr(expr[1], ctx)));
+
+    // delete XML resources
+    final IntList docs = data.docs(path);
+    for(int i = 0, is = docs.size(); i < is; i++) {
+      ctx.updates.add(new DeleteNode(docs.get(i), data, input), ctx);
     }
+    // delete raw resources
+    final TokenList raw = Delete.files(data, path);
+    ctx.updates.add(new DBDelete(data, raw, input), ctx);
     return null;
   }
 
@@ -367,11 +420,43 @@ public final class FNDb extends FuncCall {
   private Item optimize(final QueryContext ctx) throws QueryException {
     checkWrite(ctx);
 
-    final boolean all = expr.length == 2 && checkBln(expr[1], ctx);
     final Data data = data(0, ctx);
-
-    ctx.updates.add(new Optimize(data, ctx.context, all, input), ctx);
+    final boolean all = expr.length == 2 && checkBln(expr[1], ctx);
+    ctx.updates.add(new DBOptimize(data, ctx.context, all, input), ctx);
     return null;
+  }
+
+  /**
+   * Performs the put function.
+   * @param ctx query context
+   * @return {@code null}
+   * @throws QueryException query exception
+   */
+  private Item put(final QueryContext ctx) throws QueryException {
+    final Data data = data(0, ctx);
+    final byte[] key = path(checkStr(expr[1], ctx));
+    final byte[] val = checkBin(expr[2], ctx);
+    ctx.updates.add(new DBPut(data, key, val, input), ctx);
+    return null;
+  }
+
+  /**
+   * Performs the get function.
+   * @param ctx query context
+   * @return {@code null}
+   * @throws QueryException query exception
+   */
+  private Item get(final QueryContext ctx) throws QueryException {
+    final Data data = data(0, ctx);
+    final String key = string(path(checkStr(expr[1], ctx)));
+
+    final IOFile bin = data.meta.binary(key);
+    if(!bin.exists()) RESFNF.thrw(input, key);
+    try {
+      return new B64(bin.content());
+    } catch(final IOException ex) {
+      throw IOERR.thrw(input, ex);
+    }
   }
 
   /**
@@ -436,11 +521,14 @@ public final class FNDb extends FuncCall {
     final boolean up =
       def == Function.DBADD || def == Function.DBDELETE ||
       def == Function.DBRENAME || def == Function.DBREPLACE ||
-      def == Function.DBOPTIMIZE;
+      def == Function.DBOPTIMIZE || def == Function.DBPUT;
     return
-      u == Use.CTX && (def == Function.DBTEXT || def == Function.DBATTR ||
-        def == Function.DBFULLTEXT || def == Function.DBEVENT || up) ||
-      u == Use.UPD && up || super.uses(u);
+      u == Use.CTX && (
+        def == Function.DBTEXT || def == Function.DBATTR ||
+        def == Function.DBFULLTEXT || def == Function.DBEVENT ||
+        def == Function.DBGET || up) ||
+      u == Use.UPD && up ||
+      super.uses(u);
   }
 
   @Override
@@ -471,8 +559,12 @@ public final class FNDb extends FuncCall {
    * Removes duplicate, leading and trailing slashes
    * @param path input path
    * @return normalized path
+   * @throws QueryException query exception
    */
-  private static byte[] path(final byte[] path) {
+  private byte[] path(final byte[] path) throws QueryException {
+    // check if path is valid
+    if(endsWith(path, '.')) RESINV.thrw(input, path);
+    // return normalized path
     return token(ACreate.path(string(path)));
   }
 }
