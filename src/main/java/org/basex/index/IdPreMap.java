@@ -236,7 +236,6 @@ public class IdPreMap {
     }
 
     // [DP] Refactor!
-    int i = 0;
     int inc = c;
     int oid = id;
 
@@ -301,17 +300,13 @@ public class IdPreMap {
             add(i1, pre, -1, -1, i1 > 0 ? incs[i1 - 1] + c : c, oid);
           }
         } else if(min1 < pre1) {
-          if(pre2 == max2) {
-            final int s1 = max1 - pre1 + 1;
-            nids[i1] -= s1;
-            incs[i1] -= s1;
-          } else if(min2 < pre2 && pre2 < max2) {
+          if(min2 < pre2 && pre2 < max2) {
             final int fid = fids[i2] + pre2 - min2 + 1;
             add(i2 + 1, pre2 + c + 1, fid, nids[i2], incs[i1] + c, oids[i2]);
-            final int s1 = max1 - pre1 + 1;
-            nids[i1] -= s1;
-            incs[i1] -= s1;
           }
+          final int s = max1 - pre1 + 1;
+          nids[i1] -= s;
+          incs[i1] -= s;
         }
       } else if(i1 < i2) {
         // pre1 <= max1 < pre2 <= max2
@@ -358,19 +353,19 @@ public class IdPreMap {
             incs[i2] += c;
             pres[i2] = pre;
             remove(i1 + 1, i2 - 1);
-            final int s1 = max1 - pre1 + 1;
-            nids[i1] -= s1;
-            incs[i1] -= s1;
+            final int s = max1 - pre1 + 1;
+            nids[i1] -= s;
+            incs[i1] -= s;
           } else if(pre2 < min2) {
             incs[i1] = incs[i2 - 1] + c;
             remove(i1 + 1, i2 - 1);
-            final int s1 = max1 - pre1 + 1;
-            nids[i1] -= s1;
+            final int s = max1 - pre1 + 1;
+            nids[i1] -= s;
           }
         }
       }
     } else {
-      add(i, pre, -1, -1, inc, oid);
+      add(0, pre, -1, -1, inc, oid);
     }
   }
 
