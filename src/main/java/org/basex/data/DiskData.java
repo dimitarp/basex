@@ -50,7 +50,7 @@ public final class DiskData extends Data {
    * Default constructor.
    * @param db name of database
    * @param ctx database context
-   * @throws IOException IO Exception
+   * @throws IOException I/O Exception
    */
   public DiskData(final String db, final Context ctx) throws IOException {
     meta = new MetaData(db, ctx);
@@ -74,8 +74,6 @@ public final class DiskData extends Data {
       if(meta.textindex) txtindex = new DiskValues(this, true);
       if(meta.attrindex) atvindex = new DiskValues(this, false);
       if(meta.ftindex)   ftxindex = FTIndex.get(this, meta.wildcards);
-    } catch(final IOException ex) {
-      throw ex;
     } finally {
       try { in.close(); } catch(final IOException ex) { }
     }
@@ -88,7 +86,7 @@ public final class DiskData extends Data {
    * @param at attributes
    * @param ps path summary
    * @param n namespaces
-   * @throws IOException IO Exception
+   * @throws IOException I/O Exception
    */
   public DiskData(final MetaData md, final Names nm, final Names at,
       final PathSummary ps, final Namespaces n) throws IOException {

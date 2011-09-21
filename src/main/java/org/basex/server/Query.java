@@ -1,6 +1,13 @@
 package org.basex.server;
 
-import org.basex.core.BaseXException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import org.basex.io.in.DecodingInput;
+import org.basex.util.Token;
+import org.basex.util.list.ByteList;
+import org.basex.util.list.TokenList;
 
 /**
  * <p>This class defines methods for executing queries.
@@ -13,13 +20,20 @@ import org.basex.core.BaseXException;
  * @author Christian Gruen
  */
 public abstract class Query {
+  /** Client output stream. */
+  protected OutputStream out;
+  /** Cached results. */
+  private TokenList cache;
+  /** Cache pointer. */
+  private int pos;
+
   /**
    * Binds a value to an external variable.
    * @param n name of variable
    * @param v value to be bound
-   * @throws BaseXException command exception
+   * @throws IOException I/O exception
    */
-  public final void bind(final String n, final Object v) throws BaseXException {
+  public final void bind(final String n, final Object v) throws IOException {
     bind(n, v, "");
   }
 
@@ -28,50 +42,81 @@ public abstract class Query {
    * @param n name of variable
    * @param v value to be bound
    * @param t data type
-   * @throws BaseXException command exception
+   * @throws IOException I/O exception
    */
   public abstract void bind(final String n, final Object v, final String t)
-      throws BaseXException;
-
-  /**
-   * Initializes the query expression and starts serialization.
-   * @return result header or {@code null}.
-   * @throws BaseXException command exception
-   */
-  public abstract String init() throws BaseXException;
+      throws IOException;
 
   /**
    * Returns {@code true} if more items are available.
    * @return result of check
-   * @throws BaseXException command exception
+   * @throws IOException I/O exception
    */
-  public abstract boolean more() throws BaseXException;
+  public final boolean more() throws IOException {
+    if(cache == null) cache();
+    return pos < cache.size();
+  }
+
+  /**
+   * Caches the query result.
+   * @throws IOException I/O exception
+   */
+  protected abstract void cache() throws IOException;
 
   /**
    * Returns the next item of the query.
    * @return item string or {@code null}.
-   * @throws BaseXException command exception
+   * @throws IOException I/O exception
    */
-  public abstract String next() throws BaseXException;
+  public final String next() throws IOException {
+    if(!more()) return null;
+    final byte[] item = cache.get(pos);
+    cache.set(pos++, null);
+    if(out == null) return Token.string(item);
+    out.write(item);
+    return null;
+  }
+
+  /**
+   * Caches the incoming input.
+   * @param is input stream
+   * @throws IOException I/O exception
+   */
+  protected void cache(final InputStream is) throws IOException {
+    cache = new TokenList();
+    final ByteList bl = new ByteList();
+    while(is.read() == 1) {
+      final DecodingInput di = new DecodingInput(is);
+      for(int b; (b = di.read()) != -1;) bl.add(b);
+      cache.add(bl.toArray());
+      bl.reset();
+    }
+  }
 
   /**
    * Returns the complete result of the query.
    * @return item string or {@code null}.
-   * @throws BaseXException command exception
+   * @throws IOException I/O exception
    */
-  public abstract String execute() throws BaseXException;
+  public abstract String execute() throws IOException;
+
+  /**
+   * Returns the serialization options.
+   * @return serialization options.
+   * @throws IOException I/O exception
+   */
+  public abstract String options() throws IOException;
 
   /**
    * Returns query info.
    * @return query info
-   * @throws BaseXException command exception
+   * @throws IOException I/O exception
    */
-  public abstract String info() throws BaseXException;
+  public abstract String info() throws IOException;
 
   /**
-   * Finishes result serialization and closes the iterator.
-   * @return result footer or {@code null}.
-   * @throws BaseXException command exception
+   * Closes the query.
+   * @throws IOException I/O exception
    */
-  public abstract String close() throws BaseXException;
+  public abstract void close() throws IOException;
 }

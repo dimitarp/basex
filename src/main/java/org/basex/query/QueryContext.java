@@ -34,8 +34,9 @@ import org.basex.query.item.Value;
 import org.basex.query.iter.ItemCache;
 import org.basex.query.iter.Iter;
 import org.basex.query.up.Updates;
-import org.basex.query.util.UserFuncs;
+import org.basex.query.util.JDBCConnections;
 import org.basex.query.util.NSLocal;
+import org.basex.query.util.UserFuncs;
 import org.basex.query.util.Var;
 import org.basex.query.util.Variables;
 import org.basex.query.util.format.DecFormatter;
@@ -64,7 +65,9 @@ public final class QueryContext extends Progress {
   public NSLocal ns = new NSLocal();
 
   /** Query resources. */
-  public final QueryResources resource;
+  public final QueryResources resource = new QueryResources(this);
+  /** Opened connections to relational databases. */
+  public final JDBCConnections jdbc = new JDBCConnections();
   /** Database context. */
   public final Context context;
   /** Query string. */
@@ -178,7 +181,6 @@ public final class QueryContext extends Progress {
    * @param ctx database context
    */
   public QueryContext(final Context ctx) {
-    resource = new QueryResources(this);
     context = ctx;
     nodes = ctx.current();
     xquery3 = ctx.prop.is(Prop.XQUERY3);

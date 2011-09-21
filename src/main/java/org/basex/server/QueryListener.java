@@ -1,15 +1,18 @@
 package org.basex.server;
 
 import static org.basex.core.Text.*;
-import static org.basex.query.util.Err.*;
+import static org.basex.io.serial.SerializerProp.*;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
+import org.basex.core.BaseXException;
 import org.basex.core.Context;
-import org.basex.core.MainProp;
 import org.basex.core.Progress;
+import org.basex.io.out.EncodingOutput;
 import org.basex.io.out.PrintOutput;
 import org.basex.io.serial.Serializer;
+import org.basex.io.serial.SerializerProp;
 import org.basex.query.QueryException;
 import org.basex.query.QueryProcessor;
 import org.basex.query.item.Item;
@@ -31,43 +34,20 @@ final class QueryListener extends Progress {
   private final QueryProcessor qp;
   /** Database context. */
   private final Context ctx;
-  /** Print output. */
-  private final PrintOutput out;
 
   /** Query info. */
-  private TokenBuilder info;
-  /** Query results. */
-  private int hits;
-
-  /** Serializer. */
-  private Serializer xml;
-  /** Monitored flag. */
-  private boolean monitored;
-  /** Iterator. */
-  private Iter iter;
-  /** Closed. */
-  private boolean closed;
+  private String info = "";
+  /** Serialization options. */
+  private String options = "";
 
   /**
    * Constructor.
    * @param qu query string
-   * @param po output stream
    * @param c database context
-   * @throws QueryException query exception
    */
-  QueryListener(final String qu, final PrintOutput po, final Context c)
-      throws QueryException {
-
+  QueryListener(final String qu, final Context c) {
     qp = new QueryProcessor(qu, c);
-    try {
-      qp.parse();
-    } catch(final QueryException ex) {
-      try { qp.close(); } catch(final Exception e) { }
-      throw ex;
-    }
-    out = po;
     ctx = c;
-    startTimeout(ctx.mprop.num(MainProp.TIMEOUT));
   }
 
   /**
@@ -75,107 +55,90 @@ final class QueryListener extends Progress {
    * @param n name of variable
    * @param o object to be bound
    * @param t type
-   * @throws QueryException query exception
+   * @throws IOException query exception
    */
-  void bind(final String n, final Object o, final String t)
-      throws QueryException {
-    qp.bind(n, o, t);
-  }
-
-  /**
-   * Initializes the iterative evaluation.
-   * @throws IOException Exception
-   * @throws QueryException query exception
-   */
-  void init() throws IOException, QueryException {
-    monitored = true;
-    ctx.register(qp.ctx.updating);
-    xml = qp.getSerializer(out);
-    iter = qp.iter();
-  }
-
-  /**
-   * Serializes the next item and tests if more items can be returned.
-   * @return {@code true} if a new item was serialized
-   * @throws IOException Exception
-   * @throws QueryException query exception
-   */
-  boolean next() throws IOException, QueryException {
-    if(xml == null) init();
-    xml.reset();
-    final Item it = iter.next();
-    if(it == null) return false;
-    next(it);
-    return true;
-  }
-
-  /**
-   * Evaluates the complete query.
-   * @throws IOException Exception
-   * @throws QueryException query exception
-   */
-  void execute() throws IOException, QueryException {
-    if(xml == null) init();
-    for(Item it; (it = iter.next()) != null;) next(it);
-    close(false);
-  }
-
-  /**
-   * Prints the query info.
-   * @throws IOException Exception
-   */
-  void printInfo() throws IOException {
-    out.print(info());
+  void bind(final String n, final Object o, final String t) throws IOException {
+    try {
+      qp.bind(n, o, t);
+    } catch(final QueryException ex) {
+      throw new BaseXException(ex);
+    }
   }
 
   /**
    * Returns the query info.
    * @return query info
    */
-  byte[] info() {
-    initInfo();
-    return info.finish();
+  String info() {
+    return info;
   }
 
   /**
-   * Closes the query process.
-   * @param forced forced close
-   * @throws IOException I/O exception
+   * Returns the serialization options.
+   * @return serialization options
    */
-  void close(final boolean forced) throws IOException {
-    if(closed) return;
-    if(xml != null && !forced) xml.close();
-    qp.stopTimeout();
-    qp.close();
-    if(monitored) ctx.unregister(qp.ctx.updating);
-    initInfo();
-    closed = true;
+  String options() {
+    return options;
   }
 
   /**
-   * Serializes the specified item.
-   * @param it item to be serialized
+   * Executes the query.
+   * @param iter iterative evaluation
+   * @param out output stream
+   * @param enc encode stream
    * @throws IOException Exception
-   * @throws QueryException query exception
    */
-  private void next(final Item it) throws IOException, QueryException {
-    if(stopped) SERVERTIME.thrw(null);
-    xml.openResult();
-    it.serialize(xml);
-    xml.closeResult();
-    hits++;
-  }
+  void execute(final boolean iter, final OutputStream out, final boolean enc)
+      throws IOException {
+    boolean mon = false;
+    try {
+      qp.parse();
+      ctx.register(qp.ctx.updating);
+      mon = true;
 
-  /**
-   * Initializes the query info.
-   */
-  private void initInfo() {
-    if(info == null) {
+      // create serializer
+      final Iter ir = qp.iter();
+      final SerializerProp sprop = qp.ctx.serProp(false);
+      final boolean wrap = !sprop.get(S_WRAP_PREFIX).isEmpty();
+      options = qp.ctx.serProp(false).toString();
+
+      // iterate through results
+      final PrintOutput po =
+          PrintOutput.get(enc ? new EncodingOutput(out) : out);
+      if(iter && wrap) po.write(1);
+
+      final Serializer ser = Serializer.get(po, sprop);
+      int c = 0;
+      for(Item it; (it = ir.next()) != null;) {
+        if(iter && !wrap) {
+          po.write(1);
+          ser.reset();
+        }
+        ser.openResult();
+        it.serialize(ser);
+        ser.closeResult();
+        if(iter && !wrap) {
+          po.flush();
+          out.write(0);
+        }
+        c++;
+      }
+      ser.close();
+      if(iter && wrap) out.write(0);
+
+      // generate query info
       final int up = qp.updates();
-      info = new TokenBuilder();
-      info.addExt(QUERYHITS + "% %" + NL, hits, hits == 1 ? VALHIT : VALHITS);
-      info.addExt(QUERYUPDATED + "% %" + NL, up, up == 1 ? VALHIT : VALHITS);
-      info.addExt(QUERYTOTAL + "%", perf);
+      final TokenBuilder tb = new TokenBuilder();
+      tb.addExt(QUERYHITS + "% %" + NL, c, c == 1 ? VALHIT : VALHITS);
+      tb.addExt(QUERYUPDATED + "% %" + NL, up, up == 1 ? VALHIT : VALHITS);
+      tb.addExt(QUERYTOTAL + "%", perf);
+      info = tb.toString();
+
+    } catch(final QueryException ex) {
+      throw new BaseXException(ex);
+    } finally {
+      try { qp.close(); } catch(final IOException ex) { }
+      if(mon) ctx.unregister(qp.ctx.updating);
     }
   }
 }

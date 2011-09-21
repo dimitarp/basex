@@ -425,7 +425,7 @@ public final class NamespaceTest {
 
   /**
    * Deletes the document node and checks if namespace nodes of descendants
-   * are deleted as well. F.i. adding a document via JAX-RX/PUT deletes a
+   * are deleted as well. F.i. adding a document via REST/PUT deletes a
    * document node if the given document/name is already stored in the target
    * collection. If the test fails, this may lead to superfluous namespace
    * nodes.
@@ -500,7 +500,7 @@ public final class NamespaceTest {
       final String exp = expected.replaceAll("\\\"", "'");
       if(!exp.equals(res)) fail("\nExpected: " + exp + "\nFound: " + res);
     } catch(final BaseXException ex) {
-      fail(ex.getMessage());
+      fail(Util.message(ex));
     }
   }
 }

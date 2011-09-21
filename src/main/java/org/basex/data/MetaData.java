@@ -214,17 +214,20 @@ public final class MetaData {
    * Returns the binary directory.
    * @return binary directory
    */
-  public File binaries() {
-    return new File(path, M_RAW);
+  public IOFile binaries() {
+    return new IOFile(path, M_RAW);
   }
 
   /**
-   * Returns the specified binary file.
-   * @param key internal file path (key)
+   * Returns the specified binary file, or {@code null} if the resource
+   * path cannot be resolved (e.g. points to a parent directory).
+   * @param pth internal file path
    * @return binary directory
    */
-  public IOFile binary(final String key) {
-    return new IOFile(new File(path, M_RAW), key);
+  public IOFile binary(final String pth) {
+    final IOFile dir = binaries();
+    final IOFile file = new IOFile(dir, pth);
+    return file.path().startsWith(dir.path()) ? file : null;
   }
 
   /**
@@ -288,7 +291,7 @@ public final class MetaData {
   /**
    * Writes the meta data to the specified output stream.
    * @param out output stream
-   * @throws IOException IO Exception
+   * @throws IOException I/O Exception
    */
   void write(final DataOutput out) throws IOException {
     writeInfo(out, DBSTR,    STORAGE);

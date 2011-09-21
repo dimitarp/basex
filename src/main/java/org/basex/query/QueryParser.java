@@ -699,7 +699,7 @@ public class QueryParser extends InputParser {
     final IO io = io(string(path));
     String qu = null;
     try {
-      qu = string(io.content());
+      qu = string(io.read());
     } catch(final IOException ex) {
       error(NOMODULEFILE, io);
     }
@@ -827,7 +827,7 @@ public class QueryParser extends InputParser {
 
     if(wsConsumeWs(EXTERNAL)) {
       // bind value with new type
-      if(old != null && v.type != null) old.reset(v.type);
+      if(old != null && v.type != null) old.reset(v.type, ctx);
       // bind default value
       if(ctx.xquery3 && wsConsumeWs(ASSIGN)) {
         v.bind(check(single(), NOVARDECL), ctx);
@@ -1164,7 +1164,7 @@ public class QueryParser extends InputParser {
         break;
       }
     }
-    if(!dec) throw GVARNOTDEFINED.thrw(input(), v);
+    if(!dec) error(GVARNOTDEFINED, v);
 
     if(wsConsumeWs(COLLATION)) {
       final byte[] coll = stringLiteral();
@@ -1895,7 +1895,7 @@ public class QueryParser extends InputParser {
   }
 
   /**
-   * Parses a literal map. TODO adapt to actual spec when available.
+   * Parses a literal map. [LW] adapt to actual spec when available.
    * @return map literal
    * @throws QueryException query exception
    */
@@ -2336,7 +2336,7 @@ public class QueryParser extends InputParser {
       }
       consume();
       if(consume('>')) {
-        if(!XMLToken.isNCName(str)) INVALPI.thrw(input(), str);
+        if(!XMLToken.isNCName(str)) error(INVALPI, str);
         return new CPI(input(), Str.get(str), Str.get(tb.finish()));
       }
       tb.add('?');

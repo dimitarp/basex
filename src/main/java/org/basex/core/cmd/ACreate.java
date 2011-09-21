@@ -1,7 +1,6 @@
 package org.basex.core.cmd;
 
 import static org.basex.core.Text.*;
-import static org.basex.util.Token.*;
 
 import java.io.IOException;
 import org.basex.build.Builder;
@@ -36,20 +35,20 @@ public abstract class ACreate extends Command {
 
   /**
    * Protected constructor, specifying command arguments.
-   * @param a arguments
+   * @param arg arguments
    */
-  protected ACreate(final String... a) {
-    this(User.CREATE, a);
+  protected ACreate(final String... arg) {
+    this(User.CREATE, arg);
     closing = true;
   }
 
   /**
    * Protected constructor, specifying command flags and arguments.
-   * @param p command properties
-   * @param a arguments
+   * @param flags command flags
+   * @param arg arguments
    */
-  protected ACreate(final int p, final String... a) {
-    super(p, a);
+  protected ACreate(final int flags, final String... arg) {
+    super(flags, arg);
   }
 
   @Override
@@ -70,11 +69,11 @@ public abstract class ACreate extends Command {
 
   /**
    * Builds and creates a new database instance.
-   * @param p parser instance
+   * @param parser parser instance
    * @param db name of database
    * @return success of operation
    */
-  protected final boolean build(final Parser p, final String db) {
+  protected final boolean build(final Parser parser, final String db) {
     if(!validName(db, false)) return error(NAMEINVALID, db);
 
     // close open database
@@ -84,8 +83,8 @@ public abstract class ACreate extends Command {
       if(context.pinned(db)) return error(DBLOCKED, db);
 
       final boolean mem = prop.is(Prop.MAINMEM);
-      builder = mem ? new MemBuilder(db, p, prop) :
-        new DiskBuilder(db, p, context);
+      builder = mem ? new MemBuilder(db, parser, prop) :
+        new DiskBuilder(db, parser, context);
 
       Data data = progress(builder).build();
       if(mem) {
@@ -102,7 +101,7 @@ public abstract class ACreate extends Command {
         if(prop.is(Prop.FTINDEX))   index(IndexType.FULLTEXT,  data);
         data.flush();
       }
-      return info(p.info() + DBCREATED, db, perf);
+      return info(parser.info() + DBCREATED, db, perf);
     } catch(final ProgressException ex) {
       throw ex;
     } catch(final IOException ex) {
@@ -110,25 +109,14 @@ public abstract class ACreate extends Command {
       abort();
       final String msg = ex.getMessage();
       return error(msg != null && msg.length() != 0 ? msg :
-        Util.info(PARSEERR, p.src));
+        Util.info(PARSEERR, parser.src));
     } catch(final Exception ex) {
       // known exceptions:
       // - IllegalArgumentException (UTF8, zip files)
       Util.debug(ex);
       abort();
-      return error(Util.info(PARSEERR, p.src));
+      return error(Util.info(PARSEERR, parser.src));
     }
-  }
-
-  /**
-   * Runs the specified command and adopts its info message.
-   * @param cmd command
-   * @return success flag
-   */
-  protected boolean run(final Command cmd) {
-    final boolean ok = cmd.run(context);
-    error(cmd.info());
-    return ok;
   }
 
   /**
@@ -163,37 +151,5 @@ public abstract class ACreate extends Command {
     }
     data.closeIndex(type);
     data.setIndex(type, (cmd == null ? ib : cmd.progress(ib)).build());
-  }
-
-  /**
-   * Normalizes the database path.
-   * Removes duplicate, leading and trailing slashes
-   * @param path input path
-   * @return normalized path
-   */
-  public static final String path(final String path) {
-    return path.replaceAll("[\\\\/]+", "/").replaceAll("^/|/$", "");
-  }
-
-  /**
-   * Generate a new name for a document.
-   * @param d data
-   * @param pre pre value of the document
-   * @param src source path
-   * @param trg target path
-   * @return new name
-   */
-  public static byte[] newName(final Data d, final int pre, final byte[] src,
-      final byte[] trg) {
-
-    final byte[] path = d.text(pre, true);
-    byte[] target = trg;
-    byte[] name = substring(path, src.length);
-    if(name.length != 0) {
-      // change file path: replace all paths with the target path
-      if(startsWith(name, '/')) name = substring(name, 1);
-      target = trg.length != 0 ? concat(trg, SLASH, name) : name;
-    }
-    return target;
   }
 }

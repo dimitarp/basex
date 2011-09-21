@@ -6,7 +6,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLDecoder;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
@@ -20,7 +19,7 @@ import org.basex.util.list.StringList;
 import org.xml.sax.InputSource;
 
 /**
- * {@link IO} reference, representing a local file.
+ * {@link IO} reference, representing a local file or directory path.
  *
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
@@ -41,7 +40,7 @@ public final class IOFile extends IO {
    * @param f file path
    */
   public IOFile(final String f) {
-    this(new File(file(f)));
+    this(new File(f));
   }
 
   /**
@@ -78,6 +77,14 @@ public final class IOFile extends IO {
    */
   public IOFile(final IOFile dir, final String n) {
     this(new File(dir.file, n));
+  }
+
+  /**
+   * Returns the file reference.
+   * @return file reference
+   */
+  public File file() {
+    return file;
   }
 
   @Override
@@ -126,7 +133,7 @@ public final class IOFile extends IO {
     }
 
     // process zip files
-    if(is instanceof ZipInputStream || archive()) {
+    if(is instanceof ZipInputStream || isArchive()) {
       if(is == null) {
         // keep stream open until last file was parsed...
         is = new ZipInputStream(new FileInputStream(file)) {
@@ -154,12 +161,12 @@ public final class IOFile extends IO {
   }
 
   @Override
-  public boolean archive() {
+  public boolean isArchive() {
     return isSuffix(ZIPSUFFIXES);
   }
 
   @Override
-  public boolean xml() {
+  public boolean isXML() {
     return isSuffix(XMLSUFFIXES);
   }
 
@@ -178,13 +185,13 @@ public final class IOFile extends IO {
 
   @Override
   public InputSource inputSource() {
-    return is == null ? new InputSource(url()) : new InputSource(is);
+    return is == null ? new InputSource(path) : new InputSource(is);
   }
 
   @Override
   public BufferInput buffer() throws IOException {
     // return file stream
-    if(is == null) return new BufferInput(path);
+    if(is == null) return new BufferInput(file);
     // return input stream
     final BufferInput in = new BufferInput(is);
     if(zip != null && zip.getSize() != -1) in.length(zip.getSize());
@@ -293,47 +300,37 @@ public final class IOFile extends IO {
    * @param trg target reference
    * @return success flag
    */
-  public boolean rename(final IO trg) {
-    return trg instanceof IOFile && file.renameTo(((IOFile) trg).file);
+  public boolean rename(final IOFile trg) {
+    return file.renameTo(trg.file);
+  }
+
+  /**
+   * Checks if this is a valid file reference.
+   * @return result of check
+   */
+  public boolean isValid() {
+    // note that not all invalid names can be caught by this test
+    try {
+      file.getCanonicalFile();
+      return true;
+    } catch(final IOException ex) {
+      return false;
+    }
   }
 
   @Override
   public String url() {
-    String pre = FILEPREF;
-    if(!path.startsWith("/")) {
-      pre += '/';
-      if(path.length() < 2 || path.charAt(1) != ':') {
-        // [CG] IO paths: check if the HOME reference is really needed here
-        pre += "/" + Prop.HOME.replace('\\', '/');
-        if(!pre.endsWith("/")) pre += '/';
-      }
+    final TokenBuilder tb = new TokenBuilder(FILEPREF);
+    // add leading slash for Windows paths
+    if(!path.startsWith("/")) tb.add('/');
+    for(int p = 0; p < path.length(); p++) {
+      // replace spaces with %20
+      final char ch = path.charAt(p);
+      if(ch == ' ') tb.add("%20");
+      else tb.add(ch);
     }
-    return pre + path.replace('\\', '/');
+    return tb.toString();
   }
-
-  /**
-   * Creates a file path from the specified URL.
-   * @param url url to be converted
-   * @return file path
-   */
-  public static String file(final String url) {
-    String file = url;
-    // [CG] IO paths: check if '+' is correctly recognized/handled
-    if(file.indexOf("%") != -1) {
-      try {
-        file = URLDecoder.decode(file, Prop.ENCODING);
-      } catch(final Exception ex) { /* ignored. */ }
-    }
-    // remove file scheme
-    String fn = file.startsWith(FILEPREF) ?
-        file.substring(FILEPREF.length()) : file;
-        // remove leading slashes
-    while(fn.startsWith("//")) fn = fn.substring(1);
-    // remove slash on Windows systems
-    return fn.length() > 2 && fn.charAt(0) == '/' && fn.charAt(2) == ':' ?
-        fn.substring(1) : fn;
-  }
-
 
   /**
    * Converts a file filter (glob) to a regular expression.
@@ -385,6 +382,16 @@ public final class IOFile extends IO {
       if(!suf && sub) sb.append(".*");
     }
     return Prop.WIN ? sb.toString().toLowerCase() : sb.toString();
+  }
+
+  /**
+   * Normalizes the specified path. Converts backslashes and
+   * removes duplicate, leading and trailing slashes.
+   * @param path input path
+   * @return normalized path
+   */
+  public static String normalize(final String path) {
+    return path.replaceAll("[\\\\/]+", "/").replaceAll("^/|/$", "");
   }
 
   /**

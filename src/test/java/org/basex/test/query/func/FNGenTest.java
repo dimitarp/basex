@@ -1,8 +1,13 @@
 package org.basex.test.query.func;
 
-import org.basex.query.func.Function;
+import static org.basex.query.func.Function.*;
+import static org.junit.Assert.*;
+import static org.basex.util.Token.*;
+import org.basex.core.Prop;
+import org.basex.io.IOFile;
 import org.basex.query.util.Err;
 import org.basex.test.query.AdvancedQueryTest;
+import org.basex.util.Util;
 import org.junit.Test;
 
 /**
@@ -12,18 +17,32 @@ import org.junit.Test;
  * @author Christian Gruen
  */
 public final class FNGenTest extends AdvancedQueryTest {
+  /** Test database name. */
+  private static final String NAME = Util.name(FNGenTest.class);
   /** Text file. */
   private static final String TEXT = "etc/test/input.xml";
 
   /**
    * Test method for the fn:unparsed-text() function.
+   * @throws Exception exception
    */
   @Test
-  public void fnUnparsedText() {
-    final String fun = check(Function.PARSETXT);
-    contains(fun + "('" + TEXT + "')", "?&gt;&lt;html");
-    contains(fun + "('" + TEXT + "', 'US-ASCII')", "?&gt;&lt;html");
-    error(fun + "('" + TEXT + "', 'xyz')", Err.WRONGINPUT);
+  public void fnUnparsedText() throws Exception {
+    check(PARSETXT);
+    contains(PARSETXT.args(TEXT), "?&gt;&lt;html");
+    contains(PARSETXT.args(TEXT, "US-ASCII"), "?&gt;&lt;html");
+    final IOFile io = new IOFile(Prop.TMP, NAME);
+    io.write(token("A\r\nB"));
+    query(STRLEN.args(PARSETXT.args(io.path())), 3);
+    io.write(token("A\nB"));
+    query(STRLEN.args(PARSETXT.args(io.path())), 3);
+    io.write(token("A\rB"));
+    query(STRLEN.args(PARSETXT.args(io.path())), 3);
+    io.write(token("A\r\nB\rC\nD"));
+    query(TO_BYTES.args(PARSETXT.args(io.path())),
+        "65 10 66 10 67 10 68");
+    assertTrue(io.delete());
+    error(PARSETXT.args(TEXT, "xyz"), Err.WHICHENC);
   }
 
   /**
@@ -31,8 +50,8 @@ public final class FNGenTest extends AdvancedQueryTest {
    */
   @Test
   public void fnParseXML() {
-    final String fun = check(Function.PARSEXML);
-    contains(fun + "('<x>a</x>')//text()", "a");
+    check(PARSEXML);
+    contains(PARSEXML.args("\"<x>a</x>\"") + "//text()", "a");
   }
 
   /**
@@ -40,10 +59,10 @@ public final class FNGenTest extends AdvancedQueryTest {
    */
   @Test
   public void fnSerialize() {
-    final String fun = check(Function.SERIALIZE);
-    contains(fun + "(<x/>)", "&lt;x/&gt;");
-    contains(fun + "(<x/>, " + serialParams("") + ")", "&lt;x/&gt;");
-    contains(fun + "(<x>a</x>, " +
-        serialParams("<method>text</method>") + ")", "a");
+    check(SERIALIZE);
+    contains(SERIALIZE.args("<x/>"), "&lt;x/&gt;");
+    contains(SERIALIZE.args("<x/>", serialParams("")), "&lt;x/&gt;");
+    contains(SERIALIZE.args("<x>a</x>",
+        serialParams("<method value='text'/>")), "a");
   }
 }

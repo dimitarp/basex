@@ -57,14 +57,10 @@ public final class SAXWrapper extends SingleParser {
   /**
    * Constructor.
    * @param source sax source
-   * @param target target path to insert into
    * @param pr Properties
    */
-  public SAXWrapper(final SAXSource source, final String target,
-      final Prop pr) {
-    super(IO.get(source.getSystemId()), target);
-    saxs = source;
-    prop = pr;
+  public SAXWrapper(final SAXSource source, final Prop pr) {
+    this(source, "", "", pr);
   }
 
   /**
@@ -76,8 +72,11 @@ public final class SAXWrapper extends SingleParser {
    */
   public SAXWrapper(final SAXSource source, final String name,
       final String target, final Prop pr) {
-    this(source, target, pr);
-    src.name(name);
+
+    super(IO.get(source.getSystemId()), target);
+    if(!name.isEmpty()) src.name(name);
+    saxs = source;
+    prop = pr;
   }
 
   @Override
@@ -128,10 +127,10 @@ public final class SAXWrapper extends SingleParser {
     } finally {
       if(is == null) return;
       try {
-        final InputStream ist = is.getByteStream();
-        if(ist != null) ist.close();
         final Reader r = is.getCharacterStream();
         if(r != null) r.close();
+        final InputStream ist = is.getByteStream();
+        if(ist != null) ist.close();
       } catch(final IOException ex) {
         Util.debug(ex);
       }
@@ -157,7 +156,7 @@ public final class SAXWrapper extends SingleParser {
     } else if(src instanceof IOFile) {
       in = new FileInputStream(src.path());
     } else if(src instanceof IOContent) {
-      in = new ByteArrayInputStream(src.content());
+      in = new ByteArrayInputStream(src.read());
     } else {
       return is;
     }

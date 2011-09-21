@@ -30,21 +30,24 @@ public abstract class OutputSerializer extends Serializer {
   protected static final TokenList EMPTIES = new TokenList();
   /** (X)HTML: URI attributes. */
   protected static final TokenSet URIS = new TokenSet();
+
   /** System document type. */
   protected String docsys;
   /** Public document type. */
   protected String docpub;
-
+  /** Flag for printing content type. */
+  protected int ct;
   /** Indentation flag (used for formatting). */
   protected boolean ind;
   /** Item flag (used for formatting). */
   protected boolean item;
+  /** Script flag. */
+  protected boolean script;
+
   /** URI escape flag. */
   protected final boolean escape;
   /** CData elements. */
   protected final TokenList cdata = new TokenList();
-  /** Script flag. */
-  protected boolean script;
   /** Indentation flag. */
   protected final boolean indent;
   /** Include content type flag. */
@@ -55,11 +58,11 @@ public abstract class OutputSerializer extends Serializer {
   protected final Charset encoding;
   /** New line. */
   protected final byte[] nl;
+  /** Output stream. */
+  protected final PrintOutput out;
 
   /** UTF8 flag. */
   private final boolean utf8;
-  /** Output stream. */
-  private final PrintOutput out;
 
   // project specific properties
 
@@ -208,7 +211,7 @@ public abstract class OutputSerializer extends Serializer {
     for(int k = 0; k < v.length; k += cl(v, k)) {
       final int ch = cp(v, k);
       if(!format) {
-        print(ch);
+        printChar(ch);
       } else if(ch == '"') {
         print(E_QU);
       } else if(ch == 0x9 || ch == 0xA) {
@@ -238,7 +241,7 @@ public abstract class OutputSerializer extends Serializer {
           }
           c = 0;
         }
-        print(ch);
+        printChar(ch);
       }
       print(CDATA_C);
     }
@@ -292,7 +295,7 @@ public abstract class OutputSerializer extends Serializer {
    */
   protected void code(final int ch) throws IOException {
     if(!format) {
-      print(ch);
+      printChar(ch);
     } else if(ch < ' ' && ch != '\n' && ch != '\t' || ch > 0x7F && ch < 0xA0) {
       hex(ch);
     } else if(ch == '&') {
@@ -302,7 +305,7 @@ public abstract class OutputSerializer extends Serializer {
     } else if(ch == '<') {
       print(E_LT);
     } else {
-      print(ch);
+      printChar(ch);
     }
   }
 
@@ -389,14 +392,14 @@ public abstract class OutputSerializer extends Serializer {
   }
 
   /**
-   * Writes a character in the current encoding. Converts newlines to the
-   * operating system default.
+   * Writes a character in the current encoding.
+   * Converts newlines to the operating system default.
    * @param ch character to be printed
    * @throws IOException I/O exception
    */
-  protected final void print(final int ch) throws IOException {
+  protected final void printChar(final int ch) throws IOException {
     if(ch == '\n') out.write(nl);
-    else write(ch);
+    else print(ch);
   }
 
   /**
@@ -404,27 +407,10 @@ public abstract class OutputSerializer extends Serializer {
    * @param ch character to be printed
    * @throws IOException I/O exception
    */
-  protected void write(final int ch) throws IOException {
+  protected void print(final int ch) throws IOException {
     // comparison by reference
-    if(utf8) {
-      if(ch <= 0x7F) {
-        out.write(ch);
-      } else if(ch <= 0x7FF) {
-        out.write(ch >>  6 & 0x1F | 0xC0);
-        out.write(ch >>  0 & 0x3F | 0x80);
-      } else if(ch <= 0xFFFF) {
-        out.write(ch >> 12 & 0x0F | 0xE0);
-        out.write(ch >>  6 & 0x3F | 0x80);
-        out.write(ch >>  0 & 0x3F | 0x80);
-      } else {
-        out.write(ch >> 18 & 0x07 | 0xF0);
-        out.write(ch >> 12 & 0x3F | 0x80);
-        out.write(ch >>  6 & 0x3F | 0x80);
-        out.write(ch >>  0 & 0x3F | 0x80);
-      }
-    } else {
-      out.write(new TokenBuilder(4).add(ch).toString().getBytes(encoding));
-    }
+    if(utf8) out.utf8(ch);
+    else out.write(new TokenBuilder(4).add(ch).toString().getBytes(encoding));
   }
 
   /**
@@ -453,6 +439,36 @@ public abstract class OutputSerializer extends Serializer {
     } else {
       out.write(s.getBytes(encoding));
     }
+  }
+
+  /**
+   * Prints the content type declaration.
+   * @param empty empty flag
+   * @param html method
+   * @return {@code true} if declaration was printed
+   * @throws IOException I/O exception
+   */
+  protected boolean ct(final boolean empty, final boolean html)
+      throws IOException {
+
+    if(ct != 1) return false;
+    ct++;
+    if(empty) finishOpen();
+    level++;
+    startOpen(META);
+    attribute(HTTPEQUIV, token(CONTENT_TYPE));
+    final String m = media.isEmpty() ? TEXT_HTML : media;
+    attribute(CONTENT,
+        new TokenBuilder(m).add(CHARSET).addExt(encoding).finish());
+    if(html) {
+      print(ELEM_C);
+    } else {
+      print(' ');
+      print(ELEM_SC);
+    }
+    level--;
+    if(empty) finishClose();
+    return true;
   }
 
   // HTML Serializer: cache elements

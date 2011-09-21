@@ -247,6 +247,21 @@ public enum Err {
   /** FORX0004: Evaluation exception. */
   REGERR(FORX, 4, "Regular expression: '%'."),
 
+  /** FOSQ0001: Evaluation exception. */
+  SQLEXC(FOSQ, 1, "An SQL exception occurred: '%'"),
+  /** FOSQ0002: Evaluation exception. */
+  NOCONN(FOSQ, 2, "No opened connection with id %"),
+  /** FOSQ0003: Evaluation exception. */
+  PARAMS(FOSQ, 3, "Number of parameters differs from number of placeholders"),
+  /** FOSQ0004: Evaluation exception. */
+  NOPARAMTYPE(FOSQ, 4, "No parameter type specified."),
+  /** FOSQ0005: Evaluation exception. */
+  NOTEXPATTR(FOSQ, 5, "Not expected attribute: %"),
+  /** FOSQ0006: Evaluation exception. */
+  ILLFORMAT(FOSQ, 6, "Illegal % format"),
+  /** FOSQ0007: Evaluation exception. */
+  SQLINIT(FOSQ, 7, "Could not initialize specified driver: '%'"),
+
   // [LW] please add to http://docs.basex.org/wiki/XQuery_Errors
 
   /** FOTY0012: Type exception. */
@@ -272,6 +287,8 @@ public enum Err {
   UPDBPUTERR(FOUP, 2, "Resource \"%\" could not be written."),
   /** FOUP0002: Evaluation exception. */
   UPDBDELERR(FOUP, 2, "Resource \"%\" could not be deleted."),
+  /** FOUP0002: Evaluation exception. */
+  UPDBRENAMEERR(FOUP, 2, "Resource \"%\" could not be renamed."),
 
   /** FTDY0016: Evaluation exception. */
   FTWEIGHT(FTDY, 16, "Weight value out of range: %."),
@@ -311,6 +328,8 @@ public enum Err {
   SERANY(SEPM, 16, "%."),
   /** SEPM0017: Serialization exception. */
   SERUNKNOWN(SEPM, 17, "Serialization: unknown element %."),
+  /** SEPM0017: Serialization exception. */
+  SERNOVAL(SEPM, 17, "Serialization: missing 'value' attribute."),
 
   /** XPDY0002: Parsing exception. */
   VAREMPTY(XPDY, 2, "No value assigned to %."),
@@ -462,6 +481,8 @@ public enum Err {
   INVALPI(XPST, 3, "Invalid PI name: \"%\"."),
   /** XPST0003: Parsing exception. */
   INTEXP(XPST, 3, "Integer expected."),
+  /** XPST0003: Parsing exception. */
+  INVIN(XPST, 3, "Invalid input: % found."),
 
   /** XPST0005: Parsing exception. */
   COMPSELF(XPST, 5, "Warning: '%' will never yield results."),
@@ -680,8 +701,8 @@ public enum Err {
   PICCOMP(FOFD, 1350, "Invalid component in string: \"%\"."),
   /** FOUT1170: Parsing exception. */
   WRONGINPUT(FOUT, 1170, "Failed to read \"%\": %."),
-
-  // [CG] check error messages: FOUT1190, FOUT1200, add to Wiki
+  /** FOUT1190: Evaluation exception. */
+  WHICHENC(FOUT, 1190, "Encoding '%' is not supported."),
 
   /** XUDY0009: XQuery Update dynamic exception. */
   UPNOPAR(XUDY, 9, "Target % has no parent."),
@@ -818,6 +839,7 @@ public enum Err {
     /** FONS Error type. */ FONS,
     /** FORG Error type. */ FORG,
     /** FORX Error type. */ FORX,
+    /** FOSQ Error type. */ FOSQ,
     /** FOTY Error type. */ FOTY,
     /** FOUP Error type. */ FOUP,
     /** FOFD Error type. */ FOUT,

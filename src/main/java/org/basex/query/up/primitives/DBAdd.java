@@ -28,7 +28,7 @@ import org.basex.util.list.TokenList;
  * @author BaseX Team 2005-11, BSD License
  * @author Dimitar Popov
  */
-public final class Add extends InsertBase {
+public final class DBAdd extends InsertBase {
   /** Documents to add. */
   private final ObjList<Item> docs;
   /** New document names. */
@@ -47,14 +47,14 @@ public final class Add extends InsertBase {
    * @param p document(s) path
    * @param c database context
    */
-  public Add(final Data trg, final InputInfo i, final ObjList<Item> d,
-      final byte[] n, final byte[] p, final Context c) {
+  public DBAdd(final Data trg, final InputInfo i, final ObjList<Item> d,
+      final String n, final String p, final Context c) {
 
     super(PrimitiveType.INSERTAFTER, lastDoc(trg), trg, i, null);
     docs = d;
     final int ndocs = docs.size();
-    final byte[] name = ndocs > 1 || n == null || n.length == 0 ? null : n;
-    final byte[] path = p == null || p.length == 0 ? null : p;
+    final byte[] name = ndocs > 1 || n == null || n.isEmpty() ? null : token(n);
+    final byte[] path = p == null || p.isEmpty() ? null : token(p);
     names = new TokenList(ndocs);
     paths = new TokenList(ndocs);
     for(int j = 0; j < ndocs; ++j) {
@@ -71,7 +71,7 @@ public final class Add extends InsertBase {
 
   @Override
   public void merge(final UpdatePrimitive u) {
-    final Add a = (Add) u;
+    final DBAdd a = (DBAdd) u;
     final Iterator<Item> d = a.docs.iterator();
     final Iterator<byte[]> n = a.names.iterator();
     final Iterator<byte[]> p = a.paths.iterator();
@@ -132,8 +132,7 @@ public final class Add extends InsertBase {
         throw IOERR.thrw(input, ex);
       }
     } else {
-      STRNODTYPE.thrw(input, this, doc.type);
-      return null;
+      throw STRNODTYPE.thrw(input, this, doc.type);
     }
 
     // modify name and path, if needed

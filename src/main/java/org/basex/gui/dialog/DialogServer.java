@@ -1,31 +1,34 @@
 package org.basex.gui.dialog;
 
 import static org.basex.core.Text.*;
+
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.io.File;
+import java.io.IOException;
+
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+
 import org.basex.BaseXServer;
-import org.basex.core.MainProp;
-import org.basex.core.BaseXException;
-import org.basex.core.Context;
 import org.basex.core.Commands.CmdPerm;
+import org.basex.core.Context;
+import org.basex.core.MainProp;
 import org.basex.core.cmd.Exit;
 import org.basex.core.cmd.ShowDatabases;
 import org.basex.core.cmd.ShowSessions;
 import org.basex.gui.GUI;
 import org.basex.gui.GUIConstants;
-import org.basex.gui.GUIProp;
 import org.basex.gui.GUIConstants.Msg;
+import org.basex.gui.GUIProp;
 import org.basex.gui.layout.BaseXBack;
 import org.basex.gui.layout.BaseXButton;
 import org.basex.gui.layout.BaseXCombo;
+import org.basex.gui.layout.BaseXEditor;
 import org.basex.gui.layout.BaseXLabel;
 import org.basex.gui.layout.BaseXLayout;
 import org.basex.gui.layout.BaseXPassword;
 import org.basex.gui.layout.BaseXTabs;
-import org.basex.gui.layout.BaseXEditor;
 import org.basex.gui.layout.BaseXTextField;
 import org.basex.gui.layout.TableLayout;
 import org.basex.io.IOFile;
@@ -336,7 +339,7 @@ public final class DialogServer extends Dialog {
         byte[] cont = Token.EMPTY;
         if(logc.getSelectedIndex() != -1) {
           final File f = new File(logdir, logc.getSelectedItem().toString());
-          cont = new IOFile(f).content();
+          cont = new IOFile(f).read();
         }
         logt.setText(cont);
         logt.scrollToEnd();
@@ -367,11 +370,11 @@ public final class DialogServer extends Dialog {
       }
     } catch(final Exception ex) {
       icon = Msg.ERROR;
-      msg = Util.server(ex);
+      msg = Util.message(ex);
       if(msg.equals(Util.info(PERMNO, CmdPerm.values()[4]))) {
         try {
           cs.execute(new Exit());
-        } catch(final BaseXException exx) {
+        } catch(final IOException exx) {
           Util.stack(exx);
         }
       }
@@ -421,9 +424,9 @@ public final class DialogServer extends Dialog {
 
   /**
    * Fills sessions/databases panel.
-   * @throws BaseXException Exception
+   * @throws IOException I/O exception
    */
-  private void refreshSess() throws BaseXException {
+  private void refreshSess() throws IOException {
     sese.setText(Token.token(cs.execute(new ShowSessions())));
     sedb.setText(Token.token(cs.execute(new ShowDatabases())));
   }
@@ -447,7 +450,7 @@ public final class DialogServer extends Dialog {
   public void cancel() {
     try {
       if(connected) cs.execute(new Exit());
-    } catch(final BaseXException ex) {
+    } catch(final IOException ex) {
       Util.debug(ex);
     }
     super.cancel();

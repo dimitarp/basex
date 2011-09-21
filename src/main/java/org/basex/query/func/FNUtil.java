@@ -122,7 +122,7 @@ public final class FNUtil extends FuncCall {
   private Value run(final QueryContext ctx) throws QueryException {
     final IO io = checkIO(expr[0], ctx);
     try {
-      return eval(ctx, io.content());
+      return eval(ctx, io.read());
     } catch(final IOException ex) {
       throw IOERR.thrw(input, ex);
     }
@@ -370,7 +370,7 @@ public final class FNUtil extends FuncCall {
    * @return resulting value
    * @throws QueryException query exception
    */
-  private Item toString(final QueryContext ctx) throws QueryException {
+  private Str toString(final QueryContext ctx) throws QueryException {
     final byte[] val = checkBin(expr[0], ctx);
     final String enc = expr.length == 2 ? string(checkStr(expr[1], ctx)) : UTF8;
     try {

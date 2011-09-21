@@ -9,7 +9,9 @@ import org.basex.core.Text;
 import org.basex.core.cmd.CreateUser;
 import org.basex.core.cmd.Kill;
 import org.basex.server.ClientSession;
+import org.basex.util.Performance;
 import org.basex.util.Token;
+import org.basex.util.Util;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -23,32 +25,34 @@ import static org.junit.Assert.*;
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
  */
-public final class ServerCmdTest extends CmdTest {
+public final class ServerCommandTest extends CommandTest {
   /** Server instance. */
   private static BaseXServer server;
 
-  /** Starts the server. */
+  /**
+   * Starts the server.
+   * @throws IOException I/O exception
+   */
   @BeforeClass
-  public static void start() {
+  public static void start() throws IOException {
     server = new BaseXServer("-z");
-    try {
-      session = new ClientSession(CONTEXT, ADMIN, ADMIN);
-      cleanUp();
-    } catch(final Exception ex) {
-      fail(ex.toString());
-    }
+    session = new ClientSession(CONTEXT, ADMIN, ADMIN);
+    cleanUp();
   }
 
-  /** Stops the server. */
+  /**
+   * Stops the server.
+   * @throws IOException I/O exception
+   */
   @AfterClass
-  public static void stop() {
+  public static void stop() throws IOException {
     try {
-      session.close();
+      if(session != null) session.close();
     } catch(final Exception ex) {
-      fail(ex.toString());
+      fail(Util.message(ex));
     }
     // stop server instance
-    server.stop();
+    if(server != null) server.stop();
   }
 
   /**
@@ -65,5 +69,7 @@ public final class ServerCmdTest extends CmdTest {
     ok(new Kill(NAME2));
     no(new Kill(NAME2 + "?"));
     cs.close();
+    // may be superfluous
+    Performance.sleep(100);
   }
 }

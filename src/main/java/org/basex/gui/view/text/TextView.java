@@ -10,7 +10,6 @@ import java.io.IOException;
 
 import javax.swing.Box;
 
-import org.basex.core.BaseXException;
 import org.basex.core.Command;
 import org.basex.data.Nodes;
 import org.basex.gui.GUICommands;
@@ -32,7 +31,7 @@ import org.basex.gui.view.ViewNotifier;
 import org.basex.io.IO;
 import org.basex.io.out.ArrayOutput;
 import org.basex.io.out.PrintOutput;
-import org.basex.io.serial.XMLSerializer;
+import org.basex.io.serial.Serializer;
 import org.basex.util.Token;
 import org.basex.util.Util;
 
@@ -156,7 +155,7 @@ public final class TextView extends View implements ActionListener {
     try {
       final ArrayOutput ao =
         new ArrayOutput().max(gui.gprop.num(GUIProp.MAXTEXT));
-      if(n != null) n.serialize(new XMLSerializer(ao));
+      if(n != null) n.serialize(Serializer.get(ao));
       setText(ao, null);
       refresh = false;
     } catch(final IOException ex) {
@@ -202,14 +201,12 @@ public final class TextView extends View implements ActionListener {
       if(cmd != null) {
         cmd.execute(gui.context, out);
       } else if(ns != null) {
-        ns.serialize(new XMLSerializer(out));
+        ns.serialize(Serializer.get(out));
       } else {
         final byte[] txt = area.getText();
         for(final byte t : txt) if(t < 0 || t > ' ' || Token.ws(t))
           out.write(t);
       }
-    } catch(final BaseXException ex) {
-      Dialog.error(gui, NOTSAVED);
     } catch(final IOException ex) {
       Dialog.error(gui, NOTSAVED);
     } finally {

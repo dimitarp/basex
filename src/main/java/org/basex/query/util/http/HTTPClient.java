@@ -6,7 +6,6 @@ import static org.basex.data.DataText.*;
 import static org.basex.query.util.Err.*;
 import static org.basex.util.Token.*;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,12 +27,14 @@ import org.basex.query.item.Item;
 import org.basex.query.iter.ItemCache;
 import org.basex.query.iter.Iter;
 import org.basex.query.util.http.Request.Part;
+import org.basex.util.Base64;
 import org.basex.util.InputInfo;
 import org.basex.util.TokenBuilder;
 import org.basex.util.hash.TokenMap;
 
 /**
  * HTTP Client.
+ *
  * @author BaseX Team 2005-11, BSD License
  * @author Rositsa Shadura
  */
@@ -153,8 +154,6 @@ public final class HTTPClient {
       throw HTTPERR.thrw(ii, "Invalid URL");
     } catch(final ProtocolException ex) {
       throw HTTPERR.thrw(ii, "Invalid HTTP method");
-    } catch(final FileNotFoundException ex) {
-      throw HTTPFNF.thrw(ii, ex);
     } catch(final IOException ex) {
       throw HTTPERR.thrw(ii, ex);
     }
@@ -166,14 +165,15 @@ public final class HTTPClient {
    * @param ii input info
    * @return HHTP connection
    * @throws QueryException query exception
-   * @throws IOException IO exception
+   * @throws IOException I/O Exception
    * @throws MalformedURLException incorrect url
    */
   private static HttpURLConnection openConnection(final String dest,
       final InputInfo ii) throws QueryException, IOException {
     final URL url = new URL(dest);
-    if(!url.getProtocol().equalsIgnoreCase("HTTP")) HTTPERR.thrw(ii,
-        "Invalid URL");
+    final String protocol = url.getProtocol();
+    if(!protocol.equalsIgnoreCase("HTTP") &&
+        !protocol.equalsIgnoreCase("HTTPS")) HTTPERR.thrw(ii, "Invalid URL");
     return (HttpURLConnection) url.openConnection();
   }
 
@@ -270,8 +270,7 @@ public final class HTTPClient {
    * @return encoded credentials
    */
   private static String encodeCredentials(final String u, final String p) {
-    final B64 b64 = new B64(token(u + ":" + p));
-    return AUTH_BASIC + string(b64.atom());
+    return AUTH_BASIC + Base64.encode(u + ':' + p);
   }
 
   /**
@@ -324,7 +323,7 @@ public final class HTTPClient {
    * @param payload payload
    * @param out connection output stream
    * @param ii input info
-   * @throws IOException IO exception
+   * @throws IOException I/O Exception
    * @throws QueryException query exception
    */
   private static void writeBase64(final ItemCache payload,
@@ -346,7 +345,7 @@ public final class HTTPClient {
    * @param payload payload
    * @param out connection output stream
    * @param ii input info
-   * @throws IOException IO exception
+   * @throws IOException I/O Exception
    * @throws QueryException query exception
    */
   private static void writeHex(final ItemCache payload, final OutputStream out,
@@ -368,7 +367,7 @@ public final class HTTPClient {
    * @param payloadAttrs payload attributes
    * @param method serialization method
    * @param out connection output stream
-   * @throws IOException IO exception
+   * @throws IOException I/O Exception
    */
   private static void write(final ItemCache payload,
       final TokenMap payloadAttrs, final byte[] method, final OutputStream out)
@@ -384,11 +383,11 @@ public final class HTTPClient {
     }
     // serialize items according to the parameters
     final SerializerProp prop = new SerializerProp(tb.toString());
-    final Serializer xml = Serializer.get(out, prop);
+    final Serializer ser = Serializer.get(out, prop);
     try {
-      payload.serialize(xml);
+      payload.serialize(ser);
     } finally {
-      xml.close();
+      ser.close();
     }
   }
 
@@ -396,7 +395,7 @@ public final class HTTPClient {
    * Reads the content of the linked resource.
    * @param src resource link
    * @param out output stream
-   * @throws IOException IO exception
+   * @throws IOException I/O Exception
    */
   private static void writeResource(final byte[] src, final OutputStream out)
       throws IOException {

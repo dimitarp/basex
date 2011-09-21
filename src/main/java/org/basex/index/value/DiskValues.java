@@ -48,7 +48,7 @@ public final class DiskValues implements Index {
    * Constructor, initializing the index structure.
    * @param d data reference
    * @param txt value type (texts/attributes)
-   * @throws IOException IO Exception
+   * @throws IOException I/O Exception
    */
   public DiskValues(final Data d, final boolean txt) throws IOException {
     this(d, txt, txt ? DATATXT : DATAATV);
@@ -59,7 +59,7 @@ public final class DiskValues implements Index {
    * @param d data reference
    * @param txt value type (texts/attributes)
    * @param pref file prefix
-   * @throws IOException IO Exception
+   * @throws IOException I/O Exception
    */
   DiskValues(final Data d, final boolean txt, final String pref)
       throws IOException {

@@ -1,13 +1,11 @@
 package org.basex.server;
 
-import static org.basex.util.Token.*;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import org.basex.core.BaseXException;
+
 import org.basex.core.Context;
-import org.basex.io.out.PrintOutput;
-import org.basex.query.QueryException;
+import org.basex.io.in.ArrayInput;
+import org.basex.io.out.ArrayOutput;
 
 /**
  * This class defines all methods for iteratively evaluating queries locally.
@@ -19,138 +17,51 @@ import org.basex.query.QueryException;
  */
 public class LocalQuery extends Query {
   /** Active query listener. */
-  private final QueryListener qp;
-  /** Buffer output; {@code null} if an {@link OutputStream} is specified. */
-  private final ByteArrayOutputStream buf;
-  /** Iterator flag. */
-  private boolean ready;
-  /** Owning local session. */
-  private final LocalSession session;
-
-  /**
-   * Constructor. Query output will be returned by each called methods.
-   * @param s owning session
-   * @param q query string
-   * @param ctx database context
-   * @throws BaseXException query exception
-   */
-  LocalQuery(final LocalSession s, final String q, final Context ctx)
-      throws BaseXException {
-    session = s;
-    buf = new ByteArrayOutputStream();
-    try {
-      qp = new QueryListener(q, PrintOutput.get(buf), ctx);
-    } catch(final QueryException ex) {
-      throw new BaseXException(ex);
-    }
-  }
+  private final QueryListener ql;
 
   /**
    * Constructor. Query output will be written to the provided output stream.
    * All methods will return {@code null}.
-   * @param s owning session
    * @param q query string
    * @param ctx database context
    * @param o output stream to write query output
-   * @throws BaseXException query exception
    */
-  LocalQuery(final LocalSession s, final String q, final Context ctx,
-      final OutputStream o) throws BaseXException {
-    session = s;
-    buf = null;
-    try {
-      qp = new QueryListener(q, PrintOutput.get(o), ctx);
-    } catch(final QueryException ex) {
-      throw new BaseXException(ex);
-    }
+  LocalQuery(final String q, final Context ctx, final OutputStream o) {
+    ql = new QueryListener(q, ctx);
+    out = o;
   }
 
   @Override
   public void bind(final String n, final Object v, final String t)
-      throws BaseXException {
-    try {
-      qp.bind(n, v, t);
-    } catch(final QueryException ex) {
-      throw new BaseXException(ex);
-    }
+      throws IOException {
+    ql.bind(n, v, t);
   }
 
   @Override
-  public String init() throws BaseXException {
-    try {
-      qp.init();
-    } catch(final Exception ex) {
-      throw new BaseXException(ex);
-    }
-    return output();
+  protected void cache() throws IOException {
+    final ArrayOutput ao = new ArrayOutput();
+    ql.execute(true, ao, true);
+    cache(new ArrayInput(ao.toArray()));
   }
 
   @Override
-  public boolean more() throws BaseXException {
-    try {
-      ready = true;
-      return qp.next();
-    } catch(final Exception ex) {
-      throw new BaseXException(ex);
-    }
+  public String execute() throws IOException {
+    final OutputStream os = out == null ? new ArrayOutput() : out;
+    ql.execute(false, os, false);
+    return out == null ? os.toString() : null;
   }
 
   @Override
-  public String next() throws BaseXException {
-    try {
-      if(ready) ready = false;
-      else qp.next();
-    } catch(final Exception ex) {
-      throw new BaseXException(ex);
-    }
-    return output();
+  public String info() throws IOException {
+    return ql.info();
   }
 
   @Override
-  public String execute() throws BaseXException {
-    try {
-      qp.execute();
-    } catch(final Exception ex) {
-      throw new BaseXException(ex);
-    }
-    return output();
+  public String options() throws IOException {
+    return ql.options();
   }
 
   @Override
-  public String info() throws BaseXException {
-    return string(qp.info());
-  }
-
-  @Override
-  public String close() throws BaseXException {
-    session.removeQuery(this);
-    return closeListener();
-  }
-
-  /**
-   * Close the query listener.
-   * @return output
-   * @throws BaseXException IO exception
-   */
-  String closeListener() throws BaseXException {
-    try {
-      qp.close(false);
-    } catch(final IOException ex) {
-      throw new BaseXException(ex);
-    }
-    return output();
-  }
-
-  /**
-   * Query output.
-   * @return {@code null} if query output is directly sent to an output stream
-   */
-  private String output() {
-    // if another output stream is specified, the query process has already
-    // written the data, so there is nothing to output
-    if(buf == null) return null;
-    final String result = string(buf.toByteArray());
-    buf.reset();
-    return result;
+  public void close() {
   }
 }

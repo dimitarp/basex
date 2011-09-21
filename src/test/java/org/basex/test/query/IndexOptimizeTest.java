@@ -1,5 +1,6 @@
 package org.basex.test.query;
 
+import static org.basex.query.func.Function.*;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
@@ -15,7 +16,6 @@ import org.basex.core.cmd.Optimize;
 import org.basex.core.cmd.Set;
 import org.basex.io.out.ArrayOutput;
 import org.basex.io.serial.Serializer;
-import org.basex.io.serial.XMLSerializer;
 import org.basex.query.QueryException;
 import org.basex.query.QueryProcessor;
 import org.basex.util.Util;
@@ -89,7 +89,7 @@ public final class IndexOptimizeTest {
   @Test
   public void docTest() throws Exception {
     createDoc();
-    final String doc = "doc('" + NAME + "')";
+    final String doc = DOC.args(NAME);
     check(doc + "//*[text() = '1']");
     check(doc + "//*[text() contains text '2']");
   }
@@ -101,7 +101,7 @@ public final class IndexOptimizeTest {
   @Test
   public void collTest() throws Exception {
     createColl();
-    final String doc = "collection('" + NAME + "')";
+    final String doc = COLL.args(NAME);
     check(doc + "//*[text() = '1']");
     check(doc + "//*[text() contains text '2']");
   }
@@ -113,7 +113,7 @@ public final class IndexOptimizeTest {
   @Test
   public void dbOpenTest() throws Exception {
     createColl();
-    final String doc = "db:open('" + NAME + "')";
+    final String doc = DBOPEN.args(NAME);
     check(doc + "//*[text() = '1']");
     check(doc + "//*[text() <- '2']");
   }
@@ -125,7 +125,7 @@ public final class IndexOptimizeTest {
   @Test
   public void dbOpenExtTest() throws Exception {
     createColl();
-    final String doc = "db:open('" + NAME + "/two')";
+    final String doc = DBOPEN.args(NAME + "/two");
     check(doc + "//*[text() = '1']", "");
     check(doc + "//*[text() = '4']", "<a>4</a>");
   }
@@ -152,7 +152,7 @@ public final class IndexOptimizeTest {
   @Test
   public void functionTest() throws Exception {
     createColl();
-    final String doc = "db:open('" + NAME + "')";
+    final String doc = DBOPEN.args(NAME);
     // text: search term must be string
     check("declare function local:x() {" + doc +
         "//text()[. = '1'] }; local:x()", "1");
@@ -206,8 +206,8 @@ public final class IndexOptimizeTest {
     QueryProcessor qp = new QueryProcessor(query, CONTEXT);
     try {
       ArrayOutput ao = new ArrayOutput();
-      Serializer xml = qp.getSerializer(ao);
-      qp.execute().serialize(xml);
+      Serializer ser = qp.getSerializer(ao);
+      qp.execute().serialize(ser);
       qp.close();
       final String info = qp.info();
       if(result != null)
@@ -215,21 +215,21 @@ public final class IndexOptimizeTest {
 
       // fetch query plan
       plan = new ArrayOutput();
-      qp.plan(new XMLSerializer(plan));
+      qp.plan(Serializer.get(plan));
 
       qp = new QueryProcessor(plan + "/descendant-or-self::*" +
           "[self::IndexAccess|self::FTIndexAccess]", CONTEXT);
       ao = new ArrayOutput();
-      xml = qp.getSerializer(ao);
-      qp.execute().serialize(xml);
+      ser = qp.getSerializer(ao);
+      qp.execute().serialize(ser);
 
       // check if IndexAccess is used
       assertTrue("No index used:\nQuery: " + query + "\nInfo: " + info +
           "\nPlan: " + plan, !ao.toString().isEmpty());
     } catch(final QueryException ex) {
-      fail(ex.getMessage() + "\nQuery: " + query + "\nPlan: " + plan);
+      fail(Util.message(ex) + "\nQuery: " + query + "\nPlan: " + plan);
     } catch(final IOException ex) {
-      fail(ex.getMessage());
+      fail(Util.message(ex));
     }
   }
 }

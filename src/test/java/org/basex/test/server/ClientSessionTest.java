@@ -7,6 +7,7 @@ import java.io.IOException;
 
 import org.basex.BaseXServer;
 import org.basex.server.ClientSession;
+import org.basex.util.Util;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -21,15 +22,21 @@ public class ClientSessionTest extends SessionTest {
   /** Server reference. */
   private static BaseXServer server;
 
-  /** Starts the server. */
+  /**
+   * Starts the server.
+   * @throws IOException I/O exception
+   */
   @BeforeClass
-  public static void startServer() {
+  public static void startServer() throws IOException {
     server = new BaseXServer("-z");
   }
 
-  /** Stops the server. */
+  /**
+   * Stops the server.
+   * @throws IOException I/O exception
+   */
   @AfterClass
-  public static void stopServer() {
+  public static void stop() throws IOException {
     server.stop();
   }
 
@@ -39,7 +46,7 @@ public class ClientSessionTest extends SessionTest {
     try {
       session = new ClientSession(server.context, ADMIN, ADMIN, out);
     } catch(final IOException ex) {
-      fail(ex.toString());
+      fail(Util.message(ex));
     }
   }
 }

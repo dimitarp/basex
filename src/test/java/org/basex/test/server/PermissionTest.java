@@ -3,8 +3,9 @@ package org.basex.test.server;
 import static org.basex.core.Text.*;
 import static org.junit.Assert.*;
 
+import java.io.IOException;
+
 import org.basex.BaseXServer;
-import org.basex.core.BaseXException;
 import org.basex.core.Command;
 import org.basex.core.Commands.CmdIndex;
 import org.basex.core.Commands.CmdSet;
@@ -68,14 +69,17 @@ public final class PermissionTest {
 
   /** Server reference. */
   private static BaseXServer server;
-  /** Socket reference. */
+  /** Admin session. */
   private Session adminSession;
-  /** Socket reference. */
+  /** Test session. */
   private Session testSession;
 
-  /** Starts the server. */
+  /**
+   * Starts the server.
+   * @throws IOException I/O exception
+   */
   @BeforeClass
-  public static void start() {
+  public static void start() throws IOException {
     server = new BaseXServer("-z");
   }
 
@@ -96,7 +100,7 @@ public final class PermissionTest {
       ok(new CreateDB(NAME, "<xml/>"), adminSession);
       ok(new Close(), adminSession);
     } catch(final Exception ex) {
-      fail(ex.toString());
+      fail(Util.message(ex));
     }
   }
 
@@ -281,9 +285,9 @@ public final class PermissionTest {
     ok(new RepoDelete("http://www.pkg3.com", null), testSession);
   }
 
-  /** Tests some usability stuff. */
+  /** Drops users. */
   @Test
-  public void use() {
+  public void dropUsers() {
     no(new DropUser(NAME), testSession);
     no(new DropUser(NAME), adminSession);
     ok(new Exit(), testSession);
@@ -298,8 +302,8 @@ public final class PermissionTest {
   private static void ok(final Command cmd, final Session s) {
     try {
       s.execute(cmd);
-    } catch(final BaseXException ex) {
-      fail(ex.getMessage());
+    } catch(final IOException ex) {
+      fail(Util.message(ex));
     }
   }
 
@@ -313,7 +317,7 @@ public final class PermissionTest {
     try {
       s.execute(cmd);
       fail("\"" + cmd + "\" was supposed to fail.");
-    } catch(final BaseXException ex) {
+    } catch(final IOException ex) {
     }
   }
 
@@ -323,15 +327,19 @@ public final class PermissionTest {
     try {
       testSession.close();
       adminSession.execute(new DropDB(RENAMED));
+      adminSession.execute(new DropDB(NAME));
       adminSession.close();
     } catch(final Exception ex) {
-      fail(ex.toString());
+      fail(Util.message(ex));
     }
   }
 
-  /** Stops the server. */
+  /**
+   * Stops the server.
+   * @throws IOException I/O exception
+   */
   @AfterClass
-  public static void stop() {
+  public static void stop() throws IOException {
     // stop server instance
     server.stop();
   }

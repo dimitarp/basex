@@ -31,9 +31,9 @@ public final class EventTest {
   /** Return value of function db:event. */
   private static final String RETURN = "ABCDEFGHIJKLMNOP";
   /** Event count. */
-  private static final int EVENT_COUNT = 50;
+  private static final int EVENT_COUNT = 1;
   /** Client count. */
-  private static final int CLIENTS = 50;
+  private static final int CLIENTS = 1;
 
   /** Server reference. */
   private static BaseXServer server;
@@ -42,49 +42,55 @@ public final class EventTest {
   /** Control client sessions. */
   private final ClientSession[] sessions = new ClientSession[CLIENTS];
 
-  /** Starts the server. */
+  /**
+   * Starts the server.
+   * @throws IOException I/O exception
+   */
   @BeforeClass
-  public static void start() {
+  public static void start() throws IOException {
     server = new BaseXServer("-z");
   }
 
   /**
    * Starts the sessions.
-   * @throws Exception exception
+   * @throws IOException I/O exception
    */
   @Before
-  public void startSessions() throws Exception {
+  public void startSessions() throws IOException {
     session = newSession();
     // drop event, if not done yet
     try {
       session.execute("drop event " + NAME);
-    } catch(final BaseXException e) { }
+    } catch(final IOException ex) { }
 
     for(int i = 0; i < sessions.length; i++) sessions[i] = newSession();
   }
 
   /**
    * Stops the sessions.
-   * @throws Exception exception
+   * @throws IOException I/O exception
    */
   @After
-  public void stopSessions() throws Exception {
+  public void stopSessions() throws IOException {
     for(final ClientSession cs : sessions) cs.close();
     session.close();
   }
 
-  /** Stops the server. */
+  /**
+   * Stops the server.
+   * @throws IOException I/O exception
+   */
   @AfterClass
-  public static void stop() {
+  public static void stop() throws IOException {
     server.stop();
   }
 
   /**
    * Creates and drops events.
-   * @throws BaseXException command exception
+   * @throws IOException I/O exception
    */
   @Test
-  public void createDrop() throws BaseXException {
+  public void createDrop() throws IOException {
     final String[] events = new String[EVENT_COUNT];
     for(int i = 0; i < EVENT_COUNT; i++) events[i] = NAME + i;
     Arrays.sort(events);
@@ -111,17 +117,17 @@ public final class EventTest {
 
   /**
    * Watches and unwatches events.
-   * @throws Exception exception
+   * @throws IOException I/O exception
    */
   @Test
-  public void watchUnwatch() throws Exception {
+  public void watchUnwatch() throws IOException {
     // create event
     session.execute("create event " + NAME);
     // create event
     try {
       session.execute("create event " + NAME);
       fail("This was supposed to fail.");
-    } catch(final BaseXException e) { }
+    } catch(final IOException ex) { /* expected. */ }
 
     // watch an event
     for(final ClientSession cs : sessions) {
@@ -139,7 +145,7 @@ public final class EventTest {
         });
         fail("This was supposed to fail.");
       }
-    } catch(final BaseXException e) { }
+    } catch(final IOException ex) { /* expected. */ }
 
     // unwatch event
     for(final ClientSession cs : sessions) {
@@ -151,7 +157,7 @@ public final class EventTest {
         cs.unwatch(NAME + 1);
         fail("This was supposed to fail.");
       }
-    } catch(final BaseXException e) { }
+    } catch(final IOException ex) { /* expected. */ }
 
     // drop the event
     session.execute("drop event " + NAME);
@@ -159,15 +165,15 @@ public final class EventTest {
     try {
       session.execute("drop event " + NAME);
       fail("This was supposed to fail.");
-    } catch(final BaseXException e) { }
+    } catch(final IOException ex) { /* expected. */ }
   }
 
   /**
    * Runs event test with specified second query and without.
-   * @throws BaseXException command exception
+   * @throws IOException I/O exception
    */
   @Test
-  public void event() throws BaseXException {
+  public void event() throws IOException {
     // create the event
     session.execute("create event " + NAME);
     // watch event

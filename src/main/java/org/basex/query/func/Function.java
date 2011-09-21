@@ -197,7 +197,7 @@ public enum Function {
   /** XQuery function. */
   URICOLL(FNGen.class, "uri-collection([uri])", URI_ZM, 0, STR_ZO),
   /** XQuery function. */
-  SERIALIZE(FNGen.class, "serialize(node[,params])", STR, 1, ITEM_ZM, ELM_ZO),
+  SERIALIZE(FNGen.class, "serialize(node[,params])", STR, 1, ITEM_ZM, ITEM),
 
   /* FNId functions. */
 
@@ -458,7 +458,7 @@ public enum Function {
   /* FNDb functions. */
 
   /** Database function: opens a database. */
-  DBOPEN(FNDb.class, "open(database)", NOD_ZM, STR),
+  DBOPEN(FNDb.class, "open(database[,path])", NOD_ZM, 1, STR, STR),
   /** Database function: opens a specific database node. */
   DBOPENPRE(FNDb.class, "open-pre(database,pre)", NOD_ZM, ITEM, ITR),
   /** Database function: opens a specific database node. */
@@ -493,63 +493,84 @@ public enum Function {
   DBREPLACE(FNDb.class, "replace(database,path,item)", EMP, ITEM, STR, ITEM),
   /** Database function: optimize database structures. */
   DBOPTIMIZE(FNDb.class, "optimize(name[,all])", EMP, 1, STR, BLN),
-  /** Database function: gets a value binary data. */
-  DBGET(FNDb.class, "get(database,path)", B64, STR, STR),
+  /** Database function: retrieves binary data. */
+  DBRETRIEVE(FNDb.class, "retrieve(database,path)", RAW, STR, STR),
   /** Database function: stores binary data. */
-  DBPUT(FNDb.class, "put(database,path,value)", EMP, STR, STR, ITEM),
+  DBSTORE(FNDb.class, "store(database,path,value)", EMP, STR, STR, ITEM),
   /** Database function: checks if the specified resource is an xml document. */
   DBISXML(FNDb.class, "is-xml(database,path)", BLN, STR, STR),
   /** Database function: checks if the specified resource is a raw file. */
   DBISRAW(FNDb.class, "is-raw(database,path)", BLN, STR, STR),
+  /** Database function: returns the content type of a database file. */
+  DBCTYPE(FNDb.class, "content-type(database,path)", STR, STR, STR),
 
   /* FNFile functions (EXPath). */
 
   /** XQuery function */
-  FEXISTS(FNFile.class, "exists(path)", BLN, STR),
+  FLEXISTS(FNFile.class, "exists(path)", BLN, STR),
   /** XQuery function */
-  ISDIR(FNFile.class, "is-directory(path)", BLN, STR),
+  FLISDIR(FNFile.class, "is-directory(path)", BLN, STR),
   /** XQuery function */
-  ISFILE(FNFile.class, "is-file(path)", BLN, STR),
+  FLISFILE(FNFile.class, "is-file(path)", BLN, STR),
   /** XQuery function */
-  LASTMOD(FNFile.class, "last-modified(path)", DTM, STR),
+  FLLASTMOD(FNFile.class, "last-modified(path)", DTM, STR),
   /** XQuery function */
-  SIZE(FNFile.class, "size(path)", ITR, STR),
+  FLSIZE(FNFile.class, "size(path)", ITR, STR),
   /** XQuery function */
-  BASENAME(FNFile.class, "base-name(path[,suffix])", STR, 1, STR, STR),
+  FLBASENAME(FNFile.class, "base-name(path[,suffix])", STR, 1, STR, STR),
   /** XQuery function */
-  DIRNAME(FNFile.class, "dir-name(path)", STR, STR),
+  FLDIRNAME(FNFile.class, "dir-name(path)", STR, STR),
   /** XQuery function */
-  PATHNATIVE(FNFile.class, "path-to-native(path)", STR, STR),
+  FLPATHNATIVE(FNFile.class, "path-to-native(path)", STR, STR),
   /** XQuery function */
-  PATHTOURI(FNFile.class, "path-to-uri(path)", URI, STR),
+  FLPATHTOURI(FNFile.class, "path-to-uri(path)", URI, STR),
   /** XQuery function */
-  RESOLVEPATH(FNFile.class, "resolve-path(path)", STR, STR),
+  FLRESOLVEPATH(FNFile.class, "resolve-path(path)", STR, STR),
   /** XQuery function */
-  FLIST(FNFile.class, "list(path[,recursive[,pattern]])", STR_ZM, 1, STR, BLN,
+  FLLIST(FNFile.class, "list(path[,recursive[,pattern]])", STR_ZM, 1, STR, BLN,
       STR),
   /** XQuery function */
-  CREATEDIR(FNFile.class, "create-directory(path)", EMP, STR),
+  FLCREATEDIR(FNFile.class, "create-directory(path)", EMP, STR),
   /** XQuery function */
-  DELETE(FNFile.class, "delete(path)", EMP, STR),
+  FLDELETE(FNFile.class, "delete(path)", EMP, STR),
   /** XQuery function */
-  READTEXT(FNFile.class, "read-text(path[,encoding])", STR, 1, STR, STR),
+  FLREADTEXT(FNFile.class, "read-text(path[,encoding])", STR, 1, STR, STR),
   /** XQuery function */
-  READLINES(FNFile.class, "read-text-lines(path[,encoding])", STR_ZM, 1, STR,
-      STR),
+  FLREADLINES(FNFile.class, "read-text-lines(path[,encoding])",
+      STR_ZM, 1, STR, STR),
   /** XQuery function */
-  READBIN(FNFile.class, "read-binary(path)", B64, STR),
+  FLREADBIN(FNFile.class, "read-binary(path)", RAW, STR),
   /** XQuery function */
-  WRITE(FNFile.class, "write(path,data[,params])", EMP, 2, STR, ITEM_ZM, NOD),
+  FLWRITE(FNFile.class, "write(path,data[,params])", EMP, 2, STR, ITEM_ZM, NOD),
   /** XQuery function */
-  WRITEBIN(FNFile.class, "write-binary(path,item)", EMP, STR, ITEM_ZM),
+  FLWRITEBIN(FNFile.class, "write-binary(path,item)", EMP, STR, ITEM_ZM),
   /** XQuery function */
-  APPEND(FNFile.class, "append(path,data[,params])", EMP, 2, STR, ITEM_ZM, NOD),
+  FLAPPEND(FNFile.class, "append(path,data[,params])", EMP, 2,
+      STR, ITEM_ZM, NOD),
   /** XQuery function */
-  APPENDBIN(FNFile.class, "append-binary(path,item)", EMP, STR, ITEM_ZM),
+  FLAPPENDBIN(FNFile.class, "append-binary(path,item)", EMP, STR, ITEM_ZM),
   /** XQuery function */
-  COPY(FNFile.class, "copy(source,target)", EMP, STR, STR),
+  FLCOPY(FNFile.class, "copy(source,target)", EMP, STR, STR),
   /** XQuery function */
-  MOVE(FNFile.class, "move(source,target)", EMP, STR, STR),
+  FLMOVE(FNFile.class, "move(source,target)", EMP, STR, STR),
+
+  /* FNSql functions. */
+
+  /** XQuery function */
+  SQLINIT(FNSql.class, "init(class)", EMP, 1, STR),
+  /** XQuery function */
+  SQLCONNECT(FNSql.class, "connect(url[,user[,pass[,options]]]]])",
+      ITR, 1, STR, STR, STR, NOD_ZO),
+  /** XQuery function */
+  SQLPREPARE(FNSql.class, "prepare(id,statement)", ITR, ITR, STR),
+  /** XQuery function */
+  SQLEXECUTE(FNSql.class, "execute(id[,item])", ELM_ZM, 1, ITR, ITEM_ZO),
+  /** XQuery function */
+  SQLCLOSE(FNSql.class, "close(id)", EMP, ITR),
+  /** XQuery function */
+  SQLCOMMIT(FNSql.class, "commit(id)", EMP, ITR),
+  /** XQuery function */
+  SQLROLLBACK(FNSql.class, "rollback(id)", EMP, ITR),
 
   /* FNFt functions. */
 
@@ -568,44 +589,44 @@ public enum Function {
   /* FNHof functions. */
 
   /** XQuery function. */
-  SORTWITH(FNHof.class, "sort-with(lt-fun,seq)", ITEM_ZM,
+  HOFSORTWITH(FNHof.class, "sort-with(lt-fun,seq)", ITEM_ZM,
       FuncType.get(new SeqType[] { ITEM, ITEM }, BLN).seq(), ITEM_ZM),
   /** XQuery function. */
   HOFID(FNHof.class, "id(expr)", ITEM_ZM, ITEM_ZM),
   /** XQuery function. */
-  CONST(FNHof.class, "const(return,ignore)", ITEM_ZM, ITEM_ZM, ITEM_ZM),
+  HOFCONST(FNHof.class, "const(return,ignore)", ITEM_ZM, ITEM_ZM, ITEM_ZM),
   /** XQuery function. */
-  UNTIL(FNHof.class, "until(pred,func,start)", ITEM_ZM,
+  HOFUNTIL(FNHof.class, "until(pred,func,start)", ITEM_ZM,
       FuncType.get(new SeqType[] { ITEM_ZM }, BLN).seq(),
       FuncType.get(new SeqType[] { ITEM_ZM }, ITEM_ZM).seq(), ITEM_ZM),
   /** XQuery function. */
-  FOLDLEFT1(FNHof.class, "fold-left1(function,non-empty-seq)", ITEM_ZM,
+  HOFFOLDLEFT(FNHof.class, "fold-left1(function,non-empty-seq)", ITEM_ZM,
       FuncType.get(new SeqType[] { ITEM_ZM, ITEM }, ITEM_ZM).seq(), ITEM_OM),
   /** XQuery Function. */
-  ITERATE(FNHof.class, "iterate(fun, seq)", ITEM_ZM, FuncType.arity(1).seq(),
-      ITEM_ZM),
+  HOFITERATE(FNHof.class, "iterate(fun, seq)", ITEM_ZM,
+      FuncType.arity(1).seq(), ITEM_ZM),
 
   /* FNHttp functions (EXPath). */
 
   /** XQuery function */
-  SENDREQUEST(FNHttp.class, "send-request(request[,href,[bodies]])", ITEM_ZM, 1,
-      NOD, STR_ZO, ITEM_ZM),
+  HTTPSENDREQUEST(FNHttp.class, "send-request(request[,href,[bodies]])",
+      ITEM_ZM, 1, NOD, STR_ZO, ITEM_ZM),
 
   /* FNJson functions. */
 
   /** JSON function: convert JSON to XML. */
-  JPARSE(FNJson.class, "parse(string)", NOD, STR),
+  JSONPARSE(FNJson.class, "parse(string)", NOD, STR),
   /** JSON function: convert JSON to XML. */
-  JPARSEML(FNJson.class, "parse-ml(string)", NOD, STR),
+  JSONPARSEML(FNJson.class, "parse-ml(string)", NOD, STR),
   /** JSON function: convert XML to JSON. */
-  JSERIALIZE(FNJson.class, "serialize(node)", STR, NOD),
+  JSONSER(FNJson.class, "serialize(node)", STR, NOD),
   /** JSON function: convert XML to JsonML. */
-  JSERIALIZEML(FNJson.class, "serialize-ml(node)", STR, NOD),
+  JSONSERML(FNJson.class, "serialize-ml(node)", STR, NOD),
 
   /* FNSent functions. */
 
   /** Sentiment function: returns a text sentiment. */
-  SENT(FNSent.class, "polarity(string,uri)", DBL, STR, STR),
+  SENTPOL(FNSent.class, "polarity(string,uri)", DBL, STR, STR),
   /** Sentiment function: returns a normed polarity value. */
   SENTNORM(FNSent.class, "normed-polarity(string,uri)", DBL, STR, STR),
 
@@ -684,6 +705,7 @@ public enum Function {
     URIS.put(FNHof.class,  HOFURI);
     URIS.put(FNJson.class, JSONURI);
     URIS.put(FNSent.class, SENTURI);
+    URIS.put(FNSql.class, SQLURI);
     URIS.put(FNUtil.class, UTILURI);
     URIS.put(FNXslt.class, XSLTURI);
   }
@@ -768,6 +790,36 @@ public enum Function {
       System.arraycopy(args, 0, arg, 0, arity);
     }
     return FuncType.get(arg, ret);
+  }
+
+  /**
+   * Returns a string representation of the function with the specified
+   * arguments. All objects are wrapped with quotes,
+   * except for the following ones:
+   * <ul>
+   * <li>integers</li>
+   * <li>booleans (which will be suffixed with parentheses)</li>
+   * <li>strings starting with an optional NCName and opening parenthesis</li>
+   * <li>strings starting with angle bracket, quote, dollar sign, or space</li>
+   * </ul>
+   * @param arg arguments
+   * @return string representation
+   */
+  public String args(final Object... arg) {
+    final TokenBuilder tb = new TokenBuilder();
+    for(final Object a : arg) {
+      if(tb.size() != 0) tb.add(',');
+      final String s = a.toString();
+      if(s.matches("^([\\w\\d-_:\\.]*\\(|<|\"|\\$| ).*") ||
+          a instanceof Integer) {
+        tb.add(s);
+      } else if(a instanceof Boolean) {
+        tb.add(s + "()");
+      } else {
+        tb.add("\"" + s.replaceAll("\"", "\"\"") + "\"");
+      }
+    }
+    return toString().replaceAll("\\(.*", "(") + tb + ")";
   }
 
   @Override

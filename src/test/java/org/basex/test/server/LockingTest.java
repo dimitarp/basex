@@ -3,21 +3,19 @@ package org.basex.test.server;
 import static org.basex.core.Text.*;
 import static org.junit.Assert.*;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 import org.basex.BaseXServer;
-import org.basex.core.BaseXException;
 import org.basex.core.Command;
 import org.basex.core.cmd.CreateDB;
 import org.basex.core.cmd.DropDB;
 import org.basex.core.cmd.Open;
 import org.basex.core.cmd.XQuery;
+import org.basex.io.in.ArrayInput;
 import org.basex.server.ClientSession;
 import org.basex.server.Session;
 import org.basex.util.Performance;
-import org.basex.util.Token;
+import org.basex.util.Util;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -29,32 +27,32 @@ import org.junit.Test;
  * @author Andreas Weiler
  */
 public final class LockingTest {
+  /** Positions to check in the query. */
+  private static final int POS = 10;
+
+  /** Test name. */
+  static final String NAME = Util.name(LockingTest.class);
+  /** Performance query. */
+  static final String PERF =
+    "for $c in (db:open('" + NAME + "')//country)[position() < 3] " +
+    "for $n at $p in db:open('" + NAME + "')//city " +
+    "where $c/@id = $n/@country and $n/name = 'Tirane' " +
+    "return $n/population/text()";
+
   /** Test file. */
   private static final String FILE = "etc/test/factbook.zip";
-  /** Test name. */
-  private static final String NAME = "factbook";
   /** Test query. */
   private static final String READ1 =
-    "for $c in (//country)[position() < 10] " +
+    "for $c in (//country)[position() <= " + POS + "] " +
     "for $n in //city where $c/@id = $n/@country and $n/name = 'Tirane' " +
     "return $n/population/text()";
   /** Test update query. */
   private static final String WRITE1 =
-    "for $i in (//members)[position() < 10] " +
+    "for $i in (//members)[position() <= " + POS + "] " +
     "return insert node <aa/> into $i";
   /** Test update query. */
   private static final String WRITE2 =
     "delete nodes //aa";
-
-  /** Performance query. */
-  private static final String PERF =
-    "for $c in (doc('factbook')//country)[position() < 3] " +
-    "for $n at $p in doc('factbook')//city " +
-    "where $c/@id = $n/@country and $n/name = 'Tirane' " +
-    "return $n/population/text()";
-
-  /** Number of performance tests. */
-  private static final int TESTS = 3;
 
   /** Server reference. */
   static BaseXServer server;
@@ -66,7 +64,8 @@ public final class LockingTest {
   /** Status of test. */
   boolean done;
 
-  /** Starts the server.
+  /**
+   * Starts the server.
    * @throws IOException exception
    */
   @BeforeClass
@@ -85,7 +84,6 @@ public final class LockingTest {
     session1.close();
     session2.execute(new DropDB(NAME));
     session2.close();
-    // stop server instance
     server.stop();
   }
 
@@ -101,7 +99,7 @@ public final class LockingTest {
       public void run() {
         try {
           session1.execute(new CreateDB(NAME, FILE));
-        } catch(final BaseXException ex) {
+        } catch(final IOException ex) {
         }
       }
     };
@@ -114,7 +112,7 @@ public final class LockingTest {
         try {
           session2.execute(new CreateDB(NAME, FILE));
           fail(FILE + " should still be locked.");
-        } catch(final BaseXException ex) {
+        } catch(final IOException ex) {
         }
       }
     };
@@ -125,79 +123,60 @@ public final class LockingTest {
     t1.join();
     t2.join();
 
-    // opens DB in session2 for further tests
-    session2.execute(new Open(NAME));
-
-    if(server.context.datas.pins(NAME) != 2) fail("test failed conCreate");
+    assertEquals(1, server.context.datas.pins(NAME));
   }
 
   /**
    * Read/read test.
-   * @throws BaseXException database exception
+   * @throws IOException I/O exception
    */
   @Test
-  public void readReadTest() throws BaseXException {
+  public void readReadTest() throws IOException {
     runTest(true, true);
   }
 
   /**
    * Write/write test.
-   * @throws BaseXException database exception
+   * @throws IOException I/O exception
    */
   @Test
-  public void writeWriteTest() throws BaseXException {
+  public void writeWriteTest() throws IOException {
     runTest(false, false);
-    if(!checkRes(new XQuery("count(//aa)"), session1).equals("0")) {
-      fail("Not all nodes have been deleted.");
-    }
+    assertEquals("Not all nodes have been deleted.",
+        "0", execute(new XQuery("count(//aa)"), session1));
   }
 
   /**
    * Write/read test.
-   * @throws BaseXException database exception
+   * @throws IOException I/O exception
    */
   @Test
-  public void writeReadTest() throws BaseXException {
+  public void writeReadTest() throws IOException {
     runTest(false, true);
   }
 
   /**
    * Write/read test.
-   * @throws BaseXException database exception
+   * @throws IOException I/O exception
    */
   @Test
-  public void readWriteTest() throws BaseXException {
+  public void readWriteTest() throws IOException {
     runTest(true, false);
-    if(!checkRes(new XQuery("count(//aa)"), session1).equals("0")) {
-      fail("Not all nodes have been deleted.");
-    }
-  }
-
-  /** Efficiency test.
-   * @throws Exception exception
-   */
-  @Test
-  public void efficiencyTest() throws Exception {
-    final Client[] cl = new Client[TESTS];
-    for(int i = 0; i < TESTS; ++i) cl[i] = new Client();
-    for(final Client c : cl) c.start();
-    for(final Client c : cl) c.join();
+    assertEquals("Not all nodes have been deleted.",
+        "0", execute(new XQuery("count(//aa)"), session1));
   }
 
   /**
    * Create db method test.
-   * @throws Exception exception
+   * @throws IOException I/O exception
    */
   @Test
-  public void createDBTest() throws Exception {
-    final byte[] hello = Token.token("<xml>Hello World!</xml>");
-    InputStream bais = new ByteArrayInputStream(hello);
-    session1.create("database", bais);
-    bais = new ByteArrayInputStream(hello);
-    session1.create("database2", bais);
+  public void createDBTest() throws IOException {
+    final String hello = "<xml/>";
+    session1.create("database", new ArrayInput(hello));
+    session1.create("database2", new ArrayInput(hello));
     session1.execute("drop db database");
-    bais = new ByteArrayInputStream(hello);
-    session1.create("database2", bais);
+    session1.create("database2", new ArrayInput(hello));
     session1.execute("drop db database2");
   }
 
@@ -205,22 +184,23 @@ public final class LockingTest {
    * Runs the tests.
    * @param read1 perform read/write query in main thread
    * @param read2 perform read/write query in second thread
-   * @throws BaseXException database exception
+   * @throws IOException I/O exception
    */
   private void runTest(final boolean read1, final boolean read2)
-      throws BaseXException {
+      throws IOException {
+
+    session2.execute(new Open(NAME));
 
     new Thread() {
       @Override
       public void run() {
         Performance.sleep(200);
         if(read2) {
-          final String res = checkRes(new XQuery(READ1), session2);
-          if(!res.equals("192000")) fail("test failed: " + res);
+          assertEquals("192000", execute(new XQuery(READ1), session2));
         } else {
           try {
             session2.execute(new XQuery(WRITE2));
-          } catch(final BaseXException bx) {
+          } catch(final IOException bx) {
             fail("test failed: " + bx.getMessage());
           }
         }
@@ -229,11 +209,11 @@ public final class LockingTest {
     }.start();
 
     if(read1) {
-      final String res = checkRes(new XQuery(READ1), session1);
-      if(!res.equals("192000")) fail("test failed: " + res);
+      assertEquals("192000", execute(new XQuery(READ1), session1));
     } else {
       session1.execute(new XQuery(WRITE1));
     }
+
     while(!done) Performance.sleep(100);
     done = false;
   }
@@ -253,32 +233,12 @@ public final class LockingTest {
    * @param session session
    * @return String result
    */
-  static String checkRes(final Command cmd, final Session session) {
+  static String execute(final Command cmd, final Session session) {
     try {
       return session.execute(cmd);
-    } catch(final BaseXException ex) {
-      fail(ex.toString());
+    } catch(final IOException ex) {
+      fail(Util.message(ex));
       return null;
-    }
-  }
-
-  /** Single client. */
-  static class Client extends Thread {
-    /** Client session. */
-    private final ClientSession session;
-
-    /**
-     * Default constructor.
-     * @throws IOException exception
-     */
-    public Client() throws IOException {
-        session = newSession();
-    }
-
-    @Override
-    public void run() {
-      if(!checkRes(new XQuery(PERF), session).equals("192000"))
-        fail("efficiency test failed");
     }
   }
 }
