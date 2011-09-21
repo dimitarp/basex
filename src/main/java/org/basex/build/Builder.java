@@ -99,6 +99,7 @@ public abstract class Builder extends Progress {
       endDoc();
       setSize(0, meta.size);
     }
+    // lastid should reflect the fact that the default document was added
     meta.lastid = meta.size - 1;
 
     Util.gc(perf);

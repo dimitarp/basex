@@ -24,9 +24,9 @@ public interface Index {
   IndexIterator iter(final IndexToken token);
 
   /**
-   * Returns the (approximate/estimated) number of pres for the specified token.
+   * Returns the (approximate/estimated) number of hits for the specified token.
    * @param token token to be found
-   * @return number of pres
+   * @return number of hits
    */
   int count(final IndexToken token);
 

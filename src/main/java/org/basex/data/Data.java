@@ -169,7 +169,7 @@ public abstract class Data {
   /**
    * Returns the indexed pre references for the specified token.
    * @param token index token reference
-   * @return pre array
+   * @return array of sorted pre values
    */
   public final IndexIterator iter(final IndexToken token) {
     return index(token.type()).iter(token);
@@ -428,10 +428,10 @@ public abstract class Data {
   }
 
   /**
-   * Returns a reference to the tag or attribute namespace URI.
+   * Returns a reference to the namespace of the addressed element or attribute.
    * @param pre pre value
-   * @return token reference
    * @param kind node kind
+   * @return namespace URI
    */
   public final int uri(final int pre, final int kind) {
     return kind == ELEM || kind == ATTR ?
@@ -439,8 +439,7 @@ public abstract class Data {
   }
 
   /**
-   * Returns a namespace flag.
-   * Should be only called for element nodes.
+   * Returns the namespace flag of the addressed element.
    * @param pre pre value
    * @return namespace flag
    */
@@ -523,19 +522,19 @@ public abstract class Data {
       updateText(pre, trim(concat(name, SPACE, atom(pre))), kind);
     } else {
       // update/set namespace reference
-      final int ou = ns.uri(name, pre);
-      final boolean ne = ou == 0 && uri.length != 0;
-      final int p = kind == ATTR ? parent(pre, kind) : pre;
-      final int u = ne ? ns.add(p, p, pref(name), uri) :
-        ou != 0 && eq(ns.uri(ou), uri) ? ou : 0;
+      final int ouri = ns.uri(name, pre);
+      final boolean ne = ouri == 0 && uri.length != 0;
+      final int npre = kind == ATTR ? parent(pre, kind) : pre;
+      final int nuri = ne ? ns.add(npre, npre, pref(name), uri) :
+        ouri != 0 && eq(ns.uri(ouri), uri) ? ouri : 0;
 
       // write namespace uri reference
-      table.write1(pre, kind == ELEM ? 3 : 11, u);
+      table.write1(pre, kind == ELEM ? 3 : 11, nuri);
       // write name reference
       table.write2(pre, 1, (nsFlag(pre) ? 1 << 15 : 0) |
         (kind == ELEM ? tagindex : atnindex).index(name, null, false));
       // write namespace flag
-      table.write2(p, 1, (ne || nsFlag(p) ? 1 << 15 : 0) | name(p));
+      table.write2(npre, 1, (ne || nsFlag(npre) ? 1 << 15 : 0) | name(npre));
     }
   }
 
@@ -949,6 +948,16 @@ public abstract class Data {
    */
   private void attSize(final int pre, final int kind, final int value) {
     if(kind == ELEM) table.write1(pre, 0, value << 3 | ELEM);
+  }
+
+  /**
+   * Sets the namespace flag.
+   * Should be only called for element nodes.
+   * @param pre pre value
+   * @param ne namespace flag
+   */
+  public final void nsFlag(final int pre, final boolean ne) {
+    table.write1(pre, 1, table.read1(pre, 1) & 0x7F | (ne ? 0x80 : 0));
   }
 
   /**

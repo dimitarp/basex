@@ -43,7 +43,7 @@ public final class IndexCache extends TokenSet {
 
   /**
    * Returns the size for the specified key.
-   * @param id cache id of the key
+   * @param id id of the key to be found
    * @return size
    */
   public int size(final int id) {
@@ -52,7 +52,7 @@ public final class IndexCache extends TokenSet {
 
   /**
    * Returns the pointer for the specified key.
-   * @param id key to be found
+   * @param id id of the key to be found
    * @return pointer
    */
   public long pointer(final int id) {
