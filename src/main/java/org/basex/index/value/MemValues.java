@@ -63,10 +63,11 @@ public final class MemValues extends TokenSet implements Index {
     final int i = id(key);
     if(i == 0 || len[i] == 0) return;
 
+    // find the position where the id is stored
     int p = -1;
     while(++p < len[i]) if(ids[i][p] == id) break;
 
-    // if not the last element, we need to shift:
+    // if not the last element, we need to shift forwards
     if(p < len[i] - 1) Array.move(ids[i], p + 1, -1, len[i] - (p + 1));
     len[i]--;
   }

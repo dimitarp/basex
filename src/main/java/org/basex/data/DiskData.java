@@ -419,9 +419,7 @@ public final class DiskData extends Data {
    */
   private Thread runIndexInsert(final Index ix, final TokenObjMap<IntList> m) {
     final Thread t = new Thread(new Runnable() { @Override public void run() {
-      // final org.basex.util.Performance p = new org.basex.util.Performance();
       ((DiskValues) ix).index(m);
-      // Util.errln("Index insert finished in " + p);
     }});
     t.start();
     return t;
@@ -435,9 +433,7 @@ public final class DiskData extends Data {
    */
   private Thread runIndexDelete(final Index ix, final TokenObjMap<IntList> m) {
     final Thread t = new Thread(new Runnable() { @Override public void run() {
-      //final org.basex.util.Performance p = new org.basex.util.Performance();
       ((DiskValues) ix).delete(m);
-      //Util.errln("Index delete finished in " + p);
     }});
     t.start();
     return t;
