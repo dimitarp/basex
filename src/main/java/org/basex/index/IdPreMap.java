@@ -1,11 +1,8 @@
 package org.basex.index;
 
-import static java.lang.Math.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.basex.io.in.DataInput;
 import org.basex.io.out.DataOutput;
 import org.basex.util.Array;
@@ -35,28 +32,16 @@ public class IdPreMap {
   private int rows;
 
   /**
-   * ID index; first column contains IDs (sorted); the second pointer to
-   * {@link #pres}.
-   */
-  private int[][] idix;
-
-  /** Number of records in the index. */
-  private int ixrows;
-
-  /**
    * Constructor.
    * @param id last inserted ID
    */
   public IdPreMap(final int id) {
     baseid = id;
-    rows = ixrows = 0;
     pres = new int[1];
     fids = new int[pres.length];
     nids = new int[pres.length];
     incs = new int[pres.length];
     oids = new int[pres.length];
-
-    idix = new int[pres.length][];
   }
 
   /**
@@ -74,8 +59,6 @@ public class IdPreMap {
       nids = in.readNums();
       incs = in.readNums();
       oids = in.readNums();
-
-      idix = new int[pres.length][];
     } finally {
       in.close();
     }
@@ -111,14 +94,7 @@ public class IdPreMap {
     if(rows == 0 || id < pres[0]) return id;
     // id was inserted by update
     if(id > baseid) {
-      // int i = sortedIndexOf(idix, 0, id);
-      // if(i < 0) {
-      // i = -i - 2;
-      // i = idix[i][1];
-      // return pres[i] + id - fids[i];
-      // }
-      // return pres[idix[i][1]];
-      // [DP] ID -> PRE mapping: optimize if performance is low
+      // optimize if performance is low
       for(int i = 0; i < rows; ++i) {
         if(fids[i] == id) return pres[i];
         if(fids[i] < id && id <= nids[i]) return pres[i] + id - fids[i];
@@ -235,7 +211,6 @@ public class IdPreMap {
       return;
     }
 
-    // [DP] Refactor!
     int inc = c;
     int oid = id;
 
@@ -281,7 +256,7 @@ public class IdPreMap {
         if(pre1 <= min1) {
           if(pre2 == max2) {
             if(i2 + 1 < rows && pres[i2 + 1] == pre) {
-              // remove the interval if the next one (already changed) is the same
+              // remove interval if the next one (already changed) is the same
               remove(i1, i2);
             } else {
               incs[i2] += c;
@@ -314,7 +289,7 @@ public class IdPreMap {
         if(pre1 <= min1) {
           if(pre2 == max2) {
             if(i2 + 1 < rows && pres[i2 + 1] == pre) {
-              // remove the interval if the next one (already changed) is the same
+              // remove interval if the next one (already changed) is the same
               remove(i1, i2);
             } else {
               incs[i2] += c;
@@ -330,7 +305,7 @@ public class IdPreMap {
             remove(i1, i2 - 1);
           } else if(pre2 < min2) {
             if(i2 < rows && pres[i2] == pre) {
-              // remove the interval if the next one (already changed) is the same
+              // remove interval if the next one (already changed) is the same
               remove(i1, --i2);
             } else {
               incs[--i2] += c;
@@ -415,27 +390,6 @@ public class IdPreMap {
   }
 
   /**
-   * Searches the specified element via binary search. Note that all elements
-   * must be sorted.
-   * @param a array to search into
-   * @param c column
-   * @param e element to be found
-   * @return index of the search key, or the negative insertion point - 1
-   */
-  private int sortedIndexOf(final int[][] a, final int c, final int e) {
-    int low = 0;
-    int high = ixrows - 1;
-    while(low <= high) {
-      int mid = (low + high) >>> 1;
-      int midVal = a[mid][c];
-      if(midVal < e) low = mid + 1;
-      else if(midVal > e) high = mid - 1;
-      else return mid; // key found
-    }
-    return -(low + 1); // key not found.
-  }
-
-  /**
    * Binary search for a key in a list. If there are several hits the last one
    * is returned.
    * @param a array to search into
@@ -483,30 +437,6 @@ public class IdPreMap {
     incs[i] = inc;
     oids[i] = oid;
     ++rows;
-    for(int j = 0; j < ixrows; ++j) if(idix[j][1] >= i) ++idix[j][1];
-  }
-
-  /**
-   * Add a record to the ID index.
-   * @param i index in the table where the record should be inserted
-   * @param fid first ID value
-   * @param sid is the ID newly generated (i.e. bigger than any other)
-   */
-  @SuppressWarnings("unused")
-  private void addid(final int i, final int fid, final boolean sid) {
-    if(ixrows == idix.length) {
-      idix = Arrays.copyOf(idix, Array.newSize(ixrows));
-    }
-    if(sid) {
-      idix[ixrows] = new int[] { fid, i};
-    } else {
-      final int k = -sortedIndexOf(idix, 0, fid) - 1;
-      if(k < ixrows) {
-        System.arraycopy(idix, k, idix, k + 1, ixrows - k);
-      }
-      idix[k] = new int[] { fid, i};
-    }
-    ++ixrows;
   }
 
   /**
@@ -516,138 +446,12 @@ public class IdPreMap {
    */
   private void remove(final int s, final int e) {
     if(s <= e) {
-      for(int j = s; j <= e; ++j) if(fids[j] >= 0) removeid(fids[j]);
-      final int c = s - e - 1;
-      for(int j = 0; j < ixrows; ++j) if(idix[j][1] >= s) idix[j][1] += c;
-
       System.arraycopy(pres, e + 1, pres, s, rows - (e + 1));
       System.arraycopy(fids, e + 1, fids, s, rows - (e + 1));
       System.arraycopy(nids, e + 1, nids, s, rows - (e + 1));
       System.arraycopy(incs, e + 1, incs, s, rows - (e + 1));
       System.arraycopy(oids, e + 1, oids, s, rows - (e + 1));
       rows -= e - s + 1;
-    }
-  }
-
-  /**
-   * Remove a record from the ID index.
-   * @param id ID value to remove
-   */
-  private void removeid(final int id) {
-    final int k = sortedIndexOf(idix, 0, id);
-    if(k >= 0 && k + 1 < ixrows) {
-      System.arraycopy(idix, k + 1, idix, k, ixrows - (k + 1));
-    }
-    --ixrows;
-  }
-}
-
-/** Sorted list of intervals. */
-class SortedIntIntervals {
-  /** List of interval starts. */
-  int[] fids;
-  /** List of interval ends. */
-  int[] lids;
-  /** Number of stored entries. */
-  int size;
-
-  /**
-   * Construct a new interval set.
-   * @param c initial capacity
-   */
-  public SortedIntIntervals(final int c) {
-    size = 0;
-    fids = new int[c];
-    lids = new int[c];
-  }
-
-  /**
-   * Construct a new interval set using the provided data.
-   * @param s size
-   * @param f list of interval starts
-   * @param l list of interval ends
-   */
-  public SortedIntIntervals(final int s, final int[] f, final int[] l) {
-    size = s;
-    fids = f;
-    lids = l;
-  }
-
-  /**
-   * Search for a key in the stored intervals.
-   * @param k key
-   * @return if the key is found: the index of the interval in which it is
-   *         else: -(insertion point - 1)
-   */
-  public int sortedIndexOf(final int k) {
-    int low = 0;
-    int high = size - 1;
-    while(low <= high) {
-      int mid = (low + high) >>> 1;
-      final int midValMin = fids[mid];
-      final int midValMax = midValMin + lids[mid] - fids[mid];
-      if(midValMax < k) low = mid + 1;
-      else if(midValMin > k) high = mid - 1;
-      else return mid; // key found
-    }
-    return -(low + 1); // key not found.
-  }
-
-  /**
-   * Insert a set of numbers.
-   * @param k set of numbers
-   */
-  public void insert(final int[] k) {
-    Arrays.sort(k);
-    int first = k[0];
-    int last = first;
-    for(int i = 0; i < k.length; ++i) {
-      final int next = k[i];
-      if(next - last <= 1) {
-        last = next;
-      } else {
-        insert(first, last);
-        first = last = next;
-      }
-    }
-    insert(first, last);
-  }
-
-  /**
-   * Insert an interval.
-   * @param first interval beginning
-   * @param last interval end
-   */
-  public void insert(final int first, final int last) {
-    int ins = sortedIndexOf(first);
-    if(ins < 0) {
-      ins = -(ins + 1);
-      if(ins == size) {
-        // append the interval at the end
-        checkSize();
-        fids[size] = first;
-        lids[size++] = last;
-      } else {
-        if(abs(last - fids[ins]) <= 1) fids[ins] = first;
-        else {
-          // insert the record
-          checkSize();
-          System.arraycopy(fids, ins, fids, ins + 1, size - ins);
-          System.arraycopy(lids, ins, lids, ins + 1, size++ - ins);
-          fids[ins] = first;
-          lids[ins] = last;
-        }
-      }
-    } else {
-      if(last > lids[ins]) lids[ins] = last;
-    }
-  }
-
-  /** Check the size and if necessary, resizes the arrays. */
-  private void checkSize() {
-    if(size == fids.length) {
-      fids = Arrays.copyOf(fids, Array.newSize(size));
-      lids = Arrays.copyOf(lids, fids.length);
     }
   }
 }

@@ -16,7 +16,7 @@ public final class IdPreMapBulkTest extends IdPreMapBulkTestBase {
   /** Maximal number of bulk inserted/deleted records. */
   private final int bulkcount = 30;
   /** Number of times to repeat each test. */
-  private final int iterations = 500;
+  private final int iterations = 50;
 
   /** Set-up method. */
   @Before
