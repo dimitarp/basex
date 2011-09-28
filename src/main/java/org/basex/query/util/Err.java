@@ -28,8 +28,6 @@ public enum Err {
   IDINVALID(BASX, 4, "%: value '%' out of range."),
   /** BASX0005: Evaluation exception. */
   PERMNO(BASX, 5, Text.PERMNO),
-  /** BASX0006: Evaluation exception. */
-  SERVERTIME(BASX, 6, Text.SERVERTIMEOUT),
   /** BASX0007: Evaluation exception. */
   QUERYNODES(BASX, 7, Text.QUERYNODESERR),
   /** BASX0008: Evaluation exception. */
@@ -147,8 +145,6 @@ public enum Err {
   /** FOZP0003: Evaluation exception. */
   ZIPFAIL(FOZP, 3, "Operation failed: %."),
 
-  /** FOHC0001: Evaluation exception. */
-  HTTPFNF(FOHC, 1, "Not found: %."),
   /** FOHC0001: Evaluation exception. */
   HTTPERR(FOHC, 1, "An HTTP error occurred: %."),
   /** FOHC0002: Evaluation exception. */
@@ -304,7 +300,9 @@ public enum Err {
   /** FTST0008: Parsing exception. */
   NOSTOPFILE(FTST, 8, "Stop word file not found: \"%\"."),
   /** FTST0009: Parsing exception. */
-  FTLAN(FTST, 9, "Language '%' not supported."),
+  FTNOSTEM(FTST, 9, "No stemmer available for language '%'."),
+  /** FTST0009: Parsing exception. */
+  FTNOTOK(FTST, 9, "No tokenizer available for language '%'."),
   /** FTST0018: Parsing exception. */
   NOTHES(FTST, 18, "Thesaurus not found: \"%\"."),
   /** FTST0019: Parsing exception. */

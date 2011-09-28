@@ -4,14 +4,14 @@ import static org.basex.core.Text.*;
 import static org.basex.query.QueryText.*;
 import static org.basex.query.util.Err.*;
 import static org.basex.util.Token.*;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
-
+import java.util.Map.Entry;
 import org.basex.core.Context;
 import org.basex.core.Progress;
 import org.basex.core.Prop;
+import org.basex.core.cmd.Set;
 import org.basex.data.Data;
 import org.basex.data.FTPosData;
 import org.basex.data.Nodes;
@@ -23,6 +23,7 @@ import org.basex.io.serial.SerializerException;
 import org.basex.io.serial.SerializerProp;
 import org.basex.query.expr.Expr;
 import org.basex.query.expr.ParseExpr;
+import org.basex.query.func.JavaFunc;
 import org.basex.query.item.DBNode;
 import org.basex.query.item.Dat;
 import org.basex.query.item.Dtm;
@@ -30,6 +31,8 @@ import org.basex.query.item.Item;
 import org.basex.query.item.QNm;
 import org.basex.query.item.SeqType;
 import org.basex.query.item.Tim;
+import org.basex.query.item.Type;
+import org.basex.query.item.Types;
 import org.basex.query.item.Uri;
 import org.basex.query.item.Value;
 import org.basex.query.iter.ItemCache;
@@ -41,6 +44,7 @@ import org.basex.query.util.UserFuncs;
 import org.basex.query.util.Var;
 import org.basex.query.util.Variables;
 import org.basex.query.util.format.DecFormatter;
+import org.basex.query.util.json.JsonMapConverter;
 import org.basex.util.InputInfo;
 import org.basex.util.Token;
 import org.basex.util.TokenBuilder;
@@ -53,7 +57,7 @@ import org.basex.util.list.IntList;
 
 /**
  * This abstract query expression provides the architecture for a compiled
- * query. // *
+ * query.
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
  */
@@ -80,8 +84,10 @@ public final class QueryContext extends Progress {
   public HashMap<String, String> stop;
   /** Cached thesaurus files. */
   public HashMap<String, String> thes;
-  /** Modified properties. */
-  public HashMap<String, Object> props;
+  /** Query options (are valid during query execution). */
+  public HashMap<String, String> queryOpt;
+  /** Global options (will be set after query execution). */
+  public HashMap<String, Object> globalOpt;
 
   /** Root expression of the query. */
   public Expr root;
@@ -218,6 +224,13 @@ public final class QueryContext extends Progress {
     // dump compilation info
     if(inf) compInfo(NL + QUERYCOMP);
 
+    // temporarily set database values
+    if(queryOpt != null) {
+      for(final Entry<String, String> e : queryOpt.entrySet()) {
+        Set.set(e.getKey(), e.getValue(), context.prop);
+      }
+    }
+
     if(initExpr != null) {
       // evaluate initial expression
       try {
@@ -327,6 +340,60 @@ public final class QueryContext extends Progress {
       ic.add(it);
     }
     return ic;
+  }
+
+  /**
+   * Binds an object to a global variable. If the object is an {@link Expr}
+   * instance, it is directly assigned. Otherwise, it is first cast to the
+   * appropriate XQuery type.
+   * @param n name of variable
+   * @param o object to be bound
+   * @throws QueryException query exception
+   */
+  public void bind(final String n, final Object o) throws QueryException {
+    final Expr ex = o instanceof Expr ? (Expr) o : JavaFunc.type(o).e(o, null);
+    // remove optional $ prefix
+    final QNm nm = new QNm(token(n.indexOf('$') == 0 ? n.substring(1) : n));
+    ns.uri(nm);
+    final Var gl = vars.global().get(nm);
+    if(gl == null) {
+      // assign new variable
+      vars.setGlobal(Var.create(this, null, nm).bind(ex, this));
+    } else {
+      // reset declaration state and bind new expression
+      gl.declared = false;
+      gl.bind(gl.type != null ? gl.type.type.e(ex.item(this, null),
+          this, null) : ex, this);
+    }
+  }
+
+  /**
+   * Binds an object to a global variable. If the object is an {@link Expr}
+   * instance, it is directly assigned. Otherwise, it is first cast to the
+   * appropriate XQuery type. If {@code "json"} is specified as data type,
+   * the value is interpreted according to the rules specified in
+   * {@link JsonMapConverter}.
+   * @param n name of variable
+   * @param o object to be bound
+   * @param t data type
+   * @throws QueryException query exception
+   */
+  public void bind(final String n, final Object o, final String t)
+      throws QueryException {
+
+    Object obj = o;
+    if(t != null && !t.isEmpty()) {
+      if(t.equals(QueryText.JSONSTR)) {
+        obj = JsonMapConverter.parse(token(o.toString()), null);
+      } else {
+        final QNm type = new QNm(token(t));
+        if(type.ns()) type.uri(ns.uri(type.pref(), false, null));
+        final Type typ = Types.find(type, true);
+        if(typ != null) obj = typ.e(obj, null);
+        else NOTYPE.thrw(null, type);
+      }
+    }
+    bind(n, obj);
   }
 
   /**

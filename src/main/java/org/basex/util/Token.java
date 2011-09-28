@@ -291,10 +291,10 @@ public final class Token {
    * @param token token
    * @return codepoints
    */
-  public static long[] cps(final byte[] token) {
+  public static int[] cps(final byte[] token) {
     int pos = 0;
     final int len = token.length;
-    final long[] cp = new long[len];
+    final int[] cp = new int[len];
     for(int i = 0; i < len; i += cl(token, i)) cp[pos++] = cp(token, i);
     return pos < len ? Arrays.copyOf(cp, pos) : cp;
   }
@@ -646,6 +646,17 @@ public final class Token {
    */
   public static boolean eq(final byte[] token, final byte[]... tokens) {
     for(final byte[] t : tokens) if(eq(token, t)) return true;
+    return false;
+  }
+
+  /**
+   * Compares several strings for equality.
+   * @param str first string
+   * @param strings strings to be compared
+   * @return true if the arrays are equal
+   */
+  public static boolean eq(final String str, final String... strings) {
+    for(final String s : strings) if(str.equals(s)) return true;
     return false;
   }
 

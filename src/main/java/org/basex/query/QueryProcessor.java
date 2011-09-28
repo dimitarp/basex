@@ -3,30 +3,21 @@ package org.basex.query;
 import static org.basex.core.Text.*;
 import static org.basex.query.util.Err.*;
 import static org.basex.util.Token.*;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map.Entry;
-import java.util.Scanner;
-
 import org.basex.core.Context;
 import org.basex.core.Progress;
-import org.basex.core.Prop;
 import org.basex.data.Nodes;
 import org.basex.data.Result;
 import org.basex.io.serial.Serializer;
 import org.basex.io.serial.SerializerException;
 import org.basex.query.expr.Expr;
 import org.basex.query.func.JavaFunc;
-import org.basex.query.item.Atm;
-import org.basex.query.item.QNm;
-import org.basex.query.item.Type;
-import org.basex.query.item.Types;
 import org.basex.query.item.Value;
-import org.basex.query.item.map.Map;
 import org.basex.query.iter.ItemCache;
 import org.basex.query.iter.Iter;
-import org.basex.query.util.Var;
+import org.basex.query.util.json.JsonMapConverter;
 
 /**
  * This class is an entry point for evaluating XQuery implementations.
@@ -99,18 +90,6 @@ public final class QueryProcessor extends Progress {
   public void parse() throws QueryException {
     if(parsed) return;
     parsed = true;
-
-    // parse pre-defined external variables
-    final String bind = ctx.context.prop.get(Prop.BINDINGS);
-    if(!bind.isEmpty()) {
-      final Scanner sc = new Scanner(bind);
-      sc.useDelimiter(",");
-      while(sc.hasNext()) {
-        final String[] sp = sc.next().split("=", 2);
-        bind(sp[0], new Atm(token(sp.length > 1 ? sp[1] : "")));
-      }
-    }
-    // parse query
     ctx.parse(query);
   }
 
@@ -158,9 +137,9 @@ public final class QueryProcessor extends Progress {
   /**
    * Binds an object to a global variable. If the object is an {@link Expr}
    * instance, it is directly assigned. Otherwise, it is first cast to the
-   * appropriate XQuery type. If {@code "map"} is specified as data type,
+   * appropriate XQuery type. If {@code "json"} is specified as data type,
    * the value is interpreted according to the rules specified in
-   * {@link Map#create(String)}.
+   * {@link JsonMapConverter}.
    * @param n name of variable
    * @param o object to be bound
    * @param t data type
@@ -169,20 +148,7 @@ public final class QueryProcessor extends Progress {
    */
   public QueryProcessor bind(final String n, final Object o, final String t)
       throws QueryException {
-
-    Object obj = o;
-    if(t != null && !t.isEmpty()) {
-      if(t.equals(QueryText.MAPSTR)) {
-        obj = Map.create(o.toString());
-      } else {
-        final QNm type = new QNm(token(t));
-        if(type.ns()) type.uri(ctx.ns.uri(type.pref(), false, null));
-        final Type typ = Types.find(type, true);
-        if(typ != null) obj = typ.e(obj, null);
-        else NOTYPE.thrw(null, type);
-      }
-    }
-    bind(n, obj);
+    ctx.bind(n, o, t);
     return this;
   }
 
@@ -197,21 +163,7 @@ public final class QueryProcessor extends Progress {
    */
   public QueryProcessor bind(final String n, final Object o)
       throws QueryException {
-
-    final Expr ex = o instanceof Expr ? (Expr) o : JavaFunc.type(o).e(o, null);
-    // remove optional $ prefix
-    final QNm nm = new QNm(token(n.indexOf('$') == 0 ? n.substring(1) : n));
-    ctx.ns.uri(nm);
-    final Var gl = ctx.vars.global().get(nm);
-    if(gl == null) {
-      // assign new variable
-      ctx.vars.setGlobal(Var.create(ctx, null, nm).bind(ex, ctx));
-    } else {
-      // reset declaration state and bind new expression
-      gl.declared = false;
-      gl.bind(gl.type != null ? gl.type.type.e(ex.item(ctx, null),
-          ctx, null) : ex, ctx);
-    }
+    ctx.bind(n, o);
     return this;
   }
 
@@ -289,11 +241,11 @@ public final class QueryProcessor extends Progress {
    */
   public void close() throws IOException {
     // reset database properties to initial value
-    if(ctx.props != null) {
-      for(final Entry<String, Object> e : ctx.props.entrySet()) {
+    if(ctx.globalOpt != null) {
+      for(final Entry<String, Object> e : ctx.globalOpt.entrySet()) {
         ctx.context.prop.set(e.getKey(), e.getValue());
       }
-      ctx.props = null;
+      ctx.globalOpt = null;
     }
     // close all database connections
     ctx.resource.close();
