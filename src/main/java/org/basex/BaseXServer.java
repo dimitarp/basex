@@ -3,10 +3,10 @@ package org.basex;
 import static org.basex.core.Text.*;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-
 import org.basex.core.BaseXException;
 import org.basex.core.Context;
 import org.basex.core.Main;
@@ -14,7 +14,6 @@ import org.basex.core.MainProp;
 import org.basex.core.Prop;
 import org.basex.io.IOFile;
 import org.basex.io.in.BufferInput;
-import org.basex.server.ClientDelayer;
 import org.basex.server.ClientListener;
 import org.basex.server.ClientSession;
 import org.basex.server.LocalSession;
@@ -35,9 +34,9 @@ import org.basex.util.hash.TokenIntMap;
  * @author Christian Gruen
  * @author Andreas Weiler
  */
-public class BaseXServer extends Main implements Runnable {
+public final class BaseXServer extends Main implements Runnable {
   /** Flag for server activity. */
-  public boolean running;
+  public volatile boolean running;
   /** Event server socket. */
   ServerSocket esocket;
   /** Stop file. */
@@ -47,7 +46,7 @@ public class BaseXServer extends Main implements Runnable {
 
   /** EventsListener. */
   private final EventListener events = new EventListener();
-  /** Blocked clients. */
+  /** Temporarily blocked clients. */
   private final TokenIntMap blocked = new TokenIntMap();
 
   /** Quiet mode (no logging). */
@@ -55,7 +54,7 @@ public class BaseXServer extends Main implements Runnable {
   /** Start as daemon. */
   private boolean service;
   /** Stopped flag. */
-  private boolean stopped;
+  private volatile boolean stopped;
 
   /** Server socket. */
   private ServerSocket socket;
@@ -96,6 +95,9 @@ public class BaseXServer extends Main implements Runnable {
 
     super(args, ctx);
     final int port = context.mprop.num(MainProp.SERVERPORT);
+    final String host = context.mprop.get(MainProp.SERVERHOST);
+    final InetAddress hostAddress = host.isEmpty() ? null :
+      InetAddress.getByName(host);
     final int eport = context.mprop.num(MainProp.EVENTPORT);
 
     if(service) {
@@ -120,10 +122,10 @@ public class BaseXServer extends Main implements Runnable {
 
       socket = new ServerSocket();
       socket.setReuseAddress(true);
-      socket.bind(new InetSocketAddress(port));
+      socket.bind(new InetSocketAddress(hostAddress, port));
       esocket = new ServerSocket();
       esocket.setReuseAddress(true);
-      esocket.bind(new InetSocketAddress(eport));
+      esocket.bind(new InetSocketAddress(hostAddress, eport));
       stop = stopFile(port);
 
       // guarantee correct shutdown...
@@ -162,17 +164,15 @@ public class BaseXServer extends Main implements Runnable {
           if(!stop.delete()) log.write(Util.info(DBNOTDELETED, stop));
           quit();
         } else {
-          final byte[] address = s.getInetAddress().getAddress();
-          final ClientListener cl = new ClientListener(s, context, log);
-          if(cl.init()) {
-            blocked.delete(address);
-            context.add(cl);
-          } else {
-            int delay = blocked.get(address);
-            delay = delay == -1 ? 1 : Math.min(delay, 1024) * 2;
-            blocked.add(address, delay);
-            new ClientDelayer(delay, cl, this);
+          // drop inactive connections
+          final long ka = context.mprop.num(MainProp.KEEPALIVE) * 1000L;
+          if(ka > 0) {
+            final long ms = System.currentTimeMillis();
+            for(final ClientListener cs : context.sessions) {
+              if(ms - cs.last > ka) cs.exit();
+            }
           }
+          new ClientListener(s, context, log, this).start();
         }
       } catch(final IOException ex) {
         // socket was closed..
@@ -271,10 +271,10 @@ public class BaseXServer extends Main implements Runnable {
    */
   public void stop() throws IOException {
     stop.write(Token.EMPTY);
-    new Socket(LOCALHOST, context.mprop.num(MainProp.EVENTPORT));
+    new Socket(LOCALHOST, context.mprop.num(MainProp.EVENTPORT)).close();
     final int port = context.mprop.num(MainProp.SERVERPORT);
-    new Socket(LOCALHOST, port);
-    while(ping(LOCALHOST, port)) Performance.sleep(100);
+    new Socket(LOCALHOST, port).close();
+    Performance.sleep(50);
   }
 
   // STATIC METHODS ===========================================================
@@ -328,13 +328,37 @@ public class BaseXServer extends Main implements Runnable {
     final IOFile stop = stopFile(port);
     try {
       stop.write(Token.EMPTY);
-      new Socket(LOCALHOST, eport);
-      new Socket(LOCALHOST, port);
-      while(ping(LOCALHOST, port)) Performance.sleep(100);
+      new Socket(LOCALHOST, eport).close();
+      new Socket(LOCALHOST, port).close();
+      Performance.sleep(50);
       Util.outln(SERVERSTOPPED);
     } catch(final IOException ex) {
       stop.delete();
       throw ex;
+    }
+  }
+
+  /**
+   * Registers the client and calculates the delay after unsuccessful logins.
+   * @param client client address
+   * @return delay
+   */
+  public int block(final byte[] client) {
+    synchronized(blocked) {
+      int delay = blocked.get(client);
+      delay = delay == -1 ? 1 : Math.min(delay, 1024) * 2;
+      blocked.add(client, delay);
+      return delay;
+    }
+  }
+
+  /**
+   * Resets the login delay after successful login.
+   * @param client client address
+   */
+  public void unblock(final byte[] client) {
+    synchronized(blocked) {
+      blocked.delete(client);
     }
   }
 

@@ -1,5 +1,7 @@
 package org.basex.core;
 
+import java.io.File;
+
 import org.basex.util.Util;
 
 /**
@@ -15,7 +17,7 @@ public final class Prop extends AProp {
   /** Project name. */
   public static final String NAME = "BaseX";
   /** Code version (may contain major, minor and optional patch number). */
-  public static final String VERSION = "6.8 beta";
+  public static final String VERSION = "7.0.1 beta";
 
   /** New line string. */
   public static final String NL = System.getProperty("line.separator");
@@ -23,8 +25,7 @@ public final class Prop extends AProp {
   public static final String ENCODING = System.getProperty("file.encoding");
 
   /** System's temporary directory. */
-  public static final String TMP =
-    (System.getProperty("java.io.tmpdir") + "/").replaceAll("[\\\\/]+", "/");
+  public static final String TMP = System.getProperty("java.io.tmpdir") + '/';
 
   /** OS flag (should be ignored whenever possible). */
   public static final String OS = System.getProperty("os.name").toUpperCase();
@@ -33,8 +34,11 @@ public final class Prop extends AProp {
   /** Flag denoting if OS belongs to Windows family. */
   public static final boolean WIN = OS.startsWith("WIN");
 
+  /** User home directory. */
+  public static final String USERHOME =
+      System.getProperty("user.home") + File.separator;
   /** Directory for storing the property files, database directory, etc. */
-  public static final String HOME = Util.homeDir() + '/';
+  public static final String HOME = Util.homeDir();
 
   /** Property information. */
   static final String PROPHEADER = "# Property File." + Prop.NL

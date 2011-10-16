@@ -456,6 +456,8 @@ public interface QueryText {
   byte[] PKG = token("pkg");
   /** SQL token. */
   byte[] SQL = token("sql");
+  /** Crypto token. */
+  byte[] CRYPTO = token("crytpo");
 
   /** Language attribute. */
   byte[] LANG = token("xml:lang");
@@ -487,6 +489,8 @@ public interface QueryText {
 
   /** EXPath URI. */
   String EXPATH = "http://expath.org/ns";
+  /** Cryptographic module URI. */
+  byte[] CRYPTOURI = token(EXPATH + "/crypto");
   /** File module URI. */
   byte[] FILEURI = token(EXPATH + "/file");
   /** HTTP Client URI. */
@@ -521,7 +525,8 @@ public interface QueryText {
   byte[] URLCOLL = concat(FNURI, token("/collation/codepoint"));
 
   /** Static modules. */
-  TokenSet MODULES = new TokenSet(FILEURI, HTTPURI, PKGURI, ZIPURI, SQLURI);
+  TokenSet MODULES = new TokenSet(FILEURI, HTTPURI, PKGURI, ZIPURI, SQLURI,
+      CRYPTOURI);
 
   // QUERY PLAN ===============================================================
 

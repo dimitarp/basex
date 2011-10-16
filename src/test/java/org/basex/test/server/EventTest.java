@@ -46,7 +46,7 @@ public final class EventTest {
    */
   @BeforeClass
   public static void start() throws IOException {
-    server = new BaseXServer("-z");
+    server = new BaseXServer("-z -p9999 -e9998");
   }
 
   /**
@@ -242,7 +242,7 @@ public final class EventTest {
    * @throws IOException exception
    */
   static ClientSession newSession() throws IOException {
-    return new ClientSession(server.context, ADMIN, ADMIN);
+    return new ClientSession(LOCALHOST, 9999, ADMIN, ADMIN);
   }
 
   /** Single client. */
@@ -273,8 +273,8 @@ public final class EventTest {
         if(!first) name += 1;
         cs.query("db:event('" + name + "', '" + value + "')").execute();
         cs.close();
-      } catch(final Exception e) {
-        e.printStackTrace();
+      } catch(final Exception ex) {
+        ex.printStackTrace();
       }
     }
   }

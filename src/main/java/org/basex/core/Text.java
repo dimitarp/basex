@@ -181,11 +181,11 @@ public interface Text {
 
   /** Localhost. */
   String LOCALHOST = "localhost";
+  /** Localhost IP. */
+  String LOCALIP = "127.0.0.1";
 
   // COMMANDS =================================================================
 
-  /** Command keyword. */
-  String AS = "AS";
   /** Command keyword. */
   String ALL = "ALL";
   /** Command keyword. */
@@ -258,9 +258,17 @@ public interface Text {
   };
   /** Command help. */
   String[] HELPADD = {
-    "(" + AS + " [" + C_NAME + "]) (" + TO + " [" + C_TARGET + "]) [" +
-    C_INPUT + "]",
-    lang("ch_add1"), lang("ch_add2", C_INPUT, C_NAME, C_TARGET)
+    "(" + TO + " [" + C_PATH + "]) [" + C_INPUT + "]",
+    lang("ch_add1"), lang("ch_add2", C_INPUT, C_PATH)
+  };
+  /** Command help. */
+  String[] HELPSTORE = {
+    "(" + TO + " [" + C_PATH + "]) [" + C_INPUT + "]",
+    lang("ch_store1"), lang("ch_store2", C_PATH)
+  };
+  /** Command help. */
+  String[] HELPRETRIEVE = {
+    "[" + C_PATH + "]", lang("ch_retrieve1"), lang("ch_retrieve2", C_PATH)
   };
   /** Command help. */
   String[] HELPDELETE = {
@@ -417,15 +425,6 @@ public interface Text {
       "  " + lang("ch_repo4", C_PKGPATH) + NL +
       LI + CmdRepo.LIST + ":" + NL +
       "  " + lang("ch_repo5")
-  };
-  /** Command help. */
-  String[] HELPRETRIEVE = {
-    "[" + C_PATH + "]", lang("ch_retrieve1"), lang("ch_retrieve2", C_PATH)
-  };
-  /** Command help. */
-  String[] HELPSTORE = {
-    "[" + C_PATH + "] [" + C_INPUT + "]",
-    lang("ch_store1"), lang("ch_store2", C_PATH)
   };
   /** Command help. */
   String[] HELPHELP = {
@@ -813,8 +812,8 @@ public interface Text {
 
   /** Info on database. */
   String INFODB = lang("info_db");
-  /** Info on document creation. */
-  String INFOCREATE = lang("info_create");
+  /** Info on input resource. */
+  String INFORESOURCE = lang("info_resource");
   /** Database info. */
   String INFOGENERAL = lang("info_general");
   /** Database info. */
@@ -1449,11 +1448,11 @@ public interface Text {
   String CONTRIBUTE1 = lang("da_cont1") +
   ": Michael Seiferle, Alexander Holupirek,";
   /** Developer names. */
-  String CONTRIBUTE2 = "Leo W\u00F6rteler, Rositsa Shadura, Dimitar Popov,";
+  String CONTRIBUTE2 = "Dimitar Popov, Rositsa Shadura, Lukas Kircher,";
   /** Developer names. */
-  String CONTRIBUTE3 = "Lukas Kircher, Andreas Weiler " + lang("da_cont2");
+  String CONTRIBUTE3 = "Leo W\u00F6rteler, Andreas Weiler " + lang("da_cont2");
   /** Translation. */
-  String TRANSLATION = lang("da_translation") + COLS;
+  String TRANSLATION = lang("da_translation");
 
   // HELP TEXTS ===============================================================
 
