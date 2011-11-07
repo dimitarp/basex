@@ -14,7 +14,7 @@ import org.basex.util.Util;
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
  */
-public final class DataAccess {
+public class DataAccess {
   /** Buffer manager. */
   private final Buffers bm = new Buffers();
   /** Reference to the data input stream. */
@@ -362,7 +362,7 @@ public final class DataAccess {
    * Reads the next byte.
    * @return next byte
    */
-  private int read() {
+  protected int read() {
     final Buffer bf = buffer(off == IO.BLOCKSIZE);
     return bf.data[off++] & 0xFF;
   }
@@ -371,7 +371,7 @@ public final class DataAccess {
    * Writes the next byte.
    * @param b byte to be written
    */
-  private void write(final int b) {
+  protected void write(final int b) {
     final Buffer bf = buffer(off == IO.BLOCKSIZE);
     bf.dirty = true;
     bf.data[off++] = (byte) b;
@@ -384,7 +384,7 @@ public final class DataAccess {
    * @param next next block
    * @return buffer
    */
-  private Buffer buffer(final boolean next) {
+  protected Buffer buffer(final boolean next) {
     if(next) {
       off = 0;
       cursor(bm.current().pos + IO.BLOCKSIZE);
