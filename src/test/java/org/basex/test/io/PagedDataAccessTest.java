@@ -6,7 +6,7 @@ import java.io.File;
 import java.io.IOException;
 
 import org.basex.io.IO;
-import org.basex.io.random.PagedDataAccess;
+import org.basex.io.random.BlockDataAccess;
 import org.basex.util.Token;
 import org.junit.After;
 import org.junit.Before;
@@ -27,7 +27,7 @@ public class PagedDataAccessTest {
   /** Temporary file. */
   private File file;
   /** Instance under test. */
-  private PagedDataAccess da;
+  private BlockDataAccess da;
 
   /**
    * Set up method.
@@ -36,7 +36,7 @@ public class PagedDataAccessTest {
   @Before
   public void setUp() throws IOException {
     file = File.createTempFile("page", ".basex");
-    da = new PagedDataAccess(file);
+    da = new BlockDataAccess(file);
   }
 
   /**
