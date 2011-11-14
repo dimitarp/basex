@@ -1,7 +1,6 @@
 package org.basex.io.random;
 
 import static java.lang.Integer.*;
-import static java.lang.Math.*;
 import java.io.File;
 import java.io.IOException;
 import org.basex.io.IO;
@@ -146,9 +145,8 @@ public class BlockManagedDataAccess extends DataAccess {
    * @return result rounded to the next bigger or equal integer
    */
   public static long divRoundUp(final long x, final long y) {
-    final long sum = x + y;
-    if(sum > 0) return (sum - 1) / y;
-    return Double.valueOf(ceil(x / (double) y)).longValue();
+    final long d = x / y;
+    return x % y == 0 ? d : d + 1;
   }
 
   /**
@@ -158,9 +156,8 @@ public class BlockManagedDataAccess extends DataAccess {
    */
   public static long blocks(final long len) {
     // same as divRoundUp, but uses bit-shift for division
-    final long sum = len + IO.BLOCKSIZE;
-    if(sum > 0) return (sum - 1) >>> IO.BLOCKPOWER;
-    return Double.valueOf(ceil(len / (double) IO.BLOCKSIZE)).longValue();
+    final long d = len >>> IO.BLOCKPOWER;
+    return modulo2(len, IO.BLOCKSIZE) == 0 ? d : d + 1;
   }
 
   /**
