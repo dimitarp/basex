@@ -77,7 +77,7 @@ public final class BlockManagedDataAccessTest {
     try {
       // the first header block should be full
       for(int i = 0; i < IO.BLOCKSIZE; ++i)
-        assertEquals(BITMASK, (byte) f.read());
+        assertEquals(BITMASK, f.read());
 
       // the second header block should not be full
       f.seek(position(headerBlock(1)));
@@ -88,6 +88,11 @@ public final class BlockManagedDataAccessTest {
     }
   }
 
+   /**
+    * Test method {@link BlockManagedDataAccess#deleteBlock(long)}.
+    * Create 10 blocks and delete block with number 8.
+    * @throws IOException I/O exception
+    */
   @Test
   public void testDeleteBlock1() throws IOException {
     final int initial = 10;
@@ -97,8 +102,8 @@ public final class BlockManagedDataAccessTest {
 
     final RandomAccessFile f = new RandomAccessFile(file, "r");
     try {
-      assertEquals(BITMASK, (byte) f.read());
-      assertEquals(2, (byte) f.read());
+      assertEquals(BITMASK, f.read());
+      assertEquals(2, f.read());
     } finally {
       f.close();
     }
@@ -305,7 +310,7 @@ public final class BlockManagedDataAccessTest {
    */
   @Test
   public void testDivRoundUp3() {
-    assertEquals(1L, divRoundUp(Long.MAX_VALUE, Long.MAX_VALUE - 1));
+    assertEquals(2L, divRoundUp(Long.MAX_VALUE, Long.MAX_VALUE - 1));
   }
 
 
@@ -356,5 +361,36 @@ public final class BlockManagedDataAccessTest {
   @Test
   public void testBlocks4() {
     assertEquals(1L << (63 - IO.BLOCKPOWER), blocks(Long.MAX_VALUE));
+  }
+
+
+
+  /**
+   * Test method {@link BlockManagedDataAccess#modulo2(long, long)}.
+   * Calculate 10 % 8.
+   */
+  @Test
+  public void testModulo2() {
+    assertEquals(2L, modulo2(10L, 3));
+  }
+
+
+
+  /**
+   * Test method {@link BlockManagedDataAccess#set(int, long)}.
+   * Set bit 8+8+3 of word 10100010 (=162)
+   */
+  @Test
+  public void testSet1() {
+    assertEquals(170, set(162, 2 * Byte.SIZE + 3));
+  }
+
+  /**
+   * Test method {@link BlockManagedDataAccess#set(int, long)}.
+   * Clear bit 8+8+3 of word 10101010 (=170)
+   */
+  @Test
+  public void testClear1() {
+    assertEquals(162, clear(170, 2 * Byte.SIZE + 3));
   }
 }

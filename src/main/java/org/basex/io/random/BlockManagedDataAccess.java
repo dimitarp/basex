@@ -1,5 +1,6 @@
 package org.basex.io.random;
 
+import static java.lang.Integer.*;
 import static java.lang.Math.*;
 import java.io.File;
 import java.io.IOException;
@@ -15,9 +16,9 @@ public class BlockManagedDataAccess extends DataAccess {
   /** Power of the number of blocks per header block. */
   public static final int BLOCKSPERHEADERPOWER = IO.BLOCKPOWER + 3;
   /** Number of blocks per header block. */
-  public static final long BLOCKSPERHEADER = 1 << BLOCKSPERHEADERPOWER;
+  public static final long BLOCKSPERHEADER = 1L << BLOCKSPERHEADERPOWER;
   /** Bit mask for a word in the free blocks bit map. */
-  public static final byte BITMASK = (byte) 0xFF;
+  public static final int BITMASK = 0xFF;
   /** Number of blocks allocated in the file. */
   private long blocks;
 
@@ -29,6 +30,17 @@ public class BlockManagedDataAccess extends DataAccess {
   public BlockManagedDataAccess(final File f) throws IOException {
     super(f);
     blocks = blocks(super.length());
+  }
+
+  @Override
+  public long cursor() {
+    // TODO
+    return 0L;
+  }
+
+  @Override
+  public void cursor(final long l) {
+    // TODO
   }
 
   /**
@@ -95,9 +107,12 @@ public class BlockManagedDataAccess extends DataAccess {
    */
   private void setFree(final long pos, final long n) {
     final long wordPos = pos + (n >>> 3);
-    final byte word = super.read1(wordPos);
+
     super.cursor(wordPos);
-    super.write1(word & ~((byte) (1 << n))); // TODO: wrong!
+    final int word = super.read();
+
+    super.cursor(wordPos);
+    super.write(clear(word, n));
   }
 
   /**
@@ -111,14 +126,15 @@ public class BlockManagedDataAccess extends DataAccess {
     // find a 0 bit in the block at pos and set it to 1.
     super.cursor(pos);
     for(int p = 0; p < IO.BLOCKSIZE; ++p) {
-      final byte b = super.read1();
-      if(b != BITMASK) {
-        final int free = Long.numberOfTrailingZeros(~(long) b);
+      final int word = super.read();
+      if(word != BITMASK) {
+        final int free = numberOfTrailingZeros(~word);
         super.cursor(pos + p);
-        super.write1(b | ((byte) (1 << free)));
+        super.write(set(word, free));
         return free + (p << 3);
       }
     }
+    // no free blocks
     return -1;
   }
 
@@ -184,7 +200,7 @@ public class BlockManagedDataAccess extends DataAccess {
    * @return block number relative to the header block
    */
   public static long dataBlockOffset(final long n) {
-    return n & ((1 << BLOCKSPERHEADERPOWER) - 1);
+    return modulo2(n, BLOCKSPERHEADER);
   }
 
   /**
@@ -194,5 +210,35 @@ public class BlockManagedDataAccess extends DataAccess {
    */
   public static long position(final long n) {
     return n << IO.BLOCKPOWER;
+  }
+
+  /**
+   * Calculate x % y, where y = 2<sup>n</sup>.
+   * @param x dividend
+   * @param y divisor
+   * @return modulo
+   */
+  public static long modulo2(final long x, final long y) {
+    return x & (y - 1);
+  }
+
+  /**
+   * Clear a bit in word.
+   * @param word word
+   * @param n bit number; if bigger than word size, rotation will be performed
+   * @return word with the cleared bit
+   */
+  public static int clear(final int word, final long n) {
+    return word & ~(1 << modulo2(n, Byte.SIZE));
+  }
+
+  /**
+   * Set a bit in word.
+   * @param word word
+   * @param n bit number; if bigger than word size, rotation will be performed
+   * @return word with the set bit
+   */
+  public static int set(final int word, final long n) {
+    return word | (1 << modulo2(n, Byte.SIZE));
   }
 }
