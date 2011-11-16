@@ -24,7 +24,7 @@ public class DataAccess {
   /** Changed flag. */
   private boolean changed;
   /** Offset. */
-  private int off;
+  protected int off;
 
   /**
    * Constructor, initializing the file reader.
