@@ -33,13 +33,16 @@ public class BlockManagedDataAccess extends DataAccess {
 
   @Override
   public long cursor() {
-    // TODO
-    return 0L;
+    final long block = buffer(false).pos >>> IO.BLOCKPOWER;
+    final long headers = divRoundUp(block + 1L, BLOCKSPERHEADER + 1L);
+    final long logicalBlock = block - headers;
+    return position(logicalBlock) + off;
   }
 
   @Override
   public void cursor(final long l) {
-    // TODO
+    gotoBlock(l >>> IO.BLOCKPOWER);
+    off = (int) (l - buffer(false).pos);
   }
 
   /**
@@ -63,6 +66,7 @@ public class BlockManagedDataAccess extends DataAccess {
    * @return logical number of the free block
    */
   public long createBlock() {
+    // each segment has BLOCKSPERHEADER + 1 blocks
     final long headers = divRoundUp(blocks, BLOCKSPERHEADER + 1L);
 
     // check headers for a free data block
@@ -146,7 +150,7 @@ public class BlockManagedDataAccess extends DataAccess {
    */
   public static long divRoundUp(final long x, final long y) {
     final long d = x / y;
-    return x % y == 0 ? d : d + 1;
+    return x % y == 0L ? d : d + 1L;
   }
 
   /**
@@ -157,7 +161,7 @@ public class BlockManagedDataAccess extends DataAccess {
   public static long blocks(final long len) {
     // same as divRoundUp, but uses bit-shift for division
     final long d = len >>> IO.BLOCKPOWER;
-    return modulo2(len, IO.BLOCKSIZE) == 0 ? d : d + 1;
+    return modulo2(len, IO.BLOCKSIZE) == 0L ? d : d + 1L;
   }
 
   /**
@@ -167,7 +171,7 @@ public class BlockManagedDataAccess extends DataAccess {
    */
   public static long dataBlock(final long n) {
     final long segment = n >>> BLOCKSPERHEADERPOWER;
-    final long block = segment + n + 1;
+    final long block = segment + n + 1L;
     return block;
   }
 
@@ -216,7 +220,7 @@ public class BlockManagedDataAccess extends DataAccess {
    * @return modulo
    */
   public static long modulo2(final long x, final long y) {
-    return x & (y - 1);
+    return x & (y - 1L);
   }
 
   /**
