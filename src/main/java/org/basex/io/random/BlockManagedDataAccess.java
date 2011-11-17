@@ -12,13 +12,15 @@ import org.basex.io.IO;
  * @author Dimitar Popov
  */
 public class BlockManagedDataAccess extends DataAccess {
-  /** Power of the number of blocks per header block. */
-  public static final int BLOCKSPERHEADERPOWER = IO.BLOCKPOWER + 3;
-  /** Number of blocks per header block. */
-  public static final long BLOCKSPERHEADER = 1L << BLOCKSPERHEADERPOWER;
+  /** Power of the number of blocks per segment. */
+  public static final int SEGMENTBLOCKPOWER = IO.BLOCKPOWER + 3;
+  /** Number of blocks per segment. */
+  public static final long SEGMENTBLOCKS = 1L << SEGMENTBLOCKPOWER;
+  /** Number of bytes per segment. */
+  public static final long SEGMENTSIZE = SEGMENTBLOCKS << IO.BLOCKPOWER;
   /** Bit mask for a word in the free blocks bit map. */
   public static final int BITMASK = 0xFF;
-  /** Number of blocks allocated in the file. */
+  /** Number of blocks (both header and data) allocated in the file. */
   private long blocks;
 
   /**
@@ -34,15 +36,24 @@ public class BlockManagedDataAccess extends DataAccess {
   @Override
   public long cursor() {
     final long block = buffer(false).pos >>> IO.BLOCKPOWER;
-    final long headers = divRoundUp(block + 1L, BLOCKSPERHEADER + 1L);
-    final long logicalBlock = block - headers;
+    final long segments = segments(block + 1L);
+    final long logicalBlock = block - segments;
     return position(logicalBlock) + off;
   }
 
   @Override
   public void cursor(final long l) {
     gotoBlock(l >>> IO.BLOCKPOWER);
-    off = (int) (l - buffer(false).pos);
+    off = (int) modulo2(l, IO.BLOCKSIZE);
+  }
+
+  @Override
+  public long length() {
+    final long len = super.length();
+    final long lastBlock = (len - 1) >>> IO.BLOCKPOWER;
+    final long segments = segments(lastBlock + 1L);
+    final long logicalBlock = lastBlock - segments;
+    return position(logicalBlock) + modulo2(len, IO.BLOCKSIZE) + 1;
   }
 
   /**
@@ -66,15 +77,14 @@ public class BlockManagedDataAccess extends DataAccess {
    * @return logical number of the free block
    */
   public long createBlock() {
-    // each segment has BLOCKSPERHEADER + 1 blocks
-    final long headers = divRoundUp(blocks, BLOCKSPERHEADER + 1L);
+    final long headers = segments(blocks);
 
     // check headers for a free data block
     for(long h = 0L; h < headers; ++h) {
       final long header = headerBlock(h);
       final int b = getFree(position(header));
       if(b >= 0) {
-        final long block = b + (h << BLOCKSPERHEADERPOWER);
+        final long block = b + (h << SEGMENTBLOCKPOWER);
         if(block + headers >= blocks) ++blocks;
         return block;
       }
@@ -143,6 +153,17 @@ public class BlockManagedDataAccess extends DataAccess {
 
   // static methods
   /**
+   * Calculate the number of header blocks of a file with the specified total
+   * number of blocks (both header and data).
+   * @param blocks number of blocks
+   * @return number of header blocks
+   */
+  public static long segments(final long blocks) {
+    // each segment has SEGMENTBLOCKS + 1 blocks
+    return divRoundUp(blocks, SEGMENTBLOCKS + 1L);
+  }
+
+  /**
    * Positive integer division, rounding the result up.
    * @param x dividend
    * @param y divisor
@@ -154,7 +175,8 @@ public class BlockManagedDataAccess extends DataAccess {
   }
 
   /**
-   * Calculate the number of blocks of a file with the specified length.
+   * Calculate the number of blocks (both header and data) of a file with the
+   * specified length.
    * @param len file length
    * @return number of blocks
    */
@@ -170,7 +192,7 @@ public class BlockManagedDataAccess extends DataAccess {
    * @return physical block number
    */
   public static long dataBlock(final long n) {
-    final long segment = n >>> BLOCKSPERHEADERPOWER;
+    final long segment = n >>> SEGMENTBLOCKPOWER;
     final long block = segment + n + 1L;
     return block;
   }
@@ -181,7 +203,7 @@ public class BlockManagedDataAccess extends DataAccess {
    * @return physical block number
    */
   public static long headerBlock(final long n) {
-    return (n << BLOCKSPERHEADERPOWER) + n;
+    return (n << SEGMENTBLOCKPOWER) + n;
   }
 
   /**
@@ -190,7 +212,7 @@ public class BlockManagedDataAccess extends DataAccess {
    * @return physical block number of the header block
    */
   public static long headerBlockFor(final long n) {
-    final long segment = n >>> BLOCKSPERHEADERPOWER;
+    final long segment = n >>> SEGMENTBLOCKPOWER;
     return headerBlock(segment);
   }
 
@@ -201,7 +223,7 @@ public class BlockManagedDataAccess extends DataAccess {
    * @return block number relative to the header block
    */
   public static long dataBlockOffset(final long n) {
-    return modulo2(n, BLOCKSPERHEADER);
+    return modulo2(n, SEGMENTBLOCKS);
   }
 
   /**
