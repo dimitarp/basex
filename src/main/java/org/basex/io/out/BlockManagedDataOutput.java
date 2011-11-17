@@ -71,8 +71,9 @@ public class BlockManagedDataOutput extends DataOutput {
       f.seek(wordPos);
       f.write(word);
       // all subsequent bytes should be set to 0
-      for(long p = modulo2(wordPos, IO.BLOCKSIZE) + 1L; p < IO.BLOCKSIZE; ++p) {
-        f.seek(wordPos + p);
+      final long end = lastHeaderPos + IO.BLOCKSIZE;
+      for(long p = wordPos + 1L; p < end; ++p) {
+        f.seek(p);
         f.write(0);
       }
     } finally {
