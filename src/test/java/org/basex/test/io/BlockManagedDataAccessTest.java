@@ -14,7 +14,7 @@ import org.junit.Test;
 /** Tests for class {@link BlockManagedDataAccess}. */
 public final class BlockManagedDataAccessTest {
   /** Number of blocks, managed by one header. */
-  private static final long BLOCKS = 1 << BLOCKSPERHEADERPOWER;
+  private static final long BLOCKS = 1 << SEGMENTBLOCKPOWER;
   /** Temporary file. */
   private File file;
   /** Instance under test. */
@@ -69,7 +69,7 @@ public final class BlockManagedDataAccessTest {
   @Test
   public void testCreateBlock2() throws IOException {
     final int n = 4;
-    final long blocks = BLOCKSPERHEADER + n;
+    final long blocks = SEGMENTBLOCKS + n;
     for(long b = 0L; b < blocks; ++b) assertEquals(b, da.createBlock());
     da.flush();
 

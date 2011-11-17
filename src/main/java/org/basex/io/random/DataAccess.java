@@ -70,7 +70,7 @@ public class DataAccess {
    * Sets the file length.
    * @param l file length
    */
-  public synchronized void length(final long l) {
+  private synchronized void length(final long l) {
     changed |= l != len;
     len = l;
   }
@@ -319,12 +319,13 @@ public class DataAccess {
     // old text size (available space)
     int os = readNum(pos) + (int) (cursor() - pos);
 
+    final long end = length();
     // extend available space by subsequent zero-bytes
     cursor(pos + os);
-    for(; pos + os < len && os < size && read() == 0xFF; os++);
+    for(; pos + os < end && os < size && read() == 0xFF; os++);
 
     long o = pos;
-    if(pos + os == len) {
+    if(pos + os == end) {
       // entry is placed last: reset file length (discard last entry)
       length(pos);
     } else {
@@ -335,7 +336,7 @@ public class DataAccess {
         cursor(pos);
         t = 0;
         // place new entry after last entry
-        o = len;
+        o = end;
       } else {
         // gap is large enough: set cursor to overwrite remaining bytes
         cursor(pos + size);
