@@ -1,6 +1,6 @@
 package org.basex.io.out;
 
-import static org.basex.io.random.BlockManagedDataAccess.*;
+import static org.basex.util.BlockAccessUtil.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -39,6 +39,11 @@ public class BlockManagedDataOutput extends DataOutput {
   public void close() throws IOException {
     super.close();
     adjustLastHeader();
+  }
+
+  @Override
+  public long size() {
+    return logicalPosition(super.size());
   }
 
   /**
