@@ -2,40 +2,36 @@ package org.basex.test.io;
 
 import static org.basex.util.BlockAccessUtil.*;
 import static org.junit.Assert.*;
+
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import org.basex.io.IO;
 import org.basex.io.random.BlockManagedDataAccess;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 /** Tests for class {@link BlockManagedDataAccess}. */
-public final class BlockManagedDataAccessTest {
-  /** Temporary file. */
-  private File file;
-  /** Instance under test. */
-  private BlockManagedDataAccess da;
+public final class BlockManagedDataAccessTest extends DataAccessTest {
+  /** Instance of {@link BlockManagedDataAccess} under test. */
+  private BlockManagedDataAccess bda;
 
-  /**
-   * Set up method.
-   * @throws IOException I/O exception
-   */
+  @Override
   @Before
   public void setUp() throws IOException {
     file = File.createTempFile("page", ".basex");
-    da = new BlockManagedDataAccess(file);
-  }
-
-  /**
-   * Clean up method.
-   * @throws IOException I/O exception
-   */
-  @After
-  public void cleanUp() throws IOException {
-    da.close();
-    file.delete();
+    final OutputStream o = new BufferedOutputStream(new FileOutputStream(file));
+    try {
+      o.write(1);
+      for(int i = 1; i < IO.BLOCKSIZE; ++i) o.write(0);
+      initialContent(o);
+    } finally {
+      o.close();
+    }
+    da = bda = new BlockManagedDataAccess(file);
   }
 
 
@@ -47,13 +43,13 @@ public final class BlockManagedDataAccessTest {
    */
   @Test
   public void testCreateBlock1() throws IOException {
-    assertEquals(0L, da.createBlock());
-    da.flush();
+    assertEquals(1L, bda.createBlock());
+    bda.flush();
 
     final RandomAccessFile f = new RandomAccessFile(file, "r");
     try {
-      // the first byte should have only the first bit set
-      assertEquals(1, f.read());
+      // the first byte should have only the first 2 bits set
+      assertEquals(3, f.read());
     } finally {
       f.close();
     }
@@ -67,9 +63,9 @@ public final class BlockManagedDataAccessTest {
   @Test
   public void testCreateBlock2() throws IOException {
     final int n = 4;
-    final long blocks = SEGMENTBLOCKS + n;
-    for(long b = 0L; b < blocks; ++b) assertEquals(b, da.createBlock());
-    da.flush();
+    final long blocks = SEGMENTBLOCKS + n + 1;
+    for(long b = 1L; b < blocks; ++b) assertEquals(b, bda.createBlock());
+    bda.flush();
 
     final RandomAccessFile f = new RandomAccessFile(file, "r");
     try {
@@ -79,8 +75,8 @@ public final class BlockManagedDataAccessTest {
 
       // the second header block should not be full
       f.seek(position(headerBlock(1)));
-      // the first byte should have only the first n bits set
-      assertEquals((1 << n) - 1, f.read());
+      // the first byte should have only the first n bits set (+1 init block)
+      assertEquals((1 << (n + 1)) - 1, f.read());
     } finally {
       f.close();
     }
@@ -94,14 +90,33 @@ public final class BlockManagedDataAccessTest {
   @Test
   public void testDeleteBlock1() throws IOException {
     final int initial = 10;
-    for(int i = 0; i < initial; ++i) da.createBlock();
-    da.deleteBlock(8L);
-    da.flush();
+    for(int i = 0; i < initial; ++i) bda.createBlock();
+    bda.deleteBlock(8L);
+    bda.flush();
 
     final RandomAccessFile f = new RandomAccessFile(file, "r");
     try {
-      assertEquals(BITMASK, f.read());
-      assertEquals(2, f.read());
+      assertEquals(BITMASK, f.read()); // 11 11 11 11
+      assertEquals(6, f.read()); // 00 00 01 10
+    } finally {
+      f.close();
+    }
+  }
+
+  /**
+   * Check that the test file {@link #file} has the specified unsigned bytes at
+   * the specified position.
+   * @param pos file position
+   * @param bytes expected unsigned bytes
+   * @throws IOException I/O exception
+   */
+  @Override
+  protected void assertContent(final long pos, final int[] bytes)
+      throws IOException {
+    final RandomAccessFile f = new RandomAccessFile(file, "r");
+    try {
+      f.seek(physicalPosition(pos));
+      for(int i = 0; i < bytes.length; ++i) assertEquals(bytes[i], f.read());
     } finally {
       f.close();
     }

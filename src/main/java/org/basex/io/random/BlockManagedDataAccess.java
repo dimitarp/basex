@@ -27,21 +27,22 @@ public class BlockManagedDataAccess extends DataAccess {
 
   @Override
   public long cursor() {
-    final long block = buffer(false).pos >>> IO.BLOCKPOWER;
-    final long segments = segments(block + 1L);
-    final long logicalBlock = block - segments;
-    return position(logicalBlock) + off;
+    return logicalPosition(super.cursor());
   }
 
   @Override
   public void cursor(final long l) {
-    gotoBlock(l >>> IO.BLOCKPOWER);
-    off = (int) modulo2(l, IO.BLOCKSIZE);
+    super.cursor(physicalPosition(l));
   }
 
   @Override
   public long length() {
     return logicalPosition(super.length());
+  }
+
+  @Override
+  public boolean more() {
+    return cursor() < length();
   }
 
   /**

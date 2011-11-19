@@ -24,7 +24,7 @@ public class DataAccess {
   /** Changed flag. */
   private boolean changed;
   /** Offset. */
-  protected int off;
+  private int off;
 
   /**
    * Constructor, initializing the file reader.
@@ -386,7 +386,7 @@ public class DataAccess {
    * @param next next block
    * @return buffer
    */
-  protected Buffer buffer(final boolean next) {
+  private Buffer buffer(final boolean next) {
     if(next) {
       off = 0;
       cursor(bm.current().pos + IO.BLOCKSIZE);

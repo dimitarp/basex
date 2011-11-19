@@ -32,17 +32,6 @@ public final class BlockAccessUtil {
   }
 
   /**
-   * Positive integer division, rounding the result up.
-   * @param x dividend
-   * @param y divisor
-   * @return result rounded to the next bigger or equal integer
-   */
-  public static long divRoundUp(final long x, final long y) {
-    final long d = x / y;
-    return x % y == 0L ? d : d + 1L;
-  }
-
-  /**
    * Calculate the number of blocks (both header and data) of a file with the
    * specified length.
    * @param len file length
@@ -107,6 +96,16 @@ public final class BlockAccessUtil {
   }
 
   /**
+   * Calculate physical position of a corresponding logical position.
+   * @param pos logical position
+   * @return physical position
+   */
+  public static long physicalPosition(final long pos) {
+    final long headers = divRoundUp(pos + 1, SEGMENTSIZE);
+    return pos + (headers << IO.BLOCKPOWER);
+  }
+
+  /**
    * Calculate the start position of a block.
    * @param n block number
    * @return position in the file
@@ -123,6 +122,17 @@ public final class BlockAccessUtil {
    */
   public static long modulo2(final long x, final long y) {
     return x & (y - 1L);
+  }
+
+  /**
+   * Positive integer division, rounding the result up.
+   * @param x dividend
+   * @param y divisor
+   * @return result rounded to the next bigger or equal integer
+   */
+  public static long divRoundUp(final long x, final long y) {
+    final long d = x / y;
+    return x % y == 0L ? d : d + 1L;
   }
 
   /**
