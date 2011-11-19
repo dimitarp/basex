@@ -129,4 +129,17 @@ public class BlockAccessUtilTest {
     pos = SEGMENTSIZE + 10L;
     assertEquals(pos, logicalPosition(2 * IO.BLOCKSIZE + pos));
   }
+
+  /** Test method {@link BlockAccessUtil#physicalPosition(long)}. */
+  @Test
+  public void testPhysicalPosition() {
+    long pos = 0L;
+    assertEquals(IO.BLOCKSIZE + pos, physicalPosition(pos));
+
+    pos = 10L;
+    assertEquals(IO.BLOCKSIZE + pos, physicalPosition(pos));
+
+    pos = SEGMENTSIZE + 10L;
+    assertEquals(2 * IO.BLOCKSIZE + pos, physicalPosition(pos));
+  }
 }

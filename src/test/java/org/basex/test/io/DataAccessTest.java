@@ -51,9 +51,9 @@ public class DataAccessTest {
   private static final int[] CINT1_BIN = numToByteArray(CINT1);
 
   /** Temporary file. */
-  private File file;
+  protected File file;
   /** Instance under test. */
-  private DataAccess da;
+  protected DataAccess da;
 
   /**
    * Set up method.
@@ -64,14 +64,7 @@ public class DataAccessTest {
     file = File.createTempFile("page", ".basex");
     final OutputStream o = new BufferedOutputStream(new FileOutputStream(file));
     try {
-      write(o, STR_BIN);
-      write(o, BYTE_BIN);
-      write(o, LONG_BIN);
-      write(o, INT_BIN);
-      write(o, CINT5_BIN);
-      write(o, CINT4_BIN);
-      write(o, CINT2_BIN);
-      write(o, CINT1_BIN);
+      initialContent(o);
     } finally {
       o.close();
     }
@@ -355,12 +348,29 @@ public class DataAccessTest {
   }
 
   /**
+   * Write initialization data.
+   * @param out output stream.
+   * @throws IOException I/O exception
+   */
+  protected static void initialContent(final OutputStream out)
+      throws IOException {
+    write(out, STR_BIN);
+    write(out, BYTE_BIN);
+    write(out, LONG_BIN);
+    write(out, INT_BIN);
+    write(out, CINT5_BIN);
+    write(out, CINT4_BIN);
+    write(out, CINT2_BIN);
+    write(out, CINT1_BIN);
+  }
+
+  /**
    * Write an array of unsigned bytes in the specified output stream.
    * @param out output stream
    * @param bytes unsigned bytes
    * @throws IOException I/O exception
    */
-  protected static void write(final OutputStream out, final int[] bytes)
+  private static void write(final OutputStream out, final int[] bytes)
       throws IOException {
     for(int i = 0; i < bytes.length; ++i) out.write(bytes[i]);
   }
