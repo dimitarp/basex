@@ -382,14 +382,21 @@ public class DataAccess {
   }
 
   /**
+   * Get the position of the current block.
+   * @return position of the current block
+   */
+  protected long blockPos() {
+    return bm.current().pos;
+  }
+
+  /**
    * Returns the current or next buffer.
    * @param next next block
    * @return buffer
    */
   private Buffer buffer(final boolean next) {
     if(next) {
-      off = 0;
-      cursor(bm.current().pos + IO.BLOCKSIZE);
+      cursor(blockPos() + IO.BLOCKSIZE);
     }
     return bm.current();
   }

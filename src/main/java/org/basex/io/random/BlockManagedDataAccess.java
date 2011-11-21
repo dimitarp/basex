@@ -45,6 +45,11 @@ public class BlockManagedDataAccess extends DataAccess {
     return cursor() < length();
   }
 
+  @Override
+  protected long blockPos() {
+    return logicalPosition(super.blockPos());
+  }
+
   /**
    * Sets the disk cursor to the beginning of the specified block.
    * @param n logical block number
