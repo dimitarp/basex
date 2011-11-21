@@ -1,14 +1,10 @@
 package org.basex.test.io;
 
 import static org.junit.Assert.*;
-
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.RandomAccessFile;
-
+import org.basex.io.IO;
 import org.basex.io.random.DataAccess;
 import org.basex.util.Token;
 import org.junit.After;
@@ -49,6 +45,8 @@ public class DataAccessTest {
   private static final int[] CINT2_BIN = numToByteArray(CINT2);
   /** Compressed integer: 1-byte: binary representation with unsigned bytes. */
   private static final int[] CINT1_BIN = numToByteArray(CINT1);
+  /** Block boundary position for testing cross block reads and writes. */
+  private static final long BLOCK_BOUNDARY_POS = IO.BLOCKSIZE - 5;
 
   /** Temporary file. */
   protected File file;
@@ -62,13 +60,12 @@ public class DataAccessTest {
   @Before
   public void setUp() throws IOException {
     file = File.createTempFile("page", ".basex");
-    final OutputStream o = new BufferedOutputStream(new FileOutputStream(file));
+    final RandomAccessFile f = new RandomAccessFile(file, "rw");
     try {
-      initialContent(o);
+      initialContent(f);
     } finally {
-      o.close();
+      f.close();
     }
-
     da = new DataAccess(file);
   }
 
@@ -91,9 +88,7 @@ public class DataAccessTest {
   /** Test method for {@link DataAccess#length()}. */
   @Test
   public final void testLength() {
-    final long len = STR_BIN.length + BYTE_BIN.length + LONG_BIN.length +
-        INT_BIN.length + CINT5_BIN.length + CINT4_BIN.length + CINT2_BIN.length
-        + CINT1_BIN.length;
+    final long len = BLOCK_BOUNDARY_POS + STR_BIN.length;
     assertEquals(len, da.length());
   }
 
@@ -181,6 +176,7 @@ public class DataAccessTest {
   @Test
   public final void testReadTokenLong() {
     assertEquals(STR, Token.string(da.readToken(0L)));
+    assertEquals(STR, Token.string(da.readToken(BLOCK_BOUNDARY_POS)));
   }
 
   /** Test method for {@link DataAccess#readToken()}. */
@@ -349,10 +345,10 @@ public class DataAccessTest {
 
   /**
    * Write initialization data.
-   * @param out output stream.
+   * @param out file.
    * @throws IOException I/O exception
    */
-  protected static void initialContent(final OutputStream out)
+  protected static void initialContent(final RandomAccessFile out)
       throws IOException {
     write(out, STR_BIN);
     write(out, BYTE_BIN);
@@ -362,15 +358,19 @@ public class DataAccessTest {
     write(out, CINT4_BIN);
     write(out, CINT2_BIN);
     write(out, CINT1_BIN);
+
+    final long off = (out.getFilePointer() >>> IO.BLOCKPOWER) << IO.BLOCKPOWER;
+    out.seek(off + BLOCK_BOUNDARY_POS);
+    write(out, STR_BIN);
   }
 
   /**
-   * Write an array of unsigned bytes in the specified output stream.
-   * @param out output stream
+   * Write an array of unsigned bytes in the specified file.
+   * @param out file
    * @param bytes unsigned bytes
    * @throws IOException I/O exception
    */
-  private static void write(final OutputStream out, final int[] bytes)
+  private static void write(final RandomAccessFile out, final int[] bytes)
       throws IOException {
     for(int i = 0; i < bytes.length; ++i) out.write(bytes[i]);
   }

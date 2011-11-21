@@ -2,12 +2,8 @@ package org.basex.test.io;
 
 import static org.basex.util.BlockAccessUtil.*;
 import static org.junit.Assert.*;
-
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import org.basex.io.IO;
 import org.basex.io.random.BlockManagedDataAccess;
@@ -18,18 +14,25 @@ import org.junit.Test;
 public final class BlockManagedDataAccessTest extends DataAccessTest {
   /** Instance of {@link BlockManagedDataAccess} under test. */
   private BlockManagedDataAccess bda;
+  /** Logical number of initially allocated blocks (i.e. data blocks). */
+  private long initialBlocks;
 
   @Override
   @Before
   public void setUp() throws IOException {
     file = File.createTempFile("page", ".basex");
-    final OutputStream o = new BufferedOutputStream(new FileOutputStream(file));
+    final RandomAccessFile f = new RandomAccessFile(file, "rw");
     try {
-      o.write(1);
-      for(int i = 1; i < IO.BLOCKSIZE; ++i) o.write(0);
-      initialContent(o);
+      f.seek(IO.BLOCKSIZE);
+      initialContent(f);
+
+      initialBlocks = blocks(f.length()) - 1; // hacky: number of segment blocks
+      // initialize the header block
+      f.seek(0L);
+      f.write(setFirst(initialBlocks));
+      for(long i = initialBlocks; i < IO.BLOCKSIZE; ++i) f.write(0);
     } finally {
-      o.close();
+      f.close();
     }
     da = bda = new BlockManagedDataAccess(file);
   }
@@ -43,13 +46,12 @@ public final class BlockManagedDataAccessTest extends DataAccessTest {
    */
   @Test
   public void testCreateBlock1() throws IOException {
-    assertEquals(1L, bda.createBlock());
+    assertEquals(initialBlocks, bda.createBlock());
     bda.flush();
 
     final RandomAccessFile f = new RandomAccessFile(file, "r");
     try {
-      // the first byte should have only the first 2 bits set
-      assertEquals(3, f.read());
+      assertEquals(setFirst(initialBlocks + 1), f.read());
     } finally {
       f.close();
     }
@@ -63,8 +65,9 @@ public final class BlockManagedDataAccessTest extends DataAccessTest {
   @Test
   public void testCreateBlock2() throws IOException {
     final int n = 4;
-    final long blocks = SEGMENTBLOCKS + n + 1;
-    for(long b = 1L; b < blocks; ++b) assertEquals(b, bda.createBlock());
+    final long blocks = initialBlocks + SEGMENTBLOCKS + n;
+    for(long b = initialBlocks; b < blocks; ++b)
+      assertEquals(b, bda.createBlock());
     bda.flush();
 
     final RandomAccessFile f = new RandomAccessFile(file, "r");
@@ -74,9 +77,9 @@ public final class BlockManagedDataAccessTest extends DataAccessTest {
         assertEquals(BITMASK, f.read());
 
       // the second header block should not be full
-      f.seek(position(headerBlock(1)));
-      // the first byte should have only the first n bits set (+1 init block)
-      assertEquals((1 << (n + 1)) - 1, f.read());
+      f.seek(position(headerBlock(1L)));
+      // the first byte should have only the first n bits set (+ init blocks)
+      assertEquals((1 << (n + initialBlocks)) - 1, f.read());
     } finally {
       f.close();
     }
@@ -89,15 +92,16 @@ public final class BlockManagedDataAccessTest extends DataAccessTest {
     */
   @Test
   public void testDeleteBlock1() throws IOException {
-    final int initial = 10;
-    for(int i = 0; i < initial; ++i) bda.createBlock();
+    final int n = 10;
+    for(int i = 0; i < n; ++i) bda.createBlock();
     bda.deleteBlock(8L);
     bda.flush();
 
     final RandomAccessFile f = new RandomAccessFile(file, "r");
     try {
+      // hacky!
       assertEquals(BITMASK, f.read()); // 11 11 11 11
-      assertEquals(6, f.read()); // 00 00 01 10
+      assertEquals(14, f.read()); // 00 00 11 10
     } finally {
       f.close();
     }
@@ -120,5 +124,14 @@ public final class BlockManagedDataAccessTest extends DataAccessTest {
     } finally {
       f.close();
     }
+  }
+
+  /**
+   * Create a bit mask with the first n bits set.
+   * @param n number of bits to set
+   * @return bit mask
+   */
+  private static int setFirst(final long n) {
+    return BITMASK >>> (Byte.SIZE - n);
   }
 }
