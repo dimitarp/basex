@@ -53,6 +53,7 @@ public class BlockManagedDataOutput extends DataOutput {
    */
   private void initHeader() throws IOException {
     for(int i = 0; i < IO.BLOCKSIZE; ++i) os.write(BITMASK);
+    size += IO.BLOCKSIZE;
   }
 
   /**
