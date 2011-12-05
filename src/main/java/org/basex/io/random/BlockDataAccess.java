@@ -15,6 +15,61 @@ import org.basex.io.IO;
  *
  */
 public class BlockDataAccess {
+
+  /** Class representing a data block. */
+  private static final class DataBlock {
+    /** Maximal number of records in a data block. */
+    public static final int MAX_RECORDS = 1 << 11;
+    /** Empty slot marker. */
+    @SuppressWarnings("unused")
+    public static final int NIL = MAX_RECORDS - 1;
+
+    /** Block number. */
+    int block;
+    /** Data area size (in bytes). */
+    int size;
+    /** Number of records. */
+    int num;
+    /** Record offsets in the data area. */
+    final int[] offsets = new int[MAX_RECORDS];
+
+    /**
+     * Add a new record to the block.
+     * @param record data record
+     * @return record number within the block
+     */
+    public int insert(final byte[] record) {
+      // TODO
+      return 0;
+    }
+
+    /**
+     * Delete a record from the block.
+     * @param record record number within the block
+     */
+    public void delete(final int record) {
+      // TODO
+    }
+
+    /**
+     * Retrieve the content of a record.
+     * @param record record number within the block
+     * @return data stored in the record
+     */
+    public byte[] select(final int record) {
+      // TODO
+      return null;
+    }
+  }
+
+  private static final class HeaderBlock {
+    /** Block number. */
+    int block;
+    /** Next header block; {@code 0} if the last one. */
+    int next;
+    
+  }
+
   public static final int REFSIZE = 5;
   /** Number of data blocks per segment. */
   public static final int SEGMENTBLOCKS =
