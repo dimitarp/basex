@@ -14,7 +14,7 @@ import org.basex.util.Util;
  * @author BaseX Team 2005-11, BSD License
  * @author Christian Gruen
  */
-public final class DataAccess {
+public class DataAccess {
   /** Buffer manager. */
   private final Buffers bm = new Buffers();
   /** Reference to the data input stream. */
@@ -70,7 +70,7 @@ public final class DataAccess {
    * Sets the file length.
    * @param l file length
    */
-  public synchronized void length(final long l) {
+  private synchronized void length(final long l) {
     changed |= l != len;
     len = l;
   }
@@ -226,7 +226,7 @@ public final class DataAccess {
       bf.pos = b;
       file.seek(bf.pos);
       if(bf.pos < file.length())
-        file.readFully(bf.data, 0, (int) Math.min(len - bf.pos, IO.BLOCKSIZE));
+        file.readFully(bf.data, 0, (int) Math.min(len - b, IO.BLOCKSIZE));
     } catch(final IOException ex) {
       Util.stack(ex);
     }
@@ -365,12 +365,13 @@ public final class DataAccess {
     // old text size (available space)
     int os = readNum(pos) + (int) (cursor() - pos);
 
+    final long end = length();
     // extend available space by subsequent zero-bytes
     cursor(pos + os);
-    for(; pos + os < len && os < size && read() == 0xFF; os++);
+    for(; pos + os < end && os < size && read() == 0xFF; os++);
 
     long o = pos;
-    if(pos + os == len) {
+    if(pos + os == end) {
       // entry is placed last: reset file length (discard last entry)
       length(pos);
     } else {
@@ -381,7 +382,7 @@ public final class DataAccess {
         cursor(pos);
         t = 0;
         // place new entry after last entry
-        o = len;
+        o = end;
       } else {
         // gap is large enough: set cursor to overwrite remaining bytes
         cursor(pos + size);
@@ -409,7 +410,7 @@ public final class DataAccess {
    * Reads the next byte.
    * @return next byte
    */
-  private int read() {
+  protected int read() {
     final Buffer bf = buffer(off == IO.BLOCKSIZE);
     return bf.data[off++] & 0xFF;
   }
@@ -418,12 +419,20 @@ public final class DataAccess {
    * Writes the next byte.
    * @param b byte to be written
    */
-  private void write(final int b) {
+  protected void write(final int b) {
     final Buffer bf = buffer(off == IO.BLOCKSIZE);
     bf.dirty = true;
     bf.data[off++] = (byte) b;
     final long nl = bf.pos + off;
     if(nl > len) length(nl);
+  }
+
+  /**
+   * Get the position of the current block.
+   * @return position of the current block
+   */
+  protected long blockPos() {
+    return bm.current().pos;
   }
 
   /**
@@ -433,7 +442,7 @@ public final class DataAccess {
    */
   private Buffer buffer(final boolean next) {
     if(next) {
-      cursor(bm.current().pos + IO.BLOCKSIZE);
+      cursor(blockPos() + IO.BLOCKSIZE);
     }
     return bm.current();
   }
