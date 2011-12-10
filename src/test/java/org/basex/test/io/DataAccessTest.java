@@ -9,6 +9,7 @@ import org.basex.io.random.DataAccess;
 import org.basex.util.Token;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /** Tests for class {@link DataAccess}. */
@@ -319,6 +320,7 @@ public class DataAccessTest {
   }
 
   /** Test method for {@link DataAccess#free(long, int)}. */
+  @Ignore
   @Test
   public final void testFree() {
     // TODO: the method is too complex
