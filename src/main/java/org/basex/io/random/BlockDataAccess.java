@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 
 import org.basex.io.IO;
+import org.basex.util.Num;
+import org.basex.util.Token;
 
 /**
  * Implementation of {@link DataAccess}, which in addition manages the empty
@@ -21,12 +23,13 @@ public class BlockDataAccess {
     /** Maximal number of records in a data block. */
     public static final int MAX_RECORDS = IO.BLOCKSIZE >>> 1;
     /** Empty slot marker. */
-    @SuppressWarnings("unused")
     public static final int NIL = (1 << IO.BLOCKPOWER) - 1;
 
     /** Block id number. */
     int id;
-    
+    /** Free space in bytes. */
+    int free;
+
     // fields stored in the block:
     /** Data area size (in bytes). */
     int size;
@@ -35,14 +38,36 @@ public class BlockDataAccess {
     /** Record offsets in the data area. */
     final int[] offsets = new int[MAX_RECORDS];
 
+    /** Write the meta data to the current block. */
+    public void writeMetaData() {
+      // TODO
+    }
+
+    /** Read the meta data from the current block. */
+    public void readMetaData() {
+      // TODO
+    }
+
     /**
      * Add a new record to the block.
-     * @param record data record
+     * @param data data record
      * @return record number within the block
      */
-    public int insert(final byte[] record) {
-      // TODO
-      return 0;
+    public int insert(final byte[] data) {
+      // write the record data
+      final int off = allocate(Num.length(data.length) + data.length);
+      da.off = off;
+      da.writeToken(data);
+
+      final int record = findEmptySlot();
+      if(record == num) {
+        // TODO: new slot will be allocated: the free space must be adjusted
+      }
+
+      offsets[record] = off;
+      ++num;
+
+      return record;
     }
 
     /**
@@ -50,7 +75,17 @@ public class BlockDataAccess {
      * @param record record number within the block
      */
     public void delete(final int record) {
-      // TODO
+      if(record == num--) {
+        da.off = offsets[record];
+        int len = da.readNum();
+        len += Num.length(len);
+        // TODO: free space occupied by the slot
+        // decrease size
+        size -= len;
+        // increase free
+        free += len;
+      }
+      offsets[record] = NIL;
     }
 
     /**
@@ -59,8 +94,61 @@ public class BlockDataAccess {
      * @return data stored in the record
      */
     public byte[] select(final int record) {
-      BlockDataAccess.this.da.cursor(id + )
-      return null;
+      da.off = offsets[record];
+      return da.readToken();
+    }
+
+    /**
+     * Find an empty slot; if none is available, create a new one at the end.
+     * @return index of the empty slot
+     */
+    private int findEmptySlot() {
+      for(int r = 0; r < num; ++r) if(offsets[r] == NIL) return r;
+      return num;
+    }
+
+    /**
+     * Allocate a given number of bytes from the free space area.
+     * @param l number of bytes
+     * @return offset within the block where the bytes have been allocated
+     */
+    private int allocate(final int l) {
+      // re-organize records, if not enough space
+      if(l > free) compact();
+
+      // allocate at the end of the data area
+      final int off = size;
+      size += l;
+      free -= l;
+      return off;
+    }
+
+    /** Compact records in a contiguous area. */
+    private void compact() {
+      int pos = 0;
+      for(int i = 0; i < num; ++i) {
+        // read the length of the record (size + data)
+        da.off = offsets[i];
+        int len = da.readNum();
+        len += Num.length(len);
+
+        if(offsets[i] > pos) {
+          // there is unused space: shift the record (size + data) forwards
+          da.off = offsets[i];
+          final byte[] record = da.readBytes(len);
+          da.off = pos;
+          da.writeBytes(record);
+          offsets[i] = pos;
+        } else if(offsets[i] < pos) {
+          throw new RuntimeException("Not expected");
+        }
+        // next position should be right after the current record
+        pos += len;
+      }
+      // adjust the free space value
+      free += size - pos;
+      // adjust the size value
+      size = pos;
     }
   }
 
@@ -69,9 +157,6 @@ public class BlockDataAccess {
     int id;
     /** Next header block; {@code 0} if the last one. */
     int next;
-    
-    int[]
-    
   }
 
   public static final int REFSIZE = 5;
@@ -81,7 +166,7 @@ public class BlockDataAccess {
 
   public static final long SLOTMASK = 0xFFFL;
 
-  private final BlockManagedDataAccess da;
+  final BlockManagedDataAccess da;
 
   public BlockDataAccess(final File f) throws IOException {
     da = new BlockManagedDataAccess(f);

@@ -24,7 +24,7 @@ public class DataAccess {
   /** Changed flag. */
   private boolean changed;
   /** Offset. */
-  private int off;
+  protected int off;
 
   /**
    * Constructor, initializing the file reader.
@@ -63,7 +63,7 @@ public class DataAccess {
    * @return position in the file
    */
   public long cursor() {
-    return buffer(false).pos + off;
+    return bm.current().pos + off;
   }
 
   /**
@@ -212,6 +212,15 @@ public class DataAccess {
   }
 
   /**
+   * Write the given bytes to the current position and move the cursor.
+   * @param b byte array
+   */
+  public synchronized void writeBytes(final byte[] b) {
+    System.arraycopy(b, 0, bm.current().data, off, b.length);
+    off += b.length;
+  }
+
+  /**
    * Sets the disk cursor.
    * @param p read position
    */
@@ -326,12 +335,20 @@ public class DataAccess {
   }
 
   /**
-   * Appends a value to the file and return it's offset.
+   * Writes a token to the file at the specified position.
    * @param p write position
    * @param v byte array to be appended
    */
   public void writeToken(final long p, final byte[] v) {
     cursor(p);
+    writeToken(v);
+  }
+
+  /**
+   * Write a token to the file.
+   * @param v byte array to be written
+   */
+  public void writeToken(final byte[] v) {
     writeNum(v.length);
     for(final byte b : v) write(b);
   }
