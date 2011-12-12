@@ -17,15 +17,17 @@ import org.basex.io.IO;
 public class BlockDataAccess {
 
   /** Class representing a data block. */
-  private static final class DataBlock {
+  private final class DataBlock {
     /** Maximal number of records in a data block. */
-    public static final int MAX_RECORDS = 1 << 11;
+    public static final int MAX_RECORDS = IO.BLOCKSIZE >>> 1;
     /** Empty slot marker. */
     @SuppressWarnings("unused")
-    public static final int NIL = MAX_RECORDS - 1;
+    public static final int NIL = (1 << IO.BLOCKPOWER) - 1;
 
-    /** Block number. */
-    int block;
+    /** Block id number. */
+    int id;
+    
+    // fields stored in the block:
     /** Data area size (in bytes). */
     int size;
     /** Number of records. */
@@ -57,16 +59,18 @@ public class BlockDataAccess {
      * @return data stored in the record
      */
     public byte[] select(final int record) {
-      // TODO
+      BlockDataAccess.this.da.cursor(id + )
       return null;
     }
   }
 
   private static final class HeaderBlock {
-    /** Block number. */
-    int block;
+    /** Block id number. */
+    int id;
     /** Next header block; {@code 0} if the last one. */
     int next;
+    
+    int[]
     
   }
 
