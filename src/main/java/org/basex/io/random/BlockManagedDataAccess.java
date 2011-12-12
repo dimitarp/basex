@@ -57,10 +57,6 @@ public class BlockManagedDataAccess extends DataAccess {
   public void gotoBlock(final long n) {
     super.cursor(position(dataBlock(n)));
   }
-  
-  byte buffer(final int off) {
-    super.
-  }
 
   /**
    * Delete a block.
