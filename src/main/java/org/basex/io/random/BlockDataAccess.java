@@ -5,42 +5,46 @@ import java.io.IOException;
 
 import org.basex.io.IO;
 import org.basex.util.Num;
-import org.basex.util.Token;
 
 /**
- * Implementation of {@link DataAccess}, which in addition manages the empty
- * blocks.
- *
- * The file is divided into segments. Each segment has a header block, which
- * manages the following blocks.
- * @author dimitar
- *
+ * TODO: description missing.
+ * TODO: decide how records with size > 4096 will be stored
+ * @author BaseX Team 2005-11, BSD License
+ * @author Dimitar Popov
  */
 public class BlockDataAccess {
 
   /** Class representing a data block. */
   private final class DataBlock {
     /** Maximal number of records in a data block. */
-    public static final int MAX_RECORDS = IO.BLOCKSIZE >>> 1;
+    private static final int MAX_RECORDS = IO.BLOCKSIZE >>> 1;
     /** Empty slot marker. */
-    public static final int NIL = (1 << IO.BLOCKPOWER) - 1;
+    private static final int NIL = (int) SLOTMASK;
 
     /** Block id number. */
-    int id;
+    private long id;
     /** Free space in bytes. */
-    int free;
+    private int free;
+    /** Dirty flag. */
+    private boolean dirty;
 
     // fields stored in the block:
     /** Data area size (in bytes). */
-    int size;
+    private int size;
     /** Number of records. */
-    int num;
+    private int num;
     /** Record offsets in the data area. */
-    final int[] offsets = new int[MAX_RECORDS];
+    private final int[] offsets = new int[MAX_RECORDS];
+
+    /** Constructor. */
+    public DataBlock() {
+      // TODO Auto-generated constructor stub
+    }
 
     /** Write the meta data to the current block. */
     public void writeMetaData() {
       // TODO
+      dirty = false;
     }
 
     /** Read the meta data from the current block. */
@@ -50,14 +54,14 @@ public class BlockDataAccess {
 
     /**
      * Add a new record to the block.
-     * @param data data record
+     * @param d data record
      * @return record number within the block
      */
-    public int insert(final byte[] data) {
+    public int insert(final byte[] d) {
       // write the record data
-      final int off = allocate(Num.length(data.length) + data.length);
+      final int off = allocate(Num.length(d.length) + d.length);
       da.off = off;
-      da.writeToken(data);
+      da.writeToken(d);
 
       final int record = findEmptySlot();
       if(record == num) {
@@ -66,6 +70,8 @@ public class BlockDataAccess {
 
       offsets[record] = off;
       ++num;
+
+      dirty = true;
 
       return record;
     }
@@ -79,13 +85,14 @@ public class BlockDataAccess {
         da.off = offsets[record];
         int len = da.readNum();
         len += Num.length(len);
-        // TODO: free space occupied by the slot
+        // TODO: free the space occupied by the slot
         // decrease size
         size -= len;
         // increase free
         free += len;
       }
       offsets[record] = NIL;
+      dirty = true;
     }
 
     /**
@@ -96,6 +103,17 @@ public class BlockDataAccess {
     public byte[] select(final int record) {
       da.off = offsets[record];
       return da.readToken();
+    }
+
+    /**
+     * Go to the data block with the specified block id number.
+     * @param b block id number
+     */
+    public void gotoBlock(final long b) {
+      if(id == b) return;
+      if(dirty) writeMetaData();
+      da.gotoBlock(b);
+      readMetaData();
     }
 
     /**
@@ -152,56 +170,184 @@ public class BlockDataAccess {
     }
   }
 
-  private static final class HeaderBlock {
+  /** Class representing a header block. */
+  private final class HeaderBlock {
+    /** Size of a block reference in bytes. */
+    private static final int REFSIZE = 5;
+    /** Number of data blocks per header. */
+    private static final int BLOCKS =
+        (Byte.SIZE * IO.BLOCKSIZE) / (Byte.SIZE * REFSIZE + 1);
+
+    /** Block index in the list of headers. */
+    private int num;
     /** Block id number. */
-    int id;
+    private long id;
+    /** Dirty flag. */
+    private boolean dirty;
+
+    // data stored on disk
     /** Next header block; {@code 0} if the last one. */
-    int next;
+    private long next;
+
+    /** Id numbers of blocks managed by this header block. */
+    public long[] blocks = new long[BLOCKS];
+    /** Free space in each block. */
+    private int[] space = new int[BLOCKS];
+
+    /** Constructor. */
+    public HeaderBlock() {
+      // TODO Auto-generated constructor stub
+    }
+
+    /** Write the meta data to the current block. */
+    public void writeMetaData() {
+      // TODO
+      dirty = false;
+    }
+
+    /** Read the meta data from the current block. */
+    public void readMetaData() {
+      // TODO
+    }
+
+    /**
+     * Go to a header block.
+     * @param n header block index
+     */
+    public void gotoHeaderBlock(final int n) {
+      if(num == n) return;
+      if(dirty) writeMetaData();
+      // go to the first header, if n is smaller than the current header index
+      if(num > n) {
+        num = 0;
+        next = 0L;
+        da.gotoBlock(next);
+        readMetaData();
+      }
+      // scan headers, until the required index
+      while(num < n) {
+        ++num;
+        da.gotoBlock(next);
+        readMetaData();
+      }
+    }
+
+    /**
+     * Find a data block, where a record with the given size can be stored.
+     * @param s record size
+     * @return block index
+     */
+    public int findBlock(final int s) {
+      // TODO Auto-generated method stub
+      dirty = true;
+      return 0;
+    }
   }
 
-  public static final int REFSIZE = 5;
-  /** Number of data blocks per segment. */
-  public static final int SEGMENTBLOCKS =
-      (Byte.SIZE * IO.BLOCKSIZE) / (Byte.SIZE * REFSIZE + 1);
+  /** Bit mask used to extract the slot number from a record id. */
+  public static final long SLOTMASK = (1L << IO.BLOCKPOWER) - 1L;
 
-  public static final long SLOTMASK = 0xFFFL;
-
+  /** Underlying data file. */
   final BlockManagedDataAccess da;
 
+  /** Current data block. */
+  private final DataBlock data;
+  /** Current header block. */
+  private final HeaderBlock header;
+
+  /**
+   * Constructor; open a file for data access.
+   * @param f file
+   * @throws IOException I/O exception
+   */
   public BlockDataAccess(final File f) throws IOException {
     da = new BlockManagedDataAccess(f);
+    data = new DataBlock();
+    header = new HeaderBlock();
   }
 
-  public long insert(final byte[] data) {
-    // TODO: not implemented
-    return 0L;
+  /**
+   * Insert a record.
+   * @param d record data
+   * @return record id
+   */
+  public long insert(final byte[] d) {
+    final int b = header.findBlock(d.length);
+    data.gotoBlock(header.blocks[b]);
+
+    final long s = data.insert(d);
+    return ((long) b << IO.BLOCKPOWER) & s;
   }
 
+  /**
+   * Delete record with the given id.
+   * @param rid record id
+   */
   public void delete(final long rid) {
-    // TODO: not implemented
+    gotoDataBlock(block(rid));
+    data.delete(slot(rid));
   }
 
+  /**
+   * Retrieve a record with the given id.
+   * @param rid record id
+   * @return record data
+   */
   public byte[] select(final long rid) {
-    // TODO: not implemented
-    final int b = blockid(rid);
-    final int s = slotid(rid);
-    da.gotoBlock(b);
-    return da.readToken();
+    gotoDataBlock(block(rid));
+    return data.select(slot(rid));
   }
 
+  /**
+   * Flush cached data to the disk.
+   * @throws IOException I/O exception
+   */
   public void flush() throws IOException {
     da.flush();
   }
 
+  /**
+   * Close file.
+   * @throws IOException I/O exception
+   */
   public void close() throws IOException {
     da.close();
   }
 
-  public static int blockid(final long rid) {
+  /**
+   * Go to a data block.
+   * @param n block index
+   */
+  private void gotoDataBlock(final int n) {
+    header.gotoHeaderBlock(headerIndex(n));
+    data.gotoBlock(header.blocks[n]);
+  }
+
+  /**
+   * Extract the block index from a record id.
+   * @param rid record id
+   * @return block index
+   */
+  public static int block(final long rid) {
     return (int) (rid >>> IO.BLOCKPOWER);
   }
 
-  public static int slotid(final long rid) {
+  /**
+   * Extract the slot index from a record id.
+   * @param rid record id
+   * @return slot index
+   */
+  public static int slot(final long rid) {
     return (int) (rid & SLOTMASK);
+  }
+
+  /**
+   * Get the index in the list of headers of the header block, which has the
+   * address of the block with the given number.
+   * @param b block number
+   * @return header block index
+   */
+  public static int headerIndex(final int b) {
+    return b / HeaderBlock.BLOCKS;
   }
 }
