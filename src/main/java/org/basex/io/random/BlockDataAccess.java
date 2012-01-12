@@ -53,7 +53,7 @@ public class BlockDataAccess {
     /** Block id number. */
     private long id;
     /** Free space in bytes. */
-    private int free;
+    int free;
     /** Dirty flag. */
     private boolean dirty;
 
@@ -177,12 +177,14 @@ public class BlockDataAccess {
     /**
      * Go to the data block with the specified block id number.
      * @param b block id number
+     * @param f number of free bytes
      */
-    public void gotoBlock(final long b) {
+    public void gotoBlock(final long b, final int f) {
       if(id == b) return;
       if(dirty) writeMetaData();
       da.gotoBlock(b);
       id = b;
+      free = f;
       readMetaData();
     }
 
@@ -252,16 +254,16 @@ public class BlockDataAccess {
     /** Block id number. */
     private long id;
     /** Dirty flag. */
-    private boolean dirty;
+    boolean dirty;
 
     // data stored on disk
     /** Next header block; {@code 0} if the last one. */
     private long next;
 
     /** Id numbers of blocks managed by this header block. */
-    public long[] blocks = new long[BLOCKS];
+    long[] blocks = new long[BLOCKS];
     /** Free space in each block. */
-    private int[] space = new int[BLOCKS];
+    int[] space = new int[BLOCKS];
 
     /** Constructor. */
     public HeaderBlock() {
@@ -343,11 +345,16 @@ public class BlockDataAccess {
    * @return record id
    */
   public long insert(final byte[] d) {
-    final int b = header.findBlock(d.length);
-    data.gotoBlock(header.blocks[b]);
+    final int n = header.findBlock(d.length + Num.length(d.length));
+    final int i = n % HeaderBlock.BLOCKS;
 
+    data.gotoBlock(header.blocks[i], header.space[i]);
     final long s = data.insert(d);
-    return ((long) b << IO.BLOCKPOWER) & s;
+
+    header.space[i] = data.free;
+    header.dirty = true;
+
+    return ((long) n << IO.BLOCKPOWER) & s;
   }
 
   /**
@@ -391,7 +398,8 @@ public class BlockDataAccess {
    */
   private void gotoDataBlock(final int n) {
     header.gotoHeaderBlock(headerIndex(n));
-    data.gotoBlock(header.blocks[n]);
+    final int i = n % HeaderBlock.BLOCKS;
+    data.gotoBlock(header.blocks[i], header.space[i]);
   }
 
   /**
