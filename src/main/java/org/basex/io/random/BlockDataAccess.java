@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import org.basex.io.IO;
+import org.basex.util.BitBuffer;
 import org.basex.util.Num;
 
 /**
@@ -14,8 +15,36 @@ import org.basex.util.Num;
  */
 public class BlockDataAccess {
 
-  /** Class representing a data block. */
+  /**
+   * Class representing a data block. Data blocks store actual records and some
+   * meta-data about the block and the records.
+   * <br/>
+   * The on-disk format of each block is the following:
+   * <ol>
+   * <li>DATA AREA</li>
+   * <p>The data area contains the data of each record. Records are stored
+   * subsequently, but gaps may occur if a record is deleted. In order to reuse
+   * the empty space, the records will be reordered.</p>
+   *
+   * <li>RECORD OFFSETS (SLOTS)</li>
+   * <p>A list of offsets from the beginning of the data area. Each offset shows
+   * the place where the record with the corresponding number is stored. If a
+   * record is deleted, then its corresponding slot contains <code>NIL</code>.
+   * <code>NIL</code>-slots will be reused.</p>
+   *
+   * <li>NUMBER OF SLOTS</li>
+   * <p>Shows the number of slots, i.e. the size of the list with offsets.</p>
+   *
+   * <li>DATA AREA SIZE(IN BYTES)</li>
+   * <p>Shows where the data area ends.</p>
+   * </ol>
+   *
+   * <p>The meta-data are stored at the end of the block, so that the slot list
+   * can grow without the need to shift the data area.</p>
+   */
   private final class DataBlock {
+    /** Size of an offset within a block in bits. */
+    private static final int OFFSET_SIZE = IO.BLOCKPOWER;
     /** Maximal number of records in a data block. */
     private static final int MAX_RECORDS = IO.BLOCKSIZE >>> 1;
     /** Empty slot marker. */
@@ -28,28 +57,66 @@ public class BlockDataAccess {
     /** Dirty flag. */
     private boolean dirty;
 
+    /** Bit buffer used to decode block meta-data. */
+    private final BitBuffer buffer;
+
     // fields stored in the block:
     /** Data area size (in bytes). */
     private int size;
-    /** Number of records. */
+    /** Number of slots. */
     private int num;
-    /** Record offsets in the data area. */
-    private final int[] offsets = new int[MAX_RECORDS];
+    /** Slots with record offsets in the data area. */
+    private final int[] slots = new int[MAX_RECORDS];
 
     /** Constructor. */
     public DataBlock() {
-      // TODO Auto-generated constructor stub
+      buffer = new BitBuffer(BLOCKSIZEBITS);
     }
 
     /** Write the meta data to the current block. */
-    public void writeMetaData() {
-      // TODO
+    private void writeMetaData() {
+      int pos = BLOCKSIZEBITS - 1;
+
+      // DATA AREA SIZE is stored at the end of each block
+      buffer.write(pos, OFFSET_SIZE, size);
+      pos -= OFFSET_SIZE;
+
+      // NUMBER OF SLOTS is stored next
+      buffer.write(pos, 10, num);
+      pos -= 10;
+
+      // SLOTS are stored next
+      for(int i = 0; i < num; ++i) {
+        buffer.write(pos, OFFSET_SIZE, slots[i]);
+        pos -= OFFSET_SIZE;
+      }
+
+      buffer.serialize(da.buffer(false).data);
       dirty = false;
     }
 
     /** Read the meta data from the current block. */
-    public void readMetaData() {
-      // TODO
+    private void readMetaData() {
+      // TODO: meta-data is small => don't copy the whole block!
+      buffer.init(da.buffer(false).data);
+
+      int pos = BLOCKSIZEBITS - 1;
+
+      // DATA AREA SIZE is stored at the end of each block
+      size = (int) buffer.read(pos, OFFSET_SIZE);
+      pos -= OFFSET_SIZE;
+
+      // NUMBER OF SLOTS is stored next
+      num = (int) buffer.read(pos, 10);
+      pos -= 10;
+
+      // SLOTS are stored next
+      for(int i = 0; i < num; ++i) {
+        slots[i] = (int) buffer.read(pos, OFFSET_SIZE);
+        pos -= OFFSET_SIZE;
+      }
+
+      free = (pos >>> 3) - size;
     }
 
     /**
@@ -66,10 +133,10 @@ public class BlockDataAccess {
       final int record = findEmptySlot();
       if(record == num) {
         // TODO: new slot will be allocated: the free space must be adjusted
+        ++num;
       }
 
-      offsets[record] = off;
-      ++num;
+      slots[record] = off;
 
       dirty = true;
 
@@ -81,17 +148,19 @@ public class BlockDataAccess {
      * @param record record number within the block
      */
     public void delete(final int record) {
-      if(record == num--) {
-        da.off = offsets[record];
+      if(record == num) {
+        // the record from the last slot is deleted
+        da.off = slots[record];
         int len = da.readNum();
         len += Num.length(len);
-        // TODO: free the space occupied by the slot
         // decrease size
         size -= len;
         // increase free
         free += len;
+        // TODO: free the space occupied by the slot
+        --num;
       }
-      offsets[record] = NIL;
+      slots[record] = NIL;
       dirty = true;
     }
 
@@ -101,7 +170,7 @@ public class BlockDataAccess {
      * @return data stored in the record
      */
     public byte[] select(final int record) {
-      da.off = offsets[record];
+      da.off = slots[record];
       return da.readToken();
     }
 
@@ -113,6 +182,7 @@ public class BlockDataAccess {
       if(id == b) return;
       if(dirty) writeMetaData();
       da.gotoBlock(b);
+      id = b;
       readMetaData();
     }
 
@@ -121,7 +191,7 @@ public class BlockDataAccess {
      * @return index of the empty slot
      */
     private int findEmptySlot() {
-      for(int r = 0; r < num; ++r) if(offsets[r] == NIL) return r;
+      for(int r = 0; r < num; ++r) if(slots[r] == NIL) return r;
       return num;
     }
 
@@ -146,18 +216,18 @@ public class BlockDataAccess {
       int pos = 0;
       for(int i = 0; i < num; ++i) {
         // read the length of the record (size + data)
-        da.off = offsets[i];
+        da.off = slots[i];
         int len = da.readNum();
         len += Num.length(len);
 
-        if(offsets[i] > pos) {
+        if(slots[i] > pos) {
           // there is unused space: shift the record (size + data) forwards
-          da.off = offsets[i];
+          da.off = slots[i];
           final byte[] record = da.readBytes(len);
           da.off = pos;
           da.writeBytes(record);
-          offsets[i] = pos;
-        } else if(offsets[i] < pos) {
+          slots[i] = pos;
+        } else if(slots[i] < pos) {
           throw new RuntimeException("Not expected");
         }
         // next position should be right after the current record
@@ -175,8 +245,7 @@ public class BlockDataAccess {
     /** Size of a block reference in bytes. */
     private static final int REFSIZE = 5;
     /** Number of data blocks per header. */
-    private static final int BLOCKS =
-        (Byte.SIZE * IO.BLOCKSIZE) / (Byte.SIZE * REFSIZE + 1);
+    private static final int BLOCKS = BLOCKSIZEBITS / (Byte.SIZE * REFSIZE + 1);
 
     /** Block index in the list of headers. */
     private int num;
@@ -244,6 +313,8 @@ public class BlockDataAccess {
     }
   }
 
+  /** Size of a block in bits. */
+  private static final int BLOCKSIZEBITS = IO.BLOCKSIZE << 3;
   /** Bit mask used to extract the slot number from a record id. */
   public static final long SLOTMASK = (1L << IO.BLOCKPOWER) - 1L;
 

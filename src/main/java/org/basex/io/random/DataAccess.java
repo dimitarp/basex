@@ -457,7 +457,7 @@ public class DataAccess {
    * @param next next block
    * @return buffer
    */
-  private Buffer buffer(final boolean next) {
+  protected Buffer buffer(final boolean next) {
     if(next) {
       cursor(blockPos() + IO.BLOCKSIZE);
     }
