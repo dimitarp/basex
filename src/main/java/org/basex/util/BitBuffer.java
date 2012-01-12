@@ -28,7 +28,8 @@ public final class BitBuffer {
    */
   public void init(final byte[] data) {
     for(int i = 0, j = 0; i < words.length; ++i, j += 8) {
-      words[i] = (data[j] & 0xFFL) |
+      words[i] =
+          ((data[j] & 0xFFL)) |
           ((data[j + 1] & 0xFFL) << 0x08) |
           ((data[j + 2] & 0xFFL) << 0x10) |
           ((data[j + 3] & 0xFFL) << 0x18) |
@@ -36,6 +37,23 @@ public final class BitBuffer {
           ((data[j + 5] & 0xFFL) << 0x28) |
           ((data[j + 6] & 0xFFL) << 0x30) |
           ((data[j + 7] & 0xFFL) << 0x38);
+    }
+  }
+
+  /**
+   * Serialize the current buffer to the given byte array.
+   * @param data byte array
+   */
+  public void serialize(final byte[] data) {
+    for(int i = 0, j = 0; i < words.length; ++i, j += 8) {
+      data[j] = (byte) (words[i]);
+      data[j + 1] = (byte) (words[i] >>> 0x08);
+      data[j + 2] = (byte) (words[i] >>> 0x10);
+      data[j + 3] = (byte) (words[i] >>> 0x18);
+      data[j + 4] = (byte) (words[i] >>> 0x20);
+      data[j + 5] = (byte) (words[i] >>> 0x28);
+      data[j + 6] = (byte) (words[i] >>> 0x30);
+      data[j + 7] = (byte) (words[i] >>> 0x38);
     }
   }
 
@@ -66,15 +84,19 @@ public final class BitBuffer {
    * @param bits bits to write
    */
   public void write(final long pos, final int num, final long bits) {
-    // TODO
-  }
+    final int idx = (int) (pos >>> WORD_POWER);
+    final long wordEnd = (idx + 1) << WORD_POWER;
+    final long end = pos + num;
 
-  /**
-   * Serialize the current buffer to the given byte array.
-   * @param data byte array
-   */
-  public void serialize(final byte[] data) {
-    // TODO
+    if(end > wordEnd) {
+      // the bits span two words
+      final int lowNum = (int) (wordEnd - pos);
+      final int highNum = (int) (end - wordEnd);
+      write(idx + 1, 0, highNum, bits >>> lowNum);
+      write(idx, pos, lowNum, bits);
+    } else {
+      write(idx, pos, num, bits);
+    }
   }
 
   /**
@@ -83,10 +105,23 @@ public final class BitBuffer {
    * @param idx word index
    * @param pos start position
    * @param num number of bits; should not exceed the word boundary
-   * @return a long value containing the read bits
+   * @return a long value containing the read bits at the beginning
    */
   private long read(final int idx, final long pos, final int num) {
     return (words[idx] & mask(pos, num)) >>> pos;
+  }
+
+  /**
+   * Write a given number of bits to the word with the given index starting from
+   * the specified position.
+   * @param w word index
+   * @param pos start position
+   * @param num number of bist; should not exceed the word boundary
+   * @param bits a long value containing the write bits at the beginning
+   */
+  private void write(final int w, final long pos, final int num,
+      final long bits) {
+    words[w] = (words[w] & ~mask(pos, num)) | ((bits & mask(0, num)) << pos);
   }
 
   /**
