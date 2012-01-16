@@ -274,6 +274,14 @@ public class DataAccess {
    */
   public void write5(final long p, final long v) {
     cursor(p);
+    write5(v);
+  }
+
+  /**
+   * Writes a 5-byte value to the current position.
+   * @param v value to be written
+   */
+  public void write5(final long v) {
     write((byte) (v >>> 32));
     write((byte) (v >>> 24));
     write((byte) (v >>> 16));

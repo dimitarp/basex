@@ -2,6 +2,7 @@ package org.basex.io.random;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
 
 import org.basex.io.IO;
 import org.basex.util.BitBuffer;
@@ -13,7 +14,7 @@ import org.basex.util.Num;
  * @author BaseX Team 2005-11, BSD License
  * @author Dimitar Popov
  */
-public class BlockDataAccess {
+public class RecordDataAccess {
 
   /**
    * Class representing a data block. Data blocks store actual records and some
@@ -55,7 +56,7 @@ public class BlockDataAccess {
     /** Free space in bytes. */
     int free;
     /** Dirty flag. */
-    private boolean dirty;
+    boolean dirty;
 
     /** Bit buffer used to decode block meta-data. */
     private final BitBuffer buffer;
@@ -74,7 +75,7 @@ public class BlockDataAccess {
     }
 
     /** Write the meta data to the current block. */
-    private void writeMetaData() {
+    public void writeMetaData() {
       int pos = BLOCKSIZEBITS - 1;
 
       // DATA AREA SIZE is stored at the end of each block
@@ -91,7 +92,11 @@ public class BlockDataAccess {
         pos -= OFFSET_SIZE;
       }
 
-      buffer.serialize(da.buffer(false).data);
+      da.gotoBlock(id);
+      final Buffer fileBuffer = da.buffer(false);
+      buffer.serialize(fileBuffer.data);
+      fileBuffer.dirty = true;
+
       dirty = false;
     }
 
@@ -309,6 +314,8 @@ public class BlockDataAccess {
      * @return block index
      */
     public int findBlock(final int s) {
+      // record + record length + slot
+      final int size = s + Num.length(s) + 2;
       // TODO Auto-generated method stub
       dirty = true;
       return 0;
@@ -333,10 +340,20 @@ public class BlockDataAccess {
    * @param f file
    * @throws IOException I/O exception
    */
-  public BlockDataAccess(final File f) throws IOException {
+  public RecordDataAccess(final File f) throws IOException {
     da = new BlockManagedDataAccess(f);
     data = new DataBlock();
     header = new HeaderBlock();
+  }
+
+  /**
+   * Insert a bunch of records.
+   * @param records records' data
+   * @return record ids
+   */
+  public long[] insert(final Collection<byte[]> records) {
+    // TODO: [OPT] buffer records and perform bulk inserts
+    return new long[records.size()];
   }
 
   /**
@@ -345,15 +362,19 @@ public class BlockDataAccess {
    * @return record id
    */
   public long insert(final byte[] d) {
-    final int n = header.findBlock(d.length + Num.length(d.length));
+    // find a data block with enough space to store the record
+    final int n = header.findBlock(d.length);
     final int i = n % HeaderBlock.BLOCKS;
 
+    // position at the data block and insert the record
     data.gotoBlock(header.blocks[i], header.space[i]);
     final long s = data.insert(d);
 
+    // update the free space for the data block in the header block
     header.space[i] = data.free;
     header.dirty = true;
 
+    // generate and return the record id
     return ((long) n << IO.BLOCKPOWER) & s;
   }
 
@@ -362,8 +383,13 @@ public class BlockDataAccess {
    * @param rid record id
    */
   public void delete(final long rid) {
-    gotoDataBlock(block(rid));
+    // position at the data block and delete the record
+    final int i = gotoDataBlock(block(rid));
     data.delete(slot(rid));
+
+    // update the free space for the data block in the header block
+    header.space[i] = data.free;
+    header.dirty = true;
   }
 
   /**
@@ -381,6 +407,8 @@ public class BlockDataAccess {
    * @throws IOException I/O exception
    */
   public void flush() throws IOException {
+    if(data.dirty) data.writeMetaData();
+    if(header.dirty) header.writeMetaData();
     da.flush();
   }
 
@@ -389,17 +417,20 @@ public class BlockDataAccess {
    * @throws IOException I/O exception
    */
   public void close() throws IOException {
+    flush();
     da.close();
   }
 
   /**
    * Go to a data block.
    * @param n block index
+   * @return the index of the data block in the header
    */
-  private void gotoDataBlock(final int n) {
+  private int gotoDataBlock(final int n) {
     header.gotoHeaderBlock(headerIndex(n));
     final int i = n % HeaderBlock.BLOCKS;
     data.gotoBlock(header.blocks[i], header.space[i]);
+    return i;
   }
 
   /**

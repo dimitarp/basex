@@ -27,7 +27,17 @@ public final class BitBuffer {
    * @param data data
    */
   public void init(final byte[] data) {
-    for(int i = 0, j = 0; i < words.length; ++i, j += 8) {
+    init(data, 0, data.length);
+  }
+
+  /**
+   * Initialize the buffer with the given data.
+   * @param data data
+   * @param start start offset in the data array
+   * @param end end + 1 element in the data array
+   */
+  public void init(final byte[] data, final int start, final int end) {
+    for(int i = 0, j = start; j < end && i < words.length; ++i, j += 8) {
       words[i] =
           ((data[j] & 0xFFL)) |
           ((data[j + 1] & 0xFFL) << 0x08) |
@@ -45,7 +55,17 @@ public final class BitBuffer {
    * @param data byte array
    */
   public void serialize(final byte[] data) {
-    for(int i = 0, j = 0; i < words.length; ++i, j += 8) {
+    serialize(data, 0, data.length);
+  }
+
+  /**
+   * Serialize the current buffer to the given byte array.
+   * @param data byte array
+   * @param start start offset in the data array
+   * @param end end + 1 element in the data array
+   */
+  public void serialize(final byte[] data, final int start, final int end) {
+    for(int i = 0, j = start; j < end && i < words.length; ++i, j += 8) {
       data[j] = (byte) (words[i]);
       data[j + 1] = (byte) (words[i] >>> 0x08);
       data[j + 2] = (byte) (words[i] >>> 0x10);
