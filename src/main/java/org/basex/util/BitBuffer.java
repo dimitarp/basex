@@ -37,7 +37,9 @@ public final class BitBuffer {
    * @param end end + 1 element in the data array
    */
   public void init(final byte[] data, final int start, final int end) {
-    for(int i = 0, j = start; j < end && i < words.length; ++i, j += 8) {
+    final int last = end - ((end - start) & 7);
+    int i = 0, j = start;
+    for(; j < last && i < words.length; ++i, j += 8) {
       words[i] =
           ((data[j] & 0xFFL)) |
           ((data[j + 1] & 0xFFL) << 0x08) |
@@ -48,6 +50,8 @@ public final class BitBuffer {
           ((data[j + 6] & 0xFFL) << 0x30) |
           ((data[j + 7] & 0xFFL) << 0x38);
     }
+
+    for(int n = 0; j < end; ++j, n += 8) words[i] |= (data[j] & 0xFFL) << n;
   }
 
   /**
@@ -65,7 +69,9 @@ public final class BitBuffer {
    * @param end end + 1 element in the data array
    */
   public void serialize(final byte[] data, final int start, final int end) {
-    for(int i = 0, j = start; j < end && i < words.length; ++i, j += 8) {
+    final int last = end - ((end - start) & 7);
+    int i = 0, j = start;
+    for(; j < last && i < words.length; ++i, j += 8) {
       data[j] = (byte) (words[i]);
       data[j + 1] = (byte) (words[i] >>> 0x08);
       data[j + 2] = (byte) (words[i] >>> 0x10);
@@ -75,6 +81,8 @@ public final class BitBuffer {
       data[j + 6] = (byte) (words[i] >>> 0x30);
       data[j + 7] = (byte) (words[i] >>> 0x38);
     }
+
+    for(int n = 0; j < end; ++j, n += 8) data[j] = (byte) (words[i] >> n);
   }
 
   /**

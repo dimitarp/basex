@@ -28,7 +28,7 @@ public final class BitBufferTest {
     0x0000FF000000F0FFL
   };
 
-  /** Subjet under test. */
+  /** Subject under test. */
   private BitBuffer sut;
 
   /** Set up method. */
