@@ -1,13 +1,11 @@
 package org.basex.io.random;
 
-import static org.junit.Assert.*;
-import static org.basex.util.Reflect.*;
 import static org.basex.io.random.Blocks.*;
-import static org.basex.io.random.RecordAccess.*;
-import static org.mockito.MockitoAnnotations.*;
+import static org.basex.util.Reflect.*;
+import static org.junit.Assert.*;
+import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
@@ -15,11 +13,11 @@ import org.basex.util.Reflect;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runners.Suite.SuiteClasses;
+import org.junit.runner.RunWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.runners.MockitoJUnitRunner;
 
-@SuiteClasses({ RecordAccessTest.BlocksTest.class, RecordAccessTest.class})
 public class RecordAccessTest {
 
   @Before
@@ -99,23 +97,96 @@ public class RecordAccessTest {
     return Reflect.invoke(m, (Object) null, args);
   }
 
-  static Field field(final Class<?> cls, final String name)
-      throws Exception {
-    final Field f = cls.getDeclaredField(name);
-    if(!f.isAccessible()) f.setAccessible(true);
-    return f;
+  static Field field(final Class<?> cls, final String name) {
+    try {
+      final Field f = cls.getDeclaredField(name);
+      if(!f.isAccessible()) f.setAccessible(true);
+      return f;
+    } catch(Throwable e) {
+      throw new RuntimeException(e);
+    }
   }
 
+  @RunWith(MockitoJUnitRunner.class)
+  public static class HeaderBlocksTest {
+
+    private final Method gotoHeaderBlock = method(
+        HeaderBlocks.class, "gotoHeaderBlock", int.class);
+
+    private final Field num = field(HeaderBlocks.class, "num");
+
+    private Buffer buffer;
+
+    @Mock
+    BlockManagedDataAccess da;
+
+    @Mock
+    HeaderBlocks blocks;
+
+    @Before
+    public void setUp() throws Exception {
+      buffer = new Buffer();
+      field(Blocks.class, "da").set(blocks, da);
+    }
+
+    @Test
+    public void testReadMetaData() {
+      final long addr = 10L;
+      blocks.addr = addr;
+
+      //buffer.data;
+
+      when(da.buffer(anyBoolean())).thenReturn(buffer);
+
+      blocks.readMetaData();
+
+      verify(blocks) ;
+    }
+
+    @Test
+    public void testGotoHeaderBlock() throws Exception {
+      final int h = 2;
+      Reflect.invoke(gotoHeaderBlock, blocks, h);
+      verify(blocks, times(h)).gotoBlock(anyLong());
+    }
+
+    @Test
+    public void testGotoHeaderBlockSame() throws Exception {
+      final int h = 3;
+      num.set(blocks, h);
+      Reflect.invoke(gotoHeaderBlock, blocks, h);
+      verify(blocks, times(0)).gotoBlock(anyLong());
+    }
+
+    @Test
+    public void testGotoHeaderBlockSmaller() throws Exception {
+      final int h = 3;
+      num.set(blocks, h + 2);
+      Reflect.invoke(gotoHeaderBlock, blocks, h);
+      verify(blocks, times(h + 1)).gotoBlock(anyLong());
+    }
+
+  }
+
+  @RunWith(MockitoJUnitRunner.class)
   public static class BlocksTest {
+
+    @Mock
+    BlockManagedDataAccess da;
+
+    @Mock
+    Blocks blocks;
+
+    @Before
+    public void setUp() throws Exception {
+      field(Blocks.class, "da").set(blocks, da);
+      doCallRealMethod().when(blocks).flush();
+      doCallRealMethod().when(blocks).close();
+      doCallRealMethod().when(blocks).gotoBlock(anyLong());
+    }
 
     @Test
     public final void testFlush() throws Exception {
-
-      final BlockManagedDataAccess da = mock(BlockManagedDataAccess.class);
-      final Blocks blocks = mock(Blocks.class);
-      field(Blocks.class, "da").set(blocks, da);
-      doCallRealMethod().when(blocks).flush();
-
       blocks.flush();
 
       assertFalse(blocks.dirty);
@@ -126,12 +197,17 @@ public class RecordAccessTest {
 
     @Test
     public final void testClose() throws Exception {
+      blocks.close();
 
-      final BlockManagedDataAccess da = mock(BlockManagedDataAccess.class);
-      final Blocks blocks = mock(Blocks.class);
-      field(Blocks.class, "da").set(blocks, da);
-      doCallRealMethod().when(blocks).flush();
-      doCallRealMethod().when(blocks).close();
+      assertFalse(blocks.dirty);
+
+      verify(blocks, never()).writeMetaData();
+      verify(blocks, never()).flush();
+      verify(da, never()).flush();
+    }
+
+    @Test
+    public final void testCloseDirty() throws Exception {
       blocks.dirty = true;
 
       blocks.close();
@@ -147,9 +223,6 @@ public class RecordAccessTest {
     public final void testGotoBlock() {
       final long blockAddress = 10L;
 
-      final Blocks blocks = mock(Blocks.class);
-      doCallRealMethod().when(blocks).gotoBlock(blockAddress);
-
       blocks.gotoBlock(blockAddress);
 
       assertEquals(blockAddress, blocks.addr);
@@ -163,10 +236,8 @@ public class RecordAccessTest {
     public final void testGotoBlockSame() {
       final long blockAddress = 10L;
 
-      final Blocks blocks = mock(Blocks.class);
-      doCallRealMethod().when(blocks).gotoBlock(blockAddress);
-      blocks.addr = blockAddress;
       blocks.dirty = true;
+      blocks.addr = blockAddress;
 
       blocks.gotoBlock(blockAddress);
 
@@ -181,9 +252,7 @@ public class RecordAccessTest {
     public final void testGotoBlockDirty() {
       final long blockAddress = 10L;
 
-      final Blocks blocks = mock(Blocks.class);
       final InOrder inOrder = inOrder(blocks);
-      doCallRealMethod().when(blocks).gotoBlock(blockAddress);
       blocks.dirty = true;
 
       blocks.gotoBlock(blockAddress);

@@ -8,6 +8,11 @@ import java.io.IOException;
 import org.basex.io.IO;
 import org.basex.util.Num;
 
+/**
+ * Record access.
+ * @author dpopov
+ *
+ */
 public class RecordAccess extends Blocks {
   /** Bit mask used to extract the slot number from a record id. */
   private static final long SLOTMASK = (1L << IO.BLOCKPOWER) - 1L;
@@ -354,7 +359,7 @@ abstract class Blocks {
 }
 
 /** Header blocks. */
-final class HeaderBlocks extends Blocks {
+class HeaderBlocks extends Blocks {
   /** Size of a block reference in bytes. */
   private static final int REFSIZE = 5;
   /** Size of a block reference in bits. */
@@ -366,7 +371,7 @@ final class HeaderBlocks extends Blocks {
   private static final long NIL = 0L;
 
   /** Reference to data blocks. */
-  private RecordAccess dataBlocks;
+  private final RecordAccess dataBlocks;
   /** Block index in the list of headers. */
   private int num;
 
@@ -374,7 +379,7 @@ final class HeaderBlocks extends Blocks {
   /** Next header block; {@link #NIL} if the last one. */
   private long next = NIL;
   /** Id numbers of blocks managed by this header block. */
-  private long[] blocks = new long[BLOCKS];
+  private final long[] blocks = new long[BLOCKS];
   /** Free space in each block. */
   int[] free = new int[BLOCKS];
 
