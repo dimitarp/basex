@@ -6,17 +6,22 @@ import static org.junit.Assert.*;
 import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 
+import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import org.basex.util.Reflect;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InOrder;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+
+import com.sun.org.apache.bcel.internal.generic.NEW;
 
 public class RecordAccessTest {
 
@@ -115,55 +120,92 @@ public class RecordAccessTest {
 
     private final Field num = field(HeaderBlocks.class, "num");
 
-    private Buffer buffer;
+    private final Field next = field(HeaderBlocks.class, "next");
 
-    @Mock
+    private static int BLOCKS;
+
+    private long[] blocks;
+
+    private int[] free;
+
+    Buffer buffer;
+
+    @InjectMocks
     BlockManagedDataAccess da;
 
+    HeaderBlocks headers;
+
     @Mock
-    HeaderBlocks blocks;
+    RandomAccessFile file;
+
+    @BeforeClass
+    public static void init() throws Exception {
+      BLOCKS = field(HeaderBlocks.class, "BLOCKS").getInt(null);
+    }
 
     @Before
     public void setUp() throws Exception {
       buffer = new Buffer();
-      field(Blocks.class, "da").set(blocks, da);
+      blocks = new long[BLOCKS];
+      free = new int[BLOCKS];
+      field(HeaderBlocks.class, "blocks").set(headers, blocks);
+      field(HeaderBlocks.class, "free").set(headers, free);
+      field(Blocks.class, "da").set(headers, da);
     }
 
     @Test
-    public void testReadMetaData() {
+    public void testReadMetaData() throws Exception {
       final long addr = 10L;
-      blocks.addr = addr;
+      headers.addr = addr;
 
-      //buffer.data;
+      final long nextAddr = 0xF000000DFFL;
+      buffer.data[0] = (byte) 0xFF;
+      buffer.data[1] = (byte) 0x0D;
+      buffer.data[4] = (byte) 0xF0;
 
       when(da.buffer(anyBoolean())).thenReturn(buffer);
 
-      blocks.readMetaData();
+      doCallRealMethod().when(headers).readMetaData();
 
-      verify(blocks) ;
+      headers.readMetaData();
+
+      assertEquals(nextAddr, next.getLong(headers));
+    }
+
+    @Test
+    public void testGetBlockAddr() throws Exception {
+      blocks[0] = 10L;
+      blocks[1] = 11L;
+      blocks[2] = 12L;
+
+      doCallRealMethod().when(headers).getBlockAddr(anyInt());
+
+      assertEquals(10L, headers.getBlockAddr(0));
+      assertEquals(11L, headers.getBlockAddr(1));
+      assertEquals(12L, headers.getBlockAddr(BLOCKS + 2));
     }
 
     @Test
     public void testGotoHeaderBlock() throws Exception {
       final int h = 2;
-      Reflect.invoke(gotoHeaderBlock, blocks, h);
-      verify(blocks, times(h)).gotoBlock(anyLong());
+      Reflect.invoke(gotoHeaderBlock, headers, h);
+      verify(headers, times(h)).gotoBlock(anyLong());
     }
 
     @Test
     public void testGotoHeaderBlockSame() throws Exception {
       final int h = 3;
-      num.set(blocks, h);
-      Reflect.invoke(gotoHeaderBlock, blocks, h);
-      verify(blocks, times(0)).gotoBlock(anyLong());
+      num.set(headers, h);
+      Reflect.invoke(gotoHeaderBlock, headers, h);
+      verify(headers, times(0)).gotoBlock(anyLong());
     }
 
     @Test
     public void testGotoHeaderBlockSmaller() throws Exception {
       final int h = 3;
-      num.set(blocks, h + 2);
-      Reflect.invoke(gotoHeaderBlock, blocks, h);
-      verify(blocks, times(h + 1)).gotoBlock(anyLong());
+      num.set(headers, h + 2);
+      Reflect.invoke(gotoHeaderBlock, headers, h);
+      verify(headers, times(h + 1)).gotoBlock(anyLong());
     }
 
   }

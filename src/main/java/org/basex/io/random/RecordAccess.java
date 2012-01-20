@@ -263,6 +263,10 @@ abstract class Blocks {
   /** Address of the current block in the underlying storage. */
   protected long addr;
 
+  public Blocks(final BlockManagedDataAccess data) {
+    da = data;
+  }
+
   /**
    * Constructor; open a file for block access.
    * @param file file
@@ -382,6 +386,11 @@ class HeaderBlocks extends Blocks {
   private final long[] blocks = new long[BLOCKS];
   /** Free space in each block. */
   int[] free = new int[BLOCKS];
+
+  public HeaderBlocks(final RecordAccess data) {
+    super(data.da);
+    dataBlocks = data;
+  }
 
   /**
    * Constructor; open a file for data block access.
