@@ -63,7 +63,7 @@ import org.basex.util.Num;
  * </ol>
  * </ol>
  */
-public class RecordAccess extends Blocks {
+public class RecordDataAccess extends Blocks {
   /** Bit mask used to extract the slot number from a record id. */
   private static final long SLOTMASK = (1L << IO.BLOCKPOWER) - 1L;
 
@@ -93,7 +93,7 @@ public class RecordAccess extends Blocks {
    * @param f file
    * @throws IOException I/O exception
    */
-  public RecordAccess(final File f) throws IOException {
+  public RecordDataAccess(final File f) throws IOException {
     super(f);
     headers = new HeaderBlocks(this);
   }
@@ -435,7 +435,7 @@ class HeaderBlocks extends Blocks {
   private static final long NIL = 0L;
 
   /** Reference to data blocks. */
-  private final RecordAccess dataBlocks;
+  private final RecordDataAccess dataBlocks;
   /** Block index in the list of headers. */
   private int num = -1;
 
@@ -451,7 +451,7 @@ class HeaderBlocks extends Blocks {
    * Constructor.
    * @param data data
    */
-  public HeaderBlocks(final RecordAccess data) {
+  public HeaderBlocks(final RecordDataAccess data) {
     super(data.da);
     dataBlocks = data;
     if(da.length() == 0) addr = da.createBlock();
@@ -463,7 +463,7 @@ class HeaderBlocks extends Blocks {
    * @param data reference to data blocks
    * @throws IOException I/O exception
    */
-  public HeaderBlocks(final File f, final RecordAccess data)
+  public HeaderBlocks(final File f, final RecordDataAccess data)
       throws IOException {
     super(f);
     dataBlocks = data;

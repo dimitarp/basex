@@ -75,7 +75,7 @@ public class RecordAccessTest {
   public final void testBlock() throws Exception {
     assertEquals(0x7FFFFFFF,
         invoke(
-            method(RecordAccess.class, "block", long.class),
+            method(RecordDataAccess.class, "block", long.class),
             0x0000007FFFFFFF000L));
   }
 
@@ -83,7 +83,7 @@ public class RecordAccessTest {
   public final void testSlot() throws Exception {
     assertEquals(0xFAC,
         invoke(
-            method(RecordAccess.class, "slot", long.class),
+            method(RecordDataAccess.class, "slot", long.class),
             0x000000FFFFFFFFACL));
   }
 

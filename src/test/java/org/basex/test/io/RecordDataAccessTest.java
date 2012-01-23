@@ -6,22 +6,22 @@ import static org.junit.Assert.*;
 import java.io.File;
 
 import org.basex.io.random.DataAccess;
-import org.basex.io.random.RecordAccess;
+import org.basex.io.random.RecordDataAccess;
 import org.basex.util.Performance;
 import org.junit.Before;
 import org.junit.Test;
 
-public class RecordAccessTest {
+public class RecordDataAccessTest {
 
   private File file;
-  private RecordAccess sut;
+  private RecordDataAccess sut;
 
   @Before
   public void setUp() throws Exception {
     //file = File.createTempFile("ra-test", "basex");
     file = new File("test.basex");
     file.deleteOnExit();
-    sut = new RecordAccess(file);
+    sut = new RecordDataAccess(file);
   }
 
   @Test
@@ -32,7 +32,7 @@ public class RecordAccessTest {
     final long rid1 = sut.insert(token("test23423"));
     sut.close();
 
-    sut = new RecordAccess(file);
+    sut = new RecordDataAccess(file);
     assertEquals("test", string(sut.select(rid)));
     assertEquals("test23423", string(sut.select(rid1)));
   }
@@ -55,7 +55,7 @@ public class RecordAccessTest {
 
 
     final long selectStart = System.currentTimeMillis();
-    sut = new RecordAccess(file);
+    sut = new RecordDataAccess(file);
     for(int i = 0; i < num; ++i)
       assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
     sut.close();
