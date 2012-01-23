@@ -3,6 +3,7 @@ package org.basex.io.random;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Arrays;
 
 import org.basex.io.IO;
 import org.basex.util.Num;
@@ -236,6 +237,8 @@ public class DataAccess {
       file.seek(bf.pos);
       if(bf.pos < file.length())
         file.readFully(bf.data, 0, (int) Math.min(len - b, IO.BLOCKSIZE));
+      else
+        Arrays.fill(bf.data, (byte) 0);
     } catch(final IOException ex) {
       Util.stack(ex);
     }
@@ -376,6 +379,30 @@ public class DataAccess {
     } else {
       write(v);
     }
+  }
+
+  public int readLow12Bits(final int p0, final int p1) {
+    final byte[] data = bm.current().data;
+    return ((data[p1] & 0x0F) << 8) | ((data[p0] & 0xFF));
+  }
+
+  public int readHigh12Bits(final int p0, final int p1) {
+    final byte[] data = bm.current().data;
+    return ((data[p1] & 0xFF) << 4) | ((data[p0] & 0xF0) >>> 4);
+  }
+
+  public void writeLow12Bits(final int p0, final int p1, final int v) {
+    off = p0;
+    write(v);
+    off = p1;
+    write((bm.current().data[p1] & 0xF0) | ((v >>> 8) & 0x0F));
+  }
+
+  public void writeHigh12Bits(final int p0, final int p1, final int v) {
+    off = p0;
+    write((bm.current().data[p0] & 0x0F) | ((v & 0x0F) << 4));
+    off = p1;
+    write(v >>> 4);
   }
 
   /**
