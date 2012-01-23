@@ -6,14 +6,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import org.basex.io.IO;
-import org.basex.io.random.BlockManagedDataAccess;
+import org.basex.io.random.BlockDataAccess;
 import org.junit.Before;
 import org.junit.Test;
 
-/** Tests for class {@link BlockManagedDataAccess}. */
-public final class BlockManagedDataAccessTest extends DataAccessTest {
-  /** Instance of {@link BlockManagedDataAccess} under test. */
-  private BlockManagedDataAccess bda;
+/** Tests for class {@link BlockDataAccess}. */
+public final class BlockDataAccessTest extends DataAccessTest {
+  /** Instance of {@link BlockDataAccess} under test. */
+  private BlockDataAccess bda;
   /** Logical number of initially allocated blocks (i.e. data blocks). */
   private long initialBlocks;
 
@@ -34,13 +34,13 @@ public final class BlockManagedDataAccessTest extends DataAccessTest {
     } finally {
       f.close();
     }
-    da = bda = new BlockManagedDataAccess(file);
+    da = bda = new BlockDataAccess(file);
   }
 
 
 
   /**
-   * Test method {@link BlockManagedDataAccess#createBlock()}.
+   * Test method {@link BlockDataAccess#createBlock()}.
    * Create one data block.
    * @throws IOException I/O exception
    */
@@ -58,7 +58,7 @@ public final class BlockManagedDataAccessTest extends DataAccessTest {
   }
 
   /**
-   * Test method {@link BlockManagedDataAccess#createBlock()}.
+   * Test method {@link BlockDataAccess#createBlock()}.
    * Create 32768+4 data blocks.
    * @throws IOException I/O exception
    */
@@ -86,7 +86,7 @@ public final class BlockManagedDataAccessTest extends DataAccessTest {
   }
 
    /**
-    * Test method {@link BlockManagedDataAccess#deleteBlock(long)}.
+    * Test method {@link BlockDataAccess#deleteBlock(long)}.
     * Create 10 blocks and delete block with number 8.
     * @throws IOException I/O exception
     */

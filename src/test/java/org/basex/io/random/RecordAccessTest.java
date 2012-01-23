@@ -131,7 +131,7 @@ public class RecordAccessTest {
     Buffer buffer;
 
     @InjectMocks
-    BlockManagedDataAccess da;
+    BlockDataAccess da;
 
     HeaderBlocks headers;
 
@@ -214,7 +214,7 @@ public class RecordAccessTest {
   public static class BlocksTest {
 
     @Mock
-    BlockManagedDataAccess da;
+    BlockDataAccess da;
 
     @Mock
     Blocks blocks;

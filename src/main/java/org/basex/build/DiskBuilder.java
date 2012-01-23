@@ -11,7 +11,7 @@ import org.basex.data.DiskData;
 import org.basex.data.MetaData;
 import org.basex.io.IO;
 import org.basex.io.in.DataInput;
-import org.basex.io.out.BlockManagedDataOutput;
+import org.basex.io.out.BlockDataOutput;
 import org.basex.io.out.DataOutput;
 import org.basex.io.out.TableOutput;
 import org.basex.io.random.TableAccess;
@@ -73,7 +73,7 @@ public final class DiskBuilder extends Builder {
     bs = Math.max(IO.BLOCKSIZE, bs - bs % IO.BLOCKSIZE);
 
     tout = new DataOutput(new TableOutput(meta, DATATBL));
-    xout = new BlockManagedDataOutput(meta.dbfile(DATATXT), bs);
+    xout = new BlockDataOutput(meta.dbfile(DATATXT), bs);
     vout = new DataOutput(meta.dbfile(DATAATV), bs);
     sout = new DataOutput(meta.dbfile(DATATMP), bs);
 

@@ -14,7 +14,7 @@ import org.basex.util.Num;
  * @author BaseX Team 2005-11, BSD License
  * @author Dimitar Popov
  */
-public class RecordDataAccess {
+public class RecordDataAccessRIP {
 
   /**
    * Class representing a data block. Data blocks store actual records and some
@@ -328,7 +328,7 @@ public class RecordDataAccess {
   public static final long SLOTMASK = (1L << IO.BLOCKPOWER) - 1L;
 
   /** Underlying data file. */
-  final BlockManagedDataAccess da;
+  final BlockDataAccess da;
 
   /** Current data block. */
   private final DataBlock data;
@@ -340,8 +340,8 @@ public class RecordDataAccess {
    * @param f file
    * @throws IOException I/O exception
    */
-  public RecordDataAccess(final File f) throws IOException {
-    da = new BlockManagedDataAccess(f);
+  public RecordDataAccessRIP(final File f) throws IOException {
+    da = new BlockDataAccess(f);
     data = new DataBlock();
     header = new HeaderBlock();
   }

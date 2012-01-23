@@ -9,9 +9,59 @@ import org.basex.io.IO;
 import org.basex.util.Num;
 
 /**
- * Record access.
- * @author dpopov
+ * Storage of variable-length records.
+ * TODO: decide how records with size > 4096 will be stored
+ * @author BaseX Team 2005-12, BSD License
+ * @author Dimitar Popov
  *
+ * <br/>
+ * <p>A file contains two types of blocks: header and data blocks. The records,
+ * are stored in data blocks. Each record is identified by a record id with
+ * length 40 bits; the highest 28 bit identify the data block; the lowest 12
+ * bits identify the record within the data block.</p>
+ *
+ * <h1>HEADER BLOCKS</h1>
+ * Header blocks are organized in a linked list and contain references to the
+ * data blocks and how much space is used in each data block. Each header block
+ * has the following structure:
+ * <ol>
+ * <li>NEXT</li>
+ * <p>Pointer to the next header block in the list; size: 5 bytes.</p>
+ * <li>BLOCKS</li>
+ * <p>Pointers to the data blocks managed by the current header block; number:
+ * 629; size: 5 bytes.</p>
+ * <li>USED</li>
+ * <p>Number of used bytes in each data block managed by the current header
+ * block; number: 629; size: 12 bits.</p>
+ * </ol>
+ *
+ * <h1>DATA BLOCKS</h1>
+ * <p>Data blocks are divided into two areas: data and meta-data area. The data
+ * area is at the beginning of the block. The meta-data area is at the
+ * end of the block.</p>
+ * <ol>
+ * <li>DATA AREA</li>
+ * <p>The data area contains the records. A record is a contiguous sequence of
+ * bytes starting with the record data length. The data area may be fragemented
+ * due to records being deleted. In order to use the space of deleted records,
+ * the data area can be de-fragmented.</p>
+ * <li>META-DATA AREA</li>
+ * <p>The meta data area has the following structure (the fields are stored in
+ * reverse order starting from the end of the data block):</p>
+ * <ol>
+ * <li>SIZE</li>
+ * <p>Size shows how many bytes does the data area occupy. More precisely, it
+ * shows the last used byte + 1 used by the data area.</p>
+ * <li>NUM</li>
+ * <p>Number of slots, allocated in this data block.</p>
+ * <li>SLOTS</li>
+ * <p>Slots are offsets from the beginning of the data area, which show where a
+ * record is stored. The index of a slot is used as the lowest 12 bits in a
+ * record id. If a record is deleted, then the value stored in a slot is set to
+ * NIL. If a record, which occupies the last slot, is deleted, then the number
+ * of slots is decremented.</p>
+ * </ol>
+ * </ol>
  */
 public class RecordAccess extends Blocks {
   /** Bit mask used to extract the slot number from a record id. */
@@ -58,6 +108,15 @@ public class RecordAccess extends Blocks {
   public void close() throws IOException {
     super.close();
     headers.close();
+  }
+
+  @Override
+  protected void gotoBlock(final long blockAddr) {
+    if(addr == blockAddr) {
+      if(da.blockPos() != blockAddr) da.gotoBlock(blockAddr);
+      return;
+    }
+    super.gotoBlock(blockAddr);
   }
 
   /**
@@ -254,13 +313,17 @@ abstract class Blocks {
   static final int BLOCKSIZEBITS = IO.BLOCKSIZE << 3;
 
   /** Underlying data file. */
-  protected final BlockManagedDataAccess da;
+  protected final BlockDataAccess da;
   /** Dirty flag. */
   protected boolean dirty;
   /** Address of the current block in the underlying storage. */
   protected long addr = -1;
 
-  public Blocks(final BlockManagedDataAccess data) {
+  /**
+   * Constructor.
+   * @param data data
+   */
+  public Blocks(final BlockDataAccess data) {
     da = data;
   }
 
@@ -270,7 +333,7 @@ abstract class Blocks {
    * @throws IOException I/O exception
    */
   public Blocks(final File file) throws IOException {
-    da = new BlockManagedDataAccess(file);
+    da = new BlockDataAccess(file);
   }
 
   /**
@@ -381,9 +444,13 @@ class HeaderBlocks extends Blocks {
   private long next = NIL;
   /** Id numbers of blocks managed by this header block. */
   final long[] blocks = new long[BLOCKS];
-  /** Free space in each block. */
+  /** Used space in each block. */
   final int[] used = new int[BLOCKS];
 
+  /**
+   * Constructor.
+   * @param data data
+   */
   public HeaderBlocks(final RecordAccess data) {
     super(data.da);
     dataBlocks = data;
@@ -455,8 +522,8 @@ class HeaderBlocks extends Blocks {
    * @param blockIndex data block index
    * @return block address
    */
-  public long getBlockAddr(final int blockIndex) {
-    gotoHeaderBlock(headerIndex(blockIndex));
+  long getBlockAddr(final int blockIndex) {
+    gotoHeaderBlock(blockIndex / BLOCKS);
     return blocks[blockIndex % BLOCKS];
   }
 
@@ -470,7 +537,7 @@ class HeaderBlocks extends Blocks {
     // BLOCK ADDRESSES are stored next
     for(int i = 0; i < BLOCKS; ++i) blocks[i] = da.read5();
 
-    // FREE are stored next
+    // USED are stored next
     int p = (BLOCKS + 1) * REFSIZE;
     final int n = BLOCKS - 1;
     for(int i = 0; i < n; i += 2, ++p) {
@@ -490,7 +557,7 @@ class HeaderBlocks extends Blocks {
     // BLOCK ADDRESSES are stored next
     for(int i = 0; i < BLOCKS; ++i) da.write5(blocks[i]);
 
-    // FREE are stored next
+    // USED are stored next
     int p = (BLOCKS + 1) * REFSIZE;
     final int n = BLOCKS - 1;
     for(int i = 0; i < n; i += 2, ++p) {
@@ -513,15 +580,5 @@ class HeaderBlocks extends Blocks {
     }
     // scan headers, until the required index is reached
     for(; num < n; ++num) gotoBlock(next);
-  }
-
-  /**
-   * Get the index in the list of headers of the header block, which has the
-   * address of the block with the given number.
-   * @param blockIndex block number
-   * @return header block index
-   */
-  private static int headerIndex(final int blockIndex) {
-    return blockIndex / BLOCKS;
   }
 }

@@ -13,7 +13,7 @@ import org.basex.io.IO;
  * @author BaseX Team 2005-11, BSD License
  * @author Dimitar Popov
  */
-public class BlockManagedDataAccess extends DataAccess {
+public class BlockDataAccess extends DataAccess {
   /** Number of blocks (both header and data) allocated in the file. */
   private long blocks;
 
@@ -22,7 +22,7 @@ public class BlockManagedDataAccess extends DataAccess {
    * @param f the file to be read
    * @throws IOException I/O Exception
    */
-  public BlockManagedDataAccess(final File f) throws IOException {
+  public BlockDataAccess(final File f) throws IOException {
     super(f);
     blocks = blocks(super.length());
   }
