@@ -45,7 +45,7 @@ public class RecordAccess extends Blocks {
    */
   public RecordAccess(final File f) throws IOException {
     super(f);
-    headers = new HeaderBlocks(f, this);
+    headers = new HeaderBlocks(this);
   }
 
   @Override
@@ -77,9 +77,10 @@ public class RecordAccess extends Blocks {
    * @param rid record id
    */
   public void delete(final long rid) {
-    final int blockIndex = block(rid);
     final int slot = slot(rid);
-    gotoBlock(headers.getBlockAddr(blockIndex));
+    final int block = block(rid);
+    final int blockIndex = block % HeaderBlocks.BLOCKS;
+    gotoBlock(headers.getBlockAddr(block));
 
     // read the record length
     da.off = slots[slot];
@@ -92,12 +93,12 @@ public class RecordAccess extends Blocks {
       // decrease the size of the meta data
       metaDataSize -= OFFSET_SIZE;
       // if slot is even, then 1 byte will be freed; else 2 bytes
-      headers.free[blockIndex] += (num & 1) == 0 ? 1 : 2;
+      headers.used[blockIndex] -= (num & 1) == 0 ? 1 : 2;
       // the record from the last slot is deleted: decrease number of slots
       --num;
     }
 
-    headers.free[blockIndex] += len;
+    headers.used[blockIndex] -= len;
     headers.dirty = true;
 
     slots[slot] = NIL;
@@ -110,8 +111,9 @@ public class RecordAccess extends Blocks {
    * @return record id
    */
   public long insert(final byte[] record) {
-    final int blockIndex = headers.findBlock(record.length);
-    gotoBlock(headers.getBlockAddr(blockIndex));
+    final int block = headers.findBlock(record.length);
+    final int blockIndex = block % HeaderBlocks.BLOCKS;
+    gotoBlock(headers.blocks[blockIndex]);
 
     // write the record data
     final int len = Num.length(record.length) + record.length;
@@ -127,37 +129,36 @@ public class RecordAccess extends Blocks {
       // increase the size of the meta data
       metaDataSize += OFFSET_SIZE;
       // if slot is even, then 1 new byte will be allocated; else 2 bytes
-      headers.free[blockIndex] -= (num & 1) == 0 ? 1 : 2;
+      headers.used[blockIndex] += (num & 1) == 0 ? 1 : 2;
     }
 
-    headers.free[blockIndex] -= len;
+    headers.used[blockIndex] += len;
     headers.dirty = true;
 
     slots[slot] = off;
     dirty = true;
 
-    return ((long) blockIndex << IO.BLOCKPOWER) & slot;
+    return (((long) block) << IO.BLOCKPOWER) | slot;
   }
 
   @Override
   protected void readMetaData() {
     da.gotoBlock(addr);
-    final byte[] data = da.buffer(false).data;
 
     // DATA AREA SIZE is stored at 12 bits the end of each block
-    size = readFirst12Bits(data[IO.BLOCKSIZE - 1], data[IO.BLOCKSIZE - 2]);
+    size = da.readLow12Bits(IO.BLOCKSIZE - 1, IO.BLOCKSIZE - 2);
     // NUMBER OF SLOTS is stored the next 12 bits
-    num = readLast12Bits(data[IO.BLOCKSIZE - 2], data[IO.BLOCKSIZE - 3]);
+    num = da.readHigh12Bits(IO.BLOCKSIZE - 2, IO.BLOCKSIZE - 3);
 
     // SLOTS are stored next
     int p = IO.BLOCKSIZE - 4;
     final boolean odd = (num & 1) == 1;
     final int n = odd ? num - 1 : num;
-    for(int i = 0; i < n; i += 2) {
-      slots[i] = readFirst12Bits(data[p], data[--p]);
-      slots[i + 1] = readLast12Bits(data[p], data[--p]);
+    for(int i = 0; i < n; i += 2, --p) {
+      slots[i] = da.readLow12Bits(p, --p);
+      slots[i + 1] = da.readHigh12Bits(p, --p);
     }
-    if(odd) slots[n] = readFirst12Bits(data[p], data[--p]);
+    if(odd) slots[n] = da.readLow12Bits(p, --p);
 
     metaDataSize = (num + 2) * OFFSET_SIZE;
   }
@@ -165,25 +166,21 @@ public class RecordAccess extends Blocks {
   @Override
   protected void writeMetaData() {
     da.gotoBlock(addr);
-    final Buffer buf = da.buffer(false);
-
-    final byte[] data = buf.data;
-    buf.dirty = true;
 
     // DATA AREA SIZE is stored at 12 bits the end of each block
-    writeFirst12Bits(data, IO.BLOCKSIZE - 1, IO.BLOCKSIZE - 2, size);
+    da.writeLow12Bits(IO.BLOCKSIZE - 1, IO.BLOCKSIZE - 2, size);
     // NUMBER OF SLOTS is stored the next 12 bits
-    writeLast12Bits(data, IO.BLOCKSIZE - 2, IO.BLOCKSIZE - 3, num);
+    da.writeHigh12Bits(IO.BLOCKSIZE - 2, IO.BLOCKSIZE - 3, num);
 
     // SLOTS are stored next
     int p = IO.BLOCKSIZE - 4;
     final boolean odd = (num & 1) == 1;
     final int n = odd ? num - 1 : num;
-    for(int i = 0; i < n; i += 2) {
-      writeFirst12Bits(data, p, --p, slots[i]);
-      writeLast12Bits(data, p, --p, slots[i + 1]);
+    for(int i = 0; i < n; i += 2, --p) {
+      da.writeLow12Bits(p, --p, slots[i]);
+      da.writeHigh12Bits(p, --p, slots[i + 1]);
     }
-    if(odd) writeFirst12Bits(data, p, --p, slots[n]);
+    if(odd) da.writeLow12Bits(p, --p, slots[n]);
   }
 
   /**
@@ -261,7 +258,7 @@ abstract class Blocks {
   /** Dirty flag. */
   protected boolean dirty;
   /** Address of the current block in the underlying storage. */
-  protected long addr;
+  protected long addr = -1;
 
   public Blocks(final BlockManagedDataAccess data) {
     da = data;
@@ -357,7 +354,7 @@ abstract class Blocks {
    */
   static void writeLast12Bits(final byte[] d, final int b0,
       final int b1, final int v) {
-    d[b0] = (byte) ((d[b1] & 0x0F) | ((v & 0x0F) << 4));
+    d[b0] = (byte) ((d[b0] & 0x0F) | ((v & 0x0F) << 4));
     d[b1] = (byte) (v >>> 4);
   }
 }
@@ -369,7 +366,7 @@ class HeaderBlocks extends Blocks {
   /** Size of a block reference in bits. */
   private static final int REFSIZEBITS = REFSIZE * Byte.SIZE;
   /** Number of data blocks per header. */
-  private static final int BLOCKS = (BLOCKSIZEBITS - REFSIZEBITS) /
+  static final int BLOCKS = (BLOCKSIZEBITS - REFSIZEBITS) /
       (REFSIZEBITS + IO.BLOCKPOWER);
   /** Invalid block reference. */
   private static final long NIL = 0L;
@@ -377,19 +374,20 @@ class HeaderBlocks extends Blocks {
   /** Reference to data blocks. */
   private final RecordAccess dataBlocks;
   /** Block index in the list of headers. */
-  private int num;
+  private int num = -1;
 
   // data stored on disk
   /** Next header block; {@link #NIL} if the last one. */
   private long next = NIL;
   /** Id numbers of blocks managed by this header block. */
-  private final long[] blocks = new long[BLOCKS];
+  final long[] blocks = new long[BLOCKS];
   /** Free space in each block. */
-  int[] free = new int[BLOCKS];
+  final int[] used = new int[BLOCKS];
 
   public HeaderBlocks(final RecordAccess data) {
     super(data.da);
     dataBlocks = data;
+    if(da.length() == 0) addr = da.createBlock();
   }
 
   /**
@@ -413,19 +411,23 @@ class HeaderBlocks extends Blocks {
    * @return data block index which has enough space
    */
   public int findBlock(final int rsize) {
-    // record + record length + slot
+    // space needed is record + record length + slot
     final int size = rsize + Num.length(rsize) + 2;
+    // max used space in a block in order to be able to store the record
+    final int max = IO.BLOCKSIZE - size;
 
     // search existing header blocks for a data block with enough space
     long n = 0L;
+    num = 0;
     do {
       gotoBlock(n);
       // check the data blocks of the header for enough space
-      for(int i = 0; i < free.length; ++i) {
-        if(free[i] <= size) {
+      for(int i = 0; i < used.length; ++i) {
+        if(used[i] <= max) {
           if(blocks[i] == NIL) {
             // the reference is empty: allocate new data block
             blocks[i] = dataBlocks.da.createBlock();
+            used[i] = 3;
             dirty = true;
           }
           return i + num * BLOCKS;
@@ -442,6 +444,7 @@ class HeaderBlocks extends Blocks {
     // allocate the first data block of the new header block
     gotoBlock(next);
     blocks[0] = dataBlocks.da.createBlock();
+    used[0] = 3;
     dirty = true;
 
     return num * BLOCKS;
@@ -460,8 +463,6 @@ class HeaderBlocks extends Blocks {
   @Override
   protected void readMetaData() {
     da.gotoBlock(addr);
-    final Buffer buf = da.buffer(false);
-    final byte[] data = buf.data;
 
     // NEXT is stored first
     next = da.read5();
@@ -470,22 +471,18 @@ class HeaderBlocks extends Blocks {
     for(int i = 0; i < BLOCKS; ++i) blocks[i] = da.read5();
 
     // FREE are stored next
-    int p = BLOCKS;
+    int p = (BLOCKS + 1) * REFSIZE;
     final int n = BLOCKS - 1;
-    for(int i = 0; i < n; i += 2) {
-      free[i] = readFirst12Bits(data[p], data[++p]);
-      free[i + 1] = readLast12Bits(data[p], data[++p]);
+    for(int i = 0; i < n; i += 2, ++p) {
+      used[i] = da.readLow12Bits(p, ++p);
+      used[i + 1] = da.readHigh12Bits(p, ++p);
     }
-    free[n] = readFirst12Bits(data[p], data[++p]);
+    used[n] = da.readLow12Bits(p, ++p);
   }
 
   @Override
   protected void writeMetaData() {
     da.gotoBlock(addr);
-    final Buffer buf = da.buffer(false);
-
-    final byte[] data = buf.data;
-    buf.dirty = true;
 
     // NEXT is stored first
     da.write5(next);
@@ -494,13 +491,13 @@ class HeaderBlocks extends Blocks {
     for(int i = 0; i < BLOCKS; ++i) da.write5(blocks[i]);
 
     // FREE are stored next
-    int p = BLOCKS;
+    int p = (BLOCKS + 1) * REFSIZE;
     final int n = BLOCKS - 1;
-    for(int i = 0; i < n; i += 2) {
-      writeFirst12Bits(data, p, ++p, free[i]);
-      writeLast12Bits(data, p, ++p, free[i + 1]);
+    for(int i = 0; i < n; i += 2, ++p) {
+      da.writeLow12Bits(p, ++p, used[i]);
+      da.writeHigh12Bits(p, ++p, used[i + 1]);
     }
-    writeFirst12Bits(data, p, ++p, free[n]);
+    da.writeLow12Bits(p, ++p, used[n]);
   }
 
   /**
