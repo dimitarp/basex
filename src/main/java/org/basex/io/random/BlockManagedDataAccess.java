@@ -2,8 +2,10 @@ package org.basex.io.random;
 
 import static java.lang.Integer.*;
 import static org.basex.util.BlockAccessUtil.*;
+
 import java.io.File;
 import java.io.IOException;
+
 import org.basex.io.IO;
 
 /**
@@ -37,7 +39,8 @@ public class BlockManagedDataAccess extends DataAccess {
 
   @Override
   public long length() {
-    return logicalPosition(super.length());
+    final long len = super.length();
+    return len < IO.BLOCKSIZE ? 0 : logicalPosition(super.length());
   }
 
   @Override
