@@ -75,7 +75,7 @@ public class RecordAccessTest {
   public final void testBlock() throws Exception {
     assertEquals(0x7FFFFFFF,
         invoke(
-            method(RecordDataAccess.class, "block", long.class),
+            method(RecordDataAccessOld.class, "block", long.class),
             0x0000007FFFFFFF000L));
   }
 
@@ -83,7 +83,7 @@ public class RecordAccessTest {
   public final void testSlot() throws Exception {
     assertEquals(0xFAC,
         invoke(
-            method(RecordDataAccess.class, "slot", long.class),
+            method(RecordDataAccessOld.class, "slot", long.class),
             0x000000FFFFFFFFACL));
   }
 
@@ -305,7 +305,7 @@ public class RecordAccessTest {
       inOrder.verify(blocks).writeMetaData();
       inOrder.verify(blocks).readMetaData();
     }
-
+/*
     @Test
     public final void testReadFirst12Bits() {
       assertEquals(0xFFF, readFirst12Bits((byte) 0xFF, (byte) 0x0F));
@@ -329,5 +329,6 @@ public class RecordAccessTest {
       writeLast12Bits(data, 0, 1, 0xFFF);
       assertArrayEquals(new byte[] { (byte) 0xF0, (byte) 0xFF }, data);
     }
+*/
   }
 }

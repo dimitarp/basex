@@ -6,6 +6,7 @@ import static org.junit.Assert.*;
 import java.io.File;
 
 import org.basex.io.random.DataAccess;
+import org.basex.io.random.RecordDataAccessOld;
 import org.basex.io.random.RecordDataAccess;
 import org.basex.util.Performance;
 import org.junit.Before;
@@ -18,8 +19,7 @@ public class RecordDataAccessTest {
 
   @Before
   public void setUp() throws Exception {
-    //file = File.createTempFile("ra-test", "basex");
-    file = new File("test.basex");
+    file = File.createTempFile("ra-test", "basex");
     file.deleteOnExit();
     sut = new RecordDataAccess(file);
   }

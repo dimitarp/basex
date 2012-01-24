@@ -63,44 +63,39 @@ import org.basex.util.Num;
  * </ol>
  * </ol>
  */
-class DataBlock extends Block {
+public class RecordDataAccessOld extends Blocks {
   /** Bit mask used to extract the slot number from a record id. */
-  static final long SLOTMASK = (1L << IO.BLOCKPOWER) - 1L;
+  private static final long SLOTMASK = (1L << IO.BLOCKPOWER) - 1L;
 
   /** Size of an offset within a block in bits. */
-  static final int OFFSET_SIZE = IO.BLOCKPOWER;
+  private static final int OFFSET_SIZE = IO.BLOCKPOWER;
   /** Maximal number of records in a data block. */
   private static final int MAX_RECORDS = IO.BLOCKSIZE >>> 1;
   /** Empty slot marker. */
-  static final int NIL = (int) SLOTMASK;
+  private static final int NIL = (int) SLOTMASK;
+
+  /** Header blocks. */
+  private final HeaderBlocks headers;
 
   /** Size of the meta data of the current block. */
-  int metaDataSize;
+  private int metaDataSize;
 
   // fields stored in the block:
   /** Data area size (in bytes). */
-  int size;
+  private int size;
   /** Number of slots. */
-  int num;
+  private int num;
   /** Slots with record offsets in the data area. */
-  final int[] slots = new int[MAX_RECORDS];
-}
-public class RecordDataAccessRIP extends Blocks {
-  /** Header block file. */
-  private final BlockDataAccess headerFile;
-
-  private final DataBlock block = new DataBlock();
-
-  private final HeaderBlock header = new HeaderBlock();
+  private final int[] slots = new int[MAX_RECORDS];
 
   /**
    * Constructor; open a file for data block access.
    * @param f file
    * @throws IOException I/O exception
    */
-  public RecordDataAccessRIP(final File f) throws IOException {
+  public RecordDataAccessOld(final File f) throws IOException {
     super(f);
-    headerFile = da;
+    headers = new HeaderBlocks(this);
   }
 
   @Override
@@ -117,7 +112,7 @@ public class RecordDataAccessRIP extends Blocks {
 
   @Override
   protected void gotoBlock(final long blockAddr) {
-    if(block.addr == blockAddr) {
+    if(addr == blockAddr) {
       if(da.blockPos() != blockAddr) da.gotoBlock(blockAddr);
       return;
     }
@@ -130,9 +125,9 @@ public class RecordDataAccessRIP extends Blocks {
    * @return record data
    */
   public byte[] select(final long rid) {
-    gotoBlock(getBlockAddr(block(rid)));
+    gotoBlock(headers.getBlockAddr(block(rid)));
 
-    da.off = block.slots[slot(rid)];
+    da.off = slots[slot(rid)];
     return da.readToken();
   }
 
@@ -142,31 +137,31 @@ public class RecordDataAccessRIP extends Blocks {
    */
   public void delete(final long rid) {
     final int slot = slot(rid);
-    final int blockNum = block(rid);
-    final int blockIndex = blockNum % HeaderBlocks.BLOCKS;
-    gotoBlock(getBlockAddr(blockNum));
+    final int block = block(rid);
+    final int blockIndex = block % HeaderBlocks.BLOCKS;
+    gotoBlock(headers.getBlockAddr(block));
 
     // read the record length
-    da.off = block.slots[slot];
+    da.off = slots[slot];
     int len = da.readNum();
     len += Num.length(len);
     // decrease size
-    block.size -= len;
+    size -= len;
 
-    if(slot == block.num) {
+    if(slot == num) {
       // decrease the size of the meta data
-      block.metaDataSize -= DataBlock.OFFSET_SIZE;
+      metaDataSize -= OFFSET_SIZE;
       // if slot is even, then 1 byte will be freed; else 2 bytes
-      header.used[blockIndex] -= (block.num & 1) == 0 ? 1 : 2;
+      headers.used[blockIndex] -= (num & 1) == 0 ? 1 : 2;
       // the record from the last slot is deleted: decrease number of slots
-      --block.num;
+      --num;
     }
 
-    header.used[blockIndex] -= len;
-    header.dirty = true;
+    headers.used[blockIndex] -= len;
+    headers.dirty = true;
 
-    block.slots[slot] = DataBlock.NIL;
-    block.dirty = true;
+    slots[slot] = NIL;
+    dirty = true;
   }
 
   /**
@@ -175,76 +170,76 @@ public class RecordDataAccessRIP extends Blocks {
    * @return record id
    */
   public long insert(final byte[] record) {
-    final int blockNum = findBlock(record.length);
-    final int blockIndex = blockNum % HeaderBlocks.BLOCKS;
-    gotoBlock(header.blocks[blockIndex]);
+    final int block = headers.findBlock(record.length);
+    final int blockIndex = block % HeaderBlocks.BLOCKS;
+    gotoBlock(headers.blocks[blockIndex]);
 
     // write the record data
     final int len = Num.length(record.length) + record.length;
     final int off = da.off = allocate(len);
     da.writeToken(record);
     // increase size
-    block.size += len;
+    size += len;
 
     final int slot = findEmptySlot();
-    if(slot == block.num) {
+    if(slot == num) {
       // new slot will be allocated
-      ++block.num;
+      ++num;
       // increase the size of the meta data
-      block.metaDataSize += DataBlock.OFFSET_SIZE;
+      metaDataSize += OFFSET_SIZE;
       // if slot is even, then 1 new byte will be allocated; else 2 bytes
-      header.used[blockIndex] += (block.num & 1) == 0 ? 1 : 2;
+      headers.used[blockIndex] += (num & 1) == 0 ? 1 : 2;
     }
 
-    header.used[blockIndex] += len;
-    header.dirty = true;
+    headers.used[blockIndex] += len;
+    headers.dirty = true;
 
-    block.slots[slot] = off;
-    block.dirty = true;
+    slots[slot] = off;
+    dirty = true;
 
-    return (((long) blockNum) << IO.BLOCKPOWER) | slot;
+    return (((long) block) << IO.BLOCKPOWER) | slot;
   }
 
   @Override
   protected void readMetaData() {
-    da.gotoBlock(block.addr);
+    da.gotoBlock(addr);
 
     // DATA AREA SIZE is stored at 12 bits the end of each block
-    block.size = da.readLow12Bits(IO.BLOCKSIZE - 1, IO.BLOCKSIZE - 2);
+    size = da.readLow12Bits(IO.BLOCKSIZE - 1, IO.BLOCKSIZE - 2);
     // NUMBER OF SLOTS is stored the next 12 bits
-    block.num = da.readHigh12Bits(IO.BLOCKSIZE - 2, IO.BLOCKSIZE - 3);
+    num = da.readHigh12Bits(IO.BLOCKSIZE - 2, IO.BLOCKSIZE - 3);
 
     // SLOTS are stored next
     int p = IO.BLOCKSIZE - 4;
-    final boolean odd = (block.num & 1) == 1;
-    final int n = odd ? block.num - 1 : block.num;
+    final boolean odd = (num & 1) == 1;
+    final int n = odd ? num - 1 : num;
     for(int i = 0; i < n; i += 2, --p) {
-      block.slots[i] = da.readLow12Bits(p, --p);
-      block.slots[i + 1] = da.readHigh12Bits(p, --p);
+      slots[i] = da.readLow12Bits(p, --p);
+      slots[i + 1] = da.readHigh12Bits(p, --p);
     }
-    if(odd) block.slots[n] = da.readLow12Bits(p, --p);
+    if(odd) slots[n] = da.readLow12Bits(p, --p);
 
-    block.metaDataSize = (block.num + 2) * DataBlock.OFFSET_SIZE;
+    metaDataSize = (num + 2) * OFFSET_SIZE;
   }
 
   @Override
   protected void writeMetaData() {
-    da.gotoBlock(block.addr);
+    da.gotoBlock(addr);
 
     // DATA AREA SIZE is stored at 12 bits the end of each block
-    da.writeLow12Bits(IO.BLOCKSIZE - 1, IO.BLOCKSIZE - 2, block.size);
+    da.writeLow12Bits(IO.BLOCKSIZE - 1, IO.BLOCKSIZE - 2, size);
     // NUMBER OF SLOTS is stored the next 12 bits
-    da.writeHigh12Bits(IO.BLOCKSIZE - 2, IO.BLOCKSIZE - 3, block.num);
+    da.writeHigh12Bits(IO.BLOCKSIZE - 2, IO.BLOCKSIZE - 3, num);
 
     // SLOTS are stored next
     int p = IO.BLOCKSIZE - 4;
-    final boolean odd = (block.num & 1) == 1;
-    final int n = odd ? block.num - 1 : block.num;
+    final boolean odd = (num & 1) == 1;
+    final int n = odd ? num - 1 : num;
     for(int i = 0; i < n; i += 2, --p) {
-      da.writeLow12Bits(p, --p, block.slots[i]);
-      da.writeHigh12Bits(p, --p, block.slots[i + 1]);
+      da.writeLow12Bits(p, --p, slots[i]);
+      da.writeHigh12Bits(p, --p, slots[i + 1]);
     }
-    if(odd) da.writeLow12Bits(p, --p, block.slots[n]);
+    if(odd) da.writeLow12Bits(p, --p, slots[n]);
   }
 
   /**
@@ -252,9 +247,8 @@ public class RecordDataAccessRIP extends Blocks {
    * @return index of the empty slot
    */
   private int findEmptySlot() {
-    for(int r = 0; r < block.num; ++r)
-      if(block.slots[r] == DataBlock.NIL) return r;
-    return block.num;
+    for(int r = 0; r < num; ++r) if(slots[r] == NIL) return r;
+    return num;
   }
 
   /**
@@ -264,148 +258,34 @@ public class RecordDataAccessRIP extends Blocks {
    */
   private int allocate(final int l) {
     // re-organize records, if not enough space
-    if(l > IO.BLOCKSIZE - block.size - (int) divRoundUp(block.metaDataSize, 8))
-      compact();
-    return block.size;
+    if(l > IO.BLOCKSIZE - size - (int) divRoundUp(metaDataSize, 8)) compact();
+    return size;
   }
 
   /** Compact records in a contiguous area. */
   private void compact() {
     int pos = 0;
-    for(int i = 0; i < block.num; ++i) {
+    for(int i = 0; i < num; ++i) {
       // read the length of the record (size + data)
-      da.off = block.slots[i];
+      da.off = slots[i];
       int len = da.readNum();
       len += Num.length(len);
 
-      if(block.slots[i] > pos) {
+      if(slots[i] > pos) {
         // there is unused space: shift the record (size + data) forwards
-        da.off = block.slots[i];
+        da.off = slots[i];
         final byte[] record = da.readBytes(len);
         da.off = pos;
         da.writeBytes(record);
-        block.slots[i] = pos;
-      } else if(block.slots[i] < pos) {
+        slots[i] = pos;
+      } else if(slots[i] < pos) {
         throw new RuntimeException("Not expected");
       }
       // next position should be right after the current record
       pos += len;
     }
     // adjust the size value
-    block.size = pos;
-  }
-
-  /**
-   * Find a data block with enough free space; if no existing data block has
-   * enough space, then a new data block is allocated; if a data block cannot
-   * be allocated in one of the existing header blocks, a new header block will
-   * be allocated.
-   * @param rsize record size
-   * @return data block index which has enough space
-   */
-  private int findBlock(final int rsize) {
-    // space needed is record + record length + slot
-    final int size = rsize + Num.length(rsize) + 2;
-    // max used space in a block in order to be able to store the record
-    final int max = IO.BLOCKSIZE - size;
-
-    // search existing header blocks for a data block with enough space
-    long n = 0L;
-    header.num = 0;
-    do {
-      gotoBlock(n);
-      // check the data blocks of the header for enough space
-      for(int i = 0; i < header.used.length; ++i) {
-        if(header.used[i] <= max) {
-          if(header.blocks[i] == HeaderBlock.NIL) {
-            // the reference is empty: allocate new data block
-            header.blocks[i] = da.createBlock();
-            header.used[i] = 3;
-            header.dirty = true;
-          }
-          return i + header.num * HeaderBlock.BLOCKS;
-        }
-      }
-      ++header.num;
-      n = header.next;
-    } while(n != HeaderBlock.NIL);
-
-    // no header block has empty data blocks: allocate new a new header block
-    header.next = headerFile.createBlock();
-    header.dirty = true;
-
-    // allocate the first data block of the new header block
-    gotoBlock(header.next);
-    header.blocks[0] = da.createBlock();
-    header.used[0] = 3;
-    header.dirty = true;
-
-    return header.num * HeaderBlock.BLOCKS;
-  }
-
-  /**
-   * Get the address of a data block with a given index.
-   * @param blockIndex data block index
-   * @return block address
-   */
-  private long getBlockAddr(final int blockIndex) {
-    gotoHeaderBlock(blockIndex / HeaderBlock.BLOCKS);
-    return header.blocks[blockIndex % HeaderBlock.BLOCKS];
-  }
-
-  private void readHeaderMetaData() {
-    headerFile.gotoBlock(header.addr);
-
-    // NEXT is stored first
-    header.next = headerFile.read5();
-
-    // BLOCK ADDRESSES are stored next
-    for(int i = 0; i < HeaderBlock.BLOCKS; ++i)
-      header.blocks[i] = headerFile.read5();
-
-    // USED are stored next
-    int p = (HeaderBlock.BLOCKS + 1) * HeaderBlock.REFSIZE;
-    final int n = HeaderBlock.BLOCKS - 1;
-    for(int i = 0; i < n; i += 2, ++p) {
-      header.used[i] = headerFile.readLow12Bits(p, ++p);
-      header.used[i + 1] = headerFile.readHigh12Bits(p, ++p);
-    }
-    header.used[n] = headerFile.readLow12Bits(p, ++p);
-  }
-
-  private void writeHeaderMetaData() {
-    headerFile.gotoBlock(header.addr);
-
-    // NEXT is stored first
-    headerFile.write5(header.next);
-
-    // BLOCK ADDRESSES are stored next
-    for(int i = 0; i < HeaderBlock.BLOCKS; ++i)
-      headerFile.write5(header.blocks[i]);
-
-    // USED are stored next
-    int p = (HeaderBlock.BLOCKS + 1) * HeaderBlock.REFSIZE;
-    final int n = HeaderBlock.BLOCKS - 1;
-    for(int i = 0; i < n; i += 2, ++p) {
-      headerFile.writeLow12Bits(p, ++p, header.used[i]);
-      headerFile.writeHigh12Bits(p, ++p, header.used[i + 1]);
-    }
-    headerFile.writeLow12Bits(p, ++p, header.used[n]);
-  }
-
-  /**
-   * Go to a header block.
-   * @param n header block index
-   */
-  private void gotoHeaderBlock(final int n) {
-    if(header.num == n) return;
-    // go to the first header, if n is smaller than the current header index
-    if(header.num > n) {
-      gotoBlock(0L);
-      header.num = 0;
-    }
-    // scan headers, until the required index is reached
-    for(; header.num < n; ++header.num) gotoBlock(header.next);
+    size = pos;
   }
 
   /**
@@ -423,7 +303,7 @@ public class RecordDataAccessRIP extends Blocks {
    * @return slot index
    */
   private static int slot(final long rid) {
-    return (int) (rid & DataBlock.SLOTMASK);
+    return (int) (rid & SLOTMASK);
   }
 }
 
@@ -496,37 +376,163 @@ abstract class Blocks {
   protected abstract void writeMetaData();
 }
 
-abstract class Block {
-  /** Size of a block in bits. */
-  static final int BLOCKSIZEBITS = IO.BLOCKSIZE << 3;
-
-  /** Underlying data file. */
-  protected BlockDataAccess da;
-  /** Dirty flag. */
-  protected boolean dirty;
-  /** Address of the current block in the underlying storage. */
-  protected long addr = -1;
-}
-
-class HeaderBlock extends Block {
+/** Header blocks. */
+class HeaderBlocks extends Blocks {
   /** Size of a block reference in bytes. */
-  static final int REFSIZE = 5;
+  private static final int REFSIZE = 5;
   /** Size of a block reference in bits. */
-  static final int REFSIZEBITS = REFSIZE * Byte.SIZE;
+  private static final int REFSIZEBITS = REFSIZE * Byte.SIZE;
   /** Number of data blocks per header. */
-  static final int BLOCKS = (Blocks.BLOCKSIZEBITS - REFSIZEBITS) /
+  static final int BLOCKS = (BLOCKSIZEBITS - REFSIZEBITS) /
       (REFSIZEBITS + IO.BLOCKPOWER);
   /** Invalid block reference. */
-  static final long NIL = 0L;
+  private static final long NIL = 0L;
 
+  /** Reference to data blocks. */
+  private final RecordDataAccessOld dataBlocks;
   /** Block index in the list of headers. */
-  int num = -1;
+  private int num = -1;
 
   // data stored on disk
   /** Next header block; {@link #NIL} if the last one. */
-  long next = NIL;
+  private long next = NIL;
   /** Id numbers of blocks managed by this header block. */
   final long[] blocks = new long[BLOCKS];
   /** Used space in each block. */
   final int[] used = new int[BLOCKS];
+
+  /**
+   * Constructor.
+   * @param data data
+   */
+  public HeaderBlocks(final RecordDataAccessOld data) {
+    super(data.da);
+    dataBlocks = data;
+    if(da.length() == 0) addr = da.createBlock();
+  }
+
+  /**
+   * Constructor; open a file for data block access.
+   * @param f file
+   * @param data reference to data blocks
+   * @throws IOException I/O exception
+   */
+  public HeaderBlocks(final File f, final RecordDataAccessOld data)
+      throws IOException {
+    super(f);
+    dataBlocks = data;
+  }
+
+  /**
+   * Find a data block with enough free space; if no existing data block has
+   * enough space, then a new data block is allocated; if a data block cannot
+   * be allocated in one of the existing header blocks, a new header block will
+   * be allocated.
+   * @param rsize record size
+   * @return data block index which has enough space
+   */
+  public int findBlock(final int rsize) {
+    // space needed is record + record length + slot
+    final int size = rsize + Num.length(rsize) + 2;
+    // max used space in a block in order to be able to store the record
+    final int max = IO.BLOCKSIZE - size;
+
+    // search existing header blocks for a data block with enough space
+    long n = 0L;
+    num = 0;
+    do {
+      gotoBlock(n);
+      // check the data blocks of the header for enough space
+      for(int i = 0; i < used.length; ++i) {
+        if(used[i] <= max) {
+          if(blocks[i] == NIL) {
+            // the reference is empty: allocate new data block
+            blocks[i] = dataBlocks.da.createBlock();
+            used[i] = 3;
+            dirty = true;
+          }
+          return i + num * BLOCKS;
+        }
+      }
+      ++num;
+      n = next;
+    } while(n != NIL);
+
+    // no header block has empty data blocks: allocate new a new header block
+    next = da.createBlock();
+    dirty = true;
+
+    // allocate the first data block of the new header block
+    gotoBlock(next);
+    blocks[0] = dataBlocks.da.createBlock();
+    used[0] = 3;
+    dirty = true;
+
+    return num * BLOCKS;
+  }
+
+  /**
+   * Get the address of a data block with a given index.
+   * @param blockIndex data block index
+   * @return block address
+   */
+  long getBlockAddr(final int blockIndex) {
+    gotoHeaderBlock(blockIndex / BLOCKS);
+    return blocks[blockIndex % BLOCKS];
+  }
+
+  @Override
+  protected void readMetaData() {
+    da.gotoBlock(addr);
+
+    // NEXT is stored first
+    next = da.read5();
+
+    // BLOCK ADDRESSES are stored next
+    for(int i = 0; i < BLOCKS; ++i) blocks[i] = da.read5();
+
+    // USED are stored next
+    int p = (BLOCKS + 1) * REFSIZE;
+    final int n = BLOCKS - 1;
+    for(int i = 0; i < n; i += 2, ++p) {
+      used[i] = da.readLow12Bits(p, ++p);
+      used[i + 1] = da.readHigh12Bits(p, ++p);
+    }
+    used[n] = da.readLow12Bits(p, ++p);
+  }
+
+  @Override
+  protected void writeMetaData() {
+    da.gotoBlock(addr);
+
+    // NEXT is stored first
+    da.write5(next);
+
+    // BLOCK ADDRESSES are stored next
+    for(int i = 0; i < BLOCKS; ++i) da.write5(blocks[i]);
+
+    // USED are stored next
+    int p = (BLOCKS + 1) * REFSIZE;
+    final int n = BLOCKS - 1;
+    for(int i = 0; i < n; i += 2, ++p) {
+      da.writeLow12Bits(p, ++p, used[i]);
+      da.writeHigh12Bits(p, ++p, used[i + 1]);
+    }
+    da.writeLow12Bits(p, ++p, used[n]);
+  }
+
+  /**
+   * Go to a header block.
+   * @param n header block index
+   */
+  private void gotoHeaderBlock(final int n) {
+    if(num == n) return;
+    // go to the first header, if n is smaller than the current header index
+    if(num > n) {
+      gotoBlock(0L);
+      num = 0;
+    }
+    // scan headers, until the required index is reached
+    for(; num < n; ++num) gotoBlock(next);
+  }
 }
