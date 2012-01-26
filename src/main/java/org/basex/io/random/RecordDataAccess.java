@@ -76,7 +76,10 @@ public class RecordDataAccess {
    */
   public RecordDataAccess(final File f) throws IOException {
     header.da = block.da = new BlockDataAccess(f);
-    if(header.da.length() == 0) header.addr = header.da.createBlock();
+    if(header.da.length() == 0) {
+      header.addr = header.da.createBlock();
+      header.num = 0;
+    }
   }
 
   /**
@@ -151,19 +154,15 @@ public class RecordDataAccess {
     }
   }
 
-  public long append(final byte[] record) {
-    return 0L;
-  }
-
   /**
-   * Insert a record.
+   * Insert a record into the next possible area starting from the current
+   * position (i.e. does not traverse all headers).
    * @param record record data
    * @return record id
    */
-  public long insert(final byte[] record) {
-    header.gotoHeader(0);
-    final int blockNum = findBlock(record.length, 0);
-    final int blockIndex = blockNum % HeaderBlocks.BLOCKS;
+  public long append(final byte[] record) {
+    final int blockNum = findBlock(record.length);
+    final int blockIndex = header.last = blockNum % HeaderBlocks.BLOCKS;
     block.gotoBlock(header.blocks[blockIndex]);
 
     // write the record data
@@ -193,6 +192,17 @@ public class RecordDataAccess {
   }
 
   /**
+   * Insert a record.
+   * @param record record data
+   * @return record id
+   */
+  public long insert(final byte[] record) {
+    header.gotoHeader(0);
+    header.last = 0;
+    return append(record);
+  }
+
+  /**
    * Find a data block with enough free space; if no existing data block has
    * enough space, then a new data block is allocated; if a data block cannot
    * be allocated in one of the existing header blocks, a new header block will
@@ -200,7 +210,7 @@ public class RecordDataAccess {
    * @param rsize record size
    * @return data block index which has enough space
    */
-  private int findBlock(final int rsize, final int start) {
+  private int findBlock(final int rsize) {
     // space needed is record + record length + slot
     final int size = rsize + Num.length(rsize) + 2;
     // max used space in a block in order to be able to store the record
@@ -211,7 +221,7 @@ public class RecordDataAccess {
     do {
       header.gotoBlock(headerAddr);
       // check the data blocks of the header for enough space
-      for(int i = start; i < header.used.length; ++i) {
+      for(int i = header.last; i < header.used.length; ++i) {
         if(header.used[i] <= max) {
           if(header.blocks[i] == HeaderBlock.NIL) {
             // the reference is empty: allocate new data block
@@ -295,6 +305,8 @@ class HeaderBlock extends Block {
 
   /** Block index in the list of headers. */
   int num = -1;
+  /** Data block last used for insertion. */
+  int last;
 
   // data stored on disk
   /** Next header block; {@link #NIL} if the last one. */
@@ -335,6 +347,7 @@ class HeaderBlock extends Block {
   /** Read the header data from the underlying storage. */
   void read() {
     da.gotoBlock(addr);
+    last = 0;
 
     // NEXT is stored first
     next = da.read5();

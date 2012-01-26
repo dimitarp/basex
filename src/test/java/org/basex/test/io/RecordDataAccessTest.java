@@ -152,14 +152,20 @@ public class RecordDataAccessTest {
     final int num = 1000000;
     final long[] rids = new long[num];
 
+    final long insertStart = System.currentTimeMillis();
     for(int i = 0; i < num; ++i) {
       rids[i] = da.cursor();
       da.writeToken(token(prefix + i + suffix));
     }
     da.close();
+    final long insertTime = System.currentTimeMillis() - insertStart;
+    System.out.println("Insert: " + insertTime +  " ms");
 
+    final long selectStart = System.currentTimeMillis();
     da = new DataAccess(file);
     for(int i = 0; i < num; ++i)
       assertEquals(prefix + i + suffix, string(da.readToken(rids[i])));
+    final long selectTime = System.currentTimeMillis() - selectStart;
+    System.out.println("Select: " + selectTime +  " ms");
   }
 }
