@@ -64,6 +64,84 @@ public class RecordDataAccessTest {
   }
 
   @Test
+  public void test3() throws Exception {
+    final String prefix = "testPrefix";
+    final String suffix = "testSuffix";
+
+    final int num = 1000000;
+    final long[] rids = new long[num];
+
+
+    final long insertStart = System.currentTimeMillis();
+    for(int i = 0; i < num; ++i)
+      rids[i] = sut.insert(token(prefix + i + suffix));
+    sut.close();
+    final long insertTime = System.currentTimeMillis() - insertStart;
+    System.out.println("Insert: " + insertTime +  " ms");
+
+    final long lenAfterInsert = file.length();
+
+
+    final long deleteStart = System.currentTimeMillis();
+    sut = new RecordDataAccess(file);
+    for(int i = 0; i < num; ++i)
+      sut.delete(rids[i]);
+    sut.close();
+    final long deleteTime = System.currentTimeMillis() - deleteStart;
+    System.out.println("Delete: " + deleteTime +  " ms");
+
+    final long lenAfterDelete = file.length();
+
+    assertEquals(lenAfterInsert, lenAfterDelete);
+
+    final long reInsertStart = System.currentTimeMillis();
+    sut = new RecordDataAccess(file);
+    for(int i = 0; i < num; ++i)
+      rids[i] = sut.insert(token(prefix + i + suffix));
+    sut.close();
+    final long reInsertTime = System.currentTimeMillis() - reInsertStart;
+    System.out.println("Insert: " + reInsertTime +  " ms");
+
+    final long lenAfterReInsert = file.length();
+
+    assertEquals(lenAfterInsert, lenAfterReInsert);
+
+    final long selectStart = System.currentTimeMillis();
+    sut = new RecordDataAccess(file);
+    for(int i = 0; i < num; ++i)
+      assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
+    sut.close();
+    final long selectTime = System.currentTimeMillis() - selectStart;
+    System.out.println("Select: " + selectTime +  " ms");
+  }
+
+  @Test
+  public void test4() throws Exception {
+    final String prefix = "testPrefix";
+    final String suffix = "testSuffix";
+
+    final int num = 1000000;
+    final long[] rids = new long[num];
+
+
+    final long insertStart = System.currentTimeMillis();
+    for(int i = 0; i < num; ++i)
+      rids[i] = sut.append(token(prefix + i + suffix));
+    sut.close();
+    final long insertTime = System.currentTimeMillis() - insertStart;
+    System.out.println("Insert: " + insertTime +  " ms");
+
+
+    final long selectStart = System.currentTimeMillis();
+    sut = new RecordDataAccess(file);
+    for(int i = 0; i < num; ++i)
+      assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
+    sut.close();
+    final long selectTime = System.currentTimeMillis() - selectStart;
+    System.out.println("Select: " + selectTime +  " ms");
+  }
+
+  @Test
   public void testOld() throws Exception {
     sut.close();
     DataAccess da = new DataAccess(file);

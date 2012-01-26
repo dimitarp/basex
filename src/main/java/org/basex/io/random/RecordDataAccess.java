@@ -141,8 +141,18 @@ public class RecordDataAccess {
     header.used[blockIndex] -= len;
     header.dirty = true;
 
-    block.slots[slot] = DataBlock.NIL;
-    block.dirty = true;
+    if(block.num > 0) {
+      block.slots[slot] = DataBlock.NIL;
+      block.dirty = true;
+    } else {
+      block.da.deleteBlock(block.addr);
+      block.addr = -1;
+      header.blocks[blockIndex] = HeaderBlock.NIL;
+    }
+  }
+
+  public long append(final byte[] record) {
+    return 0L;
   }
 
   /**
@@ -151,7 +161,8 @@ public class RecordDataAccess {
    * @return record id
    */
   public long insert(final byte[] record) {
-    final int blockNum = findBlock(record.length);
+    header.gotoHeader(0);
+    final int blockNum = findBlock(record.length, 0);
     final int blockIndex = blockNum % HeaderBlocks.BLOCKS;
     block.gotoBlock(header.blocks[blockIndex]);
 
@@ -189,19 +200,18 @@ public class RecordDataAccess {
    * @param rsize record size
    * @return data block index which has enough space
    */
-  private int findBlock(final int rsize) {
+  private int findBlock(final int rsize, final int start) {
     // space needed is record + record length + slot
     final int size = rsize + Num.length(rsize) + 2;
     // max used space in a block in order to be able to store the record
     final int max = IO.BLOCKSIZE - size;
 
     // search existing header blocks for a data block with enough space
-    long headerAddr = 0L;
-    header.num = 0;
+    long headerAddr = header.addr;
     do {
       header.gotoBlock(headerAddr);
       // check the data blocks of the header for enough space
-      for(int i = 0; i < header.used.length; ++i) {
+      for(int i = start; i < header.used.length; ++i) {
         if(header.used[i] <= max) {
           if(header.blocks[i] == HeaderBlock.NIL) {
             // the reference is empty: allocate new data block
