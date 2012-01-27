@@ -163,7 +163,7 @@ public class RecordAccessTest {
       buffer.data[1] = (byte) 0x0D;
       buffer.data[4] = (byte) 0xF0;
 
-      when(da.buffer(anyBoolean())).thenReturn(buffer);
+      //when(da.buffer(anyBoolean())).thenReturn(buffer);
 
       doCallRealMethod().when(headers).readMetaData();
 

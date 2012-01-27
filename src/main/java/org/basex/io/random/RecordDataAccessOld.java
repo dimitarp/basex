@@ -63,6 +63,7 @@ import org.basex.util.Num;
  * </ol>
  * </ol>
  */
+@Deprecated
 public class RecordDataAccessOld extends Blocks {
   /** Bit mask used to extract the slot number from a record id. */
   private static final long SLOTMASK = (1L << IO.BLOCKPOWER) - 1L;
@@ -308,6 +309,7 @@ public class RecordDataAccessOld extends Blocks {
 }
 
 /** Common class for data and header blocks. */
+@Deprecated
 abstract class Blocks {
   /** Size of a block in bits. */
   static final int BLOCKSIZEBITS = IO.BLOCKSIZE << 3;
@@ -377,6 +379,7 @@ abstract class Blocks {
 }
 
 /** Header blocks. */
+@Deprecated
 class HeaderBlocks extends Blocks {
   /** Size of a block reference in bytes. */
   private static final int REFSIZE = 5;

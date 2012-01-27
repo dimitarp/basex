@@ -122,7 +122,7 @@ public class RecordDataAccess {
   public void delete(final long rid) {
     final int slot = slot(rid);
     final int blockNum = block(rid);
-    final int blockIndex = blockNum % HeaderBlocks.BLOCKS;
+    final int blockIndex = blockNum % HeaderBlock.BLOCKS;
     block.gotoBlock(getBlockAddr(blockNum));
 
     // read the record length
@@ -162,7 +162,7 @@ public class RecordDataAccess {
    */
   public long append(final byte[] record) {
     final int blockNum = findBlock(record.length);
-    final int blockIndex = header.last = blockNum % HeaderBlocks.BLOCKS;
+    final int blockIndex = header.last = blockNum % HeaderBlock.BLOCKS;
     block.gotoBlock(header.blocks[blockIndex]);
 
     // write the record data
