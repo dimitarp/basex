@@ -381,16 +381,34 @@ public class DataAccess {
     }
   }
 
+  /**
+   * Read the integer value stored at the low 12 bits of two bytes.
+   * @param p0 position of the first byte
+   * @param p1 position of the second byte
+   * @return 12-bit integer value
+   */
   public int readLow12Bits(final int p0, final int p1) {
     final byte[] data = bm.current().data;
     return ((data[p1] & 0x0F) << 8) | ((data[p0] & 0xFF));
   }
 
+  /**
+   * Read the integer value stored at the high 12 bits of two bytes.
+   * @param p0 position of the first byte
+   * @param p1 position of the second byte
+   * @return 12-bit integer value
+   */
   public int readHigh12Bits(final int p0, final int p1) {
     final byte[] data = bm.current().data;
     return ((data[p1] & 0xFF) << 4) | ((data[p0] & 0xF0) >>> 4);
   }
 
+  /**
+   * Write an integer value at the low 12 bits of two bytes.
+   * @param p0 position of the first byte
+   * @param p1 position of the second byte
+   * @param v integer value to write (should not be bigger than 0xFFF)
+   */
   public void writeLow12Bits(final int p0, final int p1, final int v) {
     off = p0;
     write(v);
@@ -398,6 +416,12 @@ public class DataAccess {
     write((bm.current().data[p1] & 0xF0) | ((v >>> 8) & 0x0F));
   }
 
+  /**
+   * Write an integer value at the high 12 bits of two bytes.
+   * @param p0 position of the first byte
+   * @param p1 position of the second byte
+   * @param v integer value to write (should not be bigger than 0xFFF)
+   */
   public void writeHigh12Bits(final int p0, final int p1, final int v) {
     off = p0;
     write((bm.current().data[p0] & 0x0F) | ((v & 0x0F) << 4));
@@ -492,7 +516,7 @@ public class DataAccess {
    * @param next next block
    * @return buffer
    */
-  protected Buffer buffer(final boolean next) {
+  private Buffer buffer(final boolean next) {
     if(next) {
       cursor(blockPos() + IO.BLOCKSIZE);
     }
