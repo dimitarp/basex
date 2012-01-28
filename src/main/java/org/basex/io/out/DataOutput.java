@@ -18,11 +18,11 @@ import org.basex.util.list.IntList;
  * @author BaseX Team 2005-12, BSD License
  * @author Christian Gruen
  */
-public final class DataOutput extends OutputStream {
+public class DataOutput extends OutputStream {
   /** The underlying output stream. */
-  private final OutputStream os;
+  protected final OutputStream os;
   /** Number of written bytes. */
-  private long size;
+  protected long size;
 
   /**
    * Constructor, specifying an output stream.

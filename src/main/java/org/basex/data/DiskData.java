@@ -21,6 +21,7 @@ import org.basex.io.IO;
 import org.basex.io.IOFile;
 import org.basex.io.in.DataInput;
 import org.basex.io.out.DataOutput;
+import org.basex.io.random.BlockDataAccess;
 import org.basex.io.random.DataAccess;
 import org.basex.io.random.TableDiskAccess;
 import org.basex.util.Compress;
@@ -118,7 +119,7 @@ public final class DiskData extends Data {
   @Override
   public void init() throws IOException {
     table = new TableDiskAccess(meta, DATATBL);
-    texts = new DataAccess(meta.dbfile(DATATXT));
+    texts = new BlockDataAccess(meta.dbfile(DATATXT));
     values = new DataAccess(meta.dbfile(DATAATV));
     super.init();
   }

@@ -386,7 +386,7 @@ public class DataAccessTest {
     write(out, CINT2_BIN);
     write(out, CINT1_BIN);
 
-    final long off = (out.getFilePointer() >>> 12) << 12;
+    final long off = (out.getFilePointer() >>> IO.BLOCKPOWER) << IO.BLOCKPOWER;
     out.seek(off + BLOCK_BOUNDARY_POS);
     write(out, STR_BIN);
   }
@@ -480,7 +480,7 @@ public class DataAccessTest {
 
   /**
    * Get the compressed binary representation of an integer as defined in
-   * {@code DataAccess.writeNum(int)}.
+   * {@link DataAccess#writeNum(int)}.
    * @param v integer
    * @return array of unsigned bytes
    */

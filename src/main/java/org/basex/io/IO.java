@@ -58,11 +58,13 @@ public abstract class IO {
   public static final String[] TXTSUFFIXES = {
     ".txt", ".text", ".ini", ".conf" };
 
+  /** Disk block/page size power (default: 12). */
+  public static final int BLOCKPOWER = 12;
   /** Disk block/page size (default: 4096). */
-  public static final int BLOCKSIZE = 1 << 12;
+  public static final int BLOCKSIZE = 1 << BLOCKPOWER;
   /** Table node size power (default: 4). */
   public static final int NODEPOWER = 4;
-  /** Table node size power (default: 4). */
+  /** Table node size (default: 16). */
   public static final int NODESIZE = 1 << NODEPOWER;
   /** Entries per block (default: 256). */
   public static final int ENTRIES = BLOCKSIZE >>> NODEPOWER;
