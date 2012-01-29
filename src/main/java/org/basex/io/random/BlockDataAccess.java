@@ -37,7 +37,8 @@ public class BlockDataAccess extends DataAccess {
 
   @Override
   public long length() {
-    return logicalPosition(super.length());
+    final long len = super.length();
+    return len < IO.BLOCKSIZE ? 0 : logicalPosition(super.length());
   }
 
   @Override

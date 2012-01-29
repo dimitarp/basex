@@ -12,7 +12,7 @@ import org.basex.io.IO;
  * @author BaseX Team 2005-11, BSD License
  * @author Dimitar Popov
  */
-public class BlockManagedDataOutput extends DataOutput {
+public class BlockDataOutput extends DataOutput {
   /** Underlying file. */
   private final File file;
 
@@ -22,7 +22,7 @@ public class BlockManagedDataOutput extends DataOutput {
    * @param bufs buffer size
    * @throws IOException I/O exception
    */
-  public BlockManagedDataOutput(final File db, final int bufs)
+  public BlockDataOutput(final File db, final int bufs)
       throws IOException {
     super(db, bufs);
     file = db;

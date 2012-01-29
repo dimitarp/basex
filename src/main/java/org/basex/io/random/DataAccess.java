@@ -2,6 +2,7 @@ package org.basex.io.random;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Arrays;
 
 import org.basex.io.IO;
 import org.basex.io.IOFile;
@@ -24,7 +25,7 @@ public class DataAccess {
   /** Changed flag. */
   private boolean changed;
   /** Offset. */
-  private int off;
+  protected int off;
 
   /**
    * Constructor, initializing the file reader.
@@ -63,7 +64,7 @@ public class DataAccess {
    * @return position in the file
    */
   public long cursor() {
-    return buffer(false).pos + off;
+    return bm.current().pos + off;
   }
 
   /**
@@ -211,6 +212,15 @@ public class DataAccess {
   }
 
   /**
+   * Write the given bytes to the current position and move the cursor.
+   * @param b byte array
+   */
+  public synchronized void writeBytes(final byte[] b) {
+    System.arraycopy(b, 0, bm.current().data, off, b.length);
+    off += b.length;
+  }
+
+  /**
    * Sets the disk cursor.
    * @param p read position
    */
@@ -226,6 +236,8 @@ public class DataAccess {
       file.seek(bf.pos);
       if(bf.pos < file.length())
         file.readFully(bf.data, 0, (int) Math.min(len - b, IO.BLOCKSIZE));
+      else
+        Arrays.fill(bf.data, (byte) 0);
     } catch(final IOException ex) {
       Util.stack(ex);
     }
@@ -256,6 +268,14 @@ public class DataAccess {
    */
   public void write5(final long p, final long v) {
     cursor(p);
+    write5(v);
+  }
+
+  /**
+   * Writes a 5-byte value to the current position.
+   * @param v value to be written
+   */
+  public void write5(final long v) {
     write((byte) (v >>> 32));
     write((byte) (v >>> 24));
     write((byte) (v >>> 16));
@@ -317,12 +337,20 @@ public class DataAccess {
   }
 
   /**
-   * Appends a value to the file and return it's offset.
+   * Writes a token to the file at the specified position.
    * @param p write position
    * @param v byte array to be appended
    */
   public void writeToken(final long p, final byte[] v) {
     cursor(p);
+    writeToken(v);
+  }
+  
+  /**
+   * Write a token to the file.
+   * @param v byte array to be written
+   */
+  public void writeToken(final byte[] v) {
     writeToken(v, 0, v.length);
   }
 
@@ -367,6 +395,54 @@ public class DataAccess {
     } else {
       write(v);
     }
+  }
+
+  /**
+   * Read the integer value stored at the low 12 bits of two bytes.
+   * @param p0 position of the first byte
+   * @param p1 position of the second byte
+   * @return 12-bit integer value
+   */
+  public int readLow12Bits(final int p0, final int p1) {
+    final byte[] data = bm.current().data;
+    return ((data[p1] & 0x0F) << 8) | ((data[p0] & 0xFF));
+  }
+
+  /**
+   * Read the integer value stored at the high 12 bits of two bytes.
+   * @param p0 position of the first byte
+   * @param p1 position of the second byte
+   * @return 12-bit integer value
+   */
+  public int readHigh12Bits(final int p0, final int p1) {
+    final byte[] data = bm.current().data;
+    return ((data[p1] & 0xFF) << 4) | ((data[p0] & 0xF0) >>> 4);
+  }
+
+  /**
+   * Write an integer value at the low 12 bits of two bytes.
+   * @param p0 position of the first byte
+   * @param p1 position of the second byte
+   * @param v integer value to write (should not be bigger than 0xFFF)
+   */
+  public void writeLow12Bits(final int p0, final int p1, final int v) {
+    off = p0;
+    write(v);
+    off = p1;
+    write((bm.current().data[p1] & 0xF0) | ((v >>> 8) & 0x0F));
+  }
+
+  /**
+   * Write an integer value at the high 12 bits of two bytes.
+   * @param p0 position of the first byte
+   * @param p1 position of the second byte
+   * @param v integer value to write (should not be bigger than 0xFFF)
+   */
+  public void writeHigh12Bits(final int p0, final int p1, final int v) {
+    off = p0;
+    write((bm.current().data[p0] & 0x0F) | ((v & 0x0F) << 4));
+    off = p1;
+    write(v >>> 4);
   }
 
   /**

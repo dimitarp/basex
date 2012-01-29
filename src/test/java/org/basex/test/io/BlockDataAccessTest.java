@@ -11,7 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /** Tests for class {@link BlockDataAccess}. */
-public final class BlockManagedDataAccessTest extends DataAccessTest {
+public final class BlockDataAccessTest extends DataAccessTest {
   /** Instance of {@link BlockDataAccess} under test. */
   private BlockDataAccess bda;
   /** Logical number of initially allocated blocks (i.e. data blocks). */
