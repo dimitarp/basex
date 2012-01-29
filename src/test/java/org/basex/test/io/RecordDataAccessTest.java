@@ -2,170 +2,249 @@ package org.basex.test.io;
 
 import static org.basex.util.Token.*;
 import static org.junit.Assert.*;
-
 import java.io.File;
-
+import java.io.IOException;
 import org.basex.io.random.DataAccess;
-import org.basex.io.random.RecordDataAccessOld;
 import org.basex.io.random.RecordDataAccess;
 import org.basex.util.Performance;
+import org.basex.util.Util;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * Test class for record storage.
+ *
+ * @author BaseX Team 2005-12, BSD License
+ * @author Dimitar Popov
+ */
 public class RecordDataAccessTest {
-
+  /** Test file. */
   private File file;
+  /** Object under test. */
   private RecordDataAccess sut;
 
+  /**
+   * Set up method.
+   * @throws IOException I/O exception
+   */
   @Before
-  public void setUp() throws Exception {
-    file = File.createTempFile("ra-test", "basex");
+  public void setUp() throws IOException {
+    file = File.createTempFile("ra-test", ".basex");
     file.deleteOnExit();
     sut = new RecordDataAccess(file);
   }
 
+  /**
+   * Test inserting two records and the reading them.
+   * @throws IOException I/O exception
+   */
   @Test
-  public void test() throws Exception {
-    final String test = "test";
+  public void testInsertSelectSmall() throws IOException {
+    final String v1 = "testjkfdf";
+    final String v2 = "test3453";
 
-    final long rid = sut.insert(token("test"));
-    final long rid1 = sut.insert(token("test23423"));
+    // insert
+    final long rid1 = sut.insert(token(v1));
+    final long rid2 = sut.insert(token(v2));
     sut.close();
 
+    // verify
     sut = new RecordDataAccess(file);
-    assertEquals("test", string(sut.select(rid)));
-    assertEquals("test23423", string(sut.select(rid1)));
+    assertEquals(v1, string(sut.select(rid1)));
+    assertEquals(v2, string(sut.select(rid2)));
   }
 
+  /**
+   * Test inserting records and the reading them.
+   * @throws IOException I/O exception
+   */
   @Test
-  public void test2() throws Exception {
+  public void testInsertSelectBig() throws IOException {
     final String prefix = "testPrefix";
     final String suffix = "testSuffix";
-
-    final int num = 1000000;
+    final int num = 100000;
     final long[] rids = new long[num];
 
-
-    final long insertStart = System.currentTimeMillis();
-    for(int i = 0; i < num; ++i)
+    // insert
+    for(int i = 0; i < num; ++i) {
       rids[i] = sut.insert(token(prefix + i + suffix));
+    }
     sut.close();
-    final long insertTime = System.currentTimeMillis() - insertStart;
-    System.out.println("Insert: " + insertTime +  " ms");
 
-
-    final long selectStart = System.currentTimeMillis();
+    // verify
     sut = new RecordDataAccess(file);
-    for(int i = 0; i < num; ++i)
+    for(int i = 0; i < num; ++i) {
       assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
+    }
     sut.close();
-    final long selectTime = System.currentTimeMillis() - selectStart;
-    System.out.println("Select: " + selectTime +  " ms");
   }
 
+  /**
+   * Test appending records and the reading them.
+   * @throws IOException I/O exception
+   */
   @Test
-  public void test3() throws Exception {
+  public void testAppendSelectBig() throws IOException {
     final String prefix = "testPrefix";
     final String suffix = "testSuffix";
-
-    final int num = 1000000;
+    final int num = 100000;
     final long[] rids = new long[num];
 
-
-    final long insertStart = System.currentTimeMillis();
-    for(int i = 0; i < num; ++i)
-      rids[i] = sut.insert(token(prefix + i + suffix));
+    // append
+    for(int i = 0; i < num; ++i) {
+      rids[i] = sut.append(token(prefix + i + suffix));
+    }
     sut.close();
-    final long insertTime = System.currentTimeMillis() - insertStart;
-    System.out.println("Insert: " + insertTime +  " ms");
 
-    final long lenAfterInsert = file.length();
-
-
-    final long deleteStart = System.currentTimeMillis();
+    // verify
     sut = new RecordDataAccess(file);
-    for(int i = 0; i < num; ++i)
-      sut.delete(rids[i]);
+    for(int i = 0; i < num; ++i) {
+      assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
+    }
     sut.close();
-    final long deleteTime = System.currentTimeMillis() - deleteStart;
-    System.out.println("Delete: " + deleteTime +  " ms");
+  }
 
+  /**
+   * Test inserting, deleting, and re-inserting records and then reading them.
+   * @throws IOException I/O exception
+   */
+  @Test
+  public void testInsertDeleteInsert() throws IOException {
+    final String prefix = "testPrefix";
+    final String suffix = "testSuffix";
+    final int num = 100000;
+    final long[] rids = new long[num];
+
+    // insert
+    for(int i = 0; i < num; ++i) {
+      rids[i] = sut.insert(token(prefix + i + suffix));
+    }
+    sut.close();
+
+    // verify file length
+    final long lenAfterInsert = file.length();
+    assertTrue(lenAfterInsert > 4096);
+
+
+    // delete
+    sut = new RecordDataAccess(file);
+    for(int i = 0; i < num; ++i) {
+      sut.delete(rids[i]);
+    }
+    sut.close();
+
+    // verify file length
     final long lenAfterDelete = file.length();
-
     assertEquals(lenAfterInsert, lenAfterDelete);
 
-    final long reInsertStart = System.currentTimeMillis();
+
+    // re-insert
     sut = new RecordDataAccess(file);
-    for(int i = 0; i < num; ++i)
+    for(int i = 0; i < num; ++i) {
       rids[i] = sut.insert(token(prefix + i + suffix));
+    }
     sut.close();
-    final long reInsertTime = System.currentTimeMillis() - reInsertStart;
-    System.out.println("Insert: " + reInsertTime +  " ms");
 
+    // verify file length
     final long lenAfterReInsert = file.length();
-
     assertEquals(lenAfterInsert, lenAfterReInsert);
 
-    final long selectStart = System.currentTimeMillis();
+
+    // select
     sut = new RecordDataAccess(file);
-    for(int i = 0; i < num; ++i)
+    for(int i = 0; i < num; ++i) {
       assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
+    }
     sut.close();
-    final long selectTime = System.currentTimeMillis() - selectStart;
-    System.out.println("Select: " + selectTime +  " ms");
   }
 
+  /**
+   * Performance test inserting records and reading them.
+   * @throws IOException I/O exception
+   */
   @Test
-  public void test4() throws Exception {
+  public void testPerfInsertSelect() throws IOException {
     final String prefix = "testPrefix";
     final String suffix = "testSuffix";
+    final int num = 10000;
+    final long[] rids = new long[num];
 
+    // insert
+    final long ins = System.nanoTime();
+    for(int i = 0; i < num; ++i) {
+      rids[i] = sut.insert(token(prefix + i + suffix));
+    }
+    sut.close();
+    Util.outln("Insert: " + Performance.getTimer(System.nanoTime() - ins, 1));
+
+    // verify
+    final long sel = System.currentTimeMillis();
+    sut = new RecordDataAccess(file);
+    for(int i = 0; i < num; ++i) {
+      assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
+    }
+    sut.close();
+    Util.outln("Select: " + Performance.getTimer(System.nanoTime() - sel, 1));
+  }
+
+  /**
+   * Performance test appending records and reading them.
+   * @throws IOException I/O exception
+   */
+  @Test
+  public void testPerfAppendSelect() throws IOException {
+    final String prefix = "testPrefix";
+    final String suffix = "testSuffix";
     final int num = 1000000;
     final long[] rids = new long[num];
 
-
-    final long insertStart = System.currentTimeMillis();
-    for(int i = 0; i < num; ++i)
+    // append
+    final long ins = System.nanoTime();
+    for(int i = 0; i < num; ++i) {
       rids[i] = sut.append(token(prefix + i + suffix));
+    }
     sut.close();
-    final long insertTime = System.currentTimeMillis() - insertStart;
-    System.out.println("Insert: " + insertTime +  " ms");
+    Util.outln("Append: " + Performance.getTimer(System.nanoTime() - ins, 1));
 
-
-    final long selectStart = System.currentTimeMillis();
+    // verify
+    final long sel = System.currentTimeMillis();
     sut = new RecordDataAccess(file);
-    for(int i = 0; i < num; ++i)
+    for(int i = 0; i < num; ++i) {
       assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
+    }
     sut.close();
-    final long selectTime = System.currentTimeMillis() - selectStart;
-    System.out.println("Select: " + selectTime +  " ms");
+    Util.outln("Select: " + Performance.getTimer(System.nanoTime() - sel, 1));
   }
 
+  /**
+   * Performance test appending records and reading them using the original
+   * {@link DataAccess} class.
+   * @throws IOException I/O exception
+   */
   @Test
-  public void testOld() throws Exception {
+  public void testPerfAppendSelectOld() throws IOException {
     sut.close();
     DataAccess da = new DataAccess(file);
-
     final String prefix = "testPrefix";
     final String suffix = "testSuffix";
-
     final int num = 1000000;
     final long[] rids = new long[num];
 
-    final long insertStart = System.currentTimeMillis();
+    // append
+    final long ins = System.nanoTime();
     for(int i = 0; i < num; ++i) {
       rids[i] = da.cursor();
       da.writeToken(token(prefix + i + suffix));
     }
     da.close();
-    final long insertTime = System.currentTimeMillis() - insertStart;
-    System.out.println("Insert: " + insertTime +  " ms");
+    Util.outln("Select: " + Performance.getTimer(System.nanoTime() - ins, 1));
 
-    final long selectStart = System.currentTimeMillis();
+    // verify
+    final long sel = System.currentTimeMillis();
     da = new DataAccess(file);
-    for(int i = 0; i < num; ++i)
+    for(int i = 0; i < num; ++i) {
       assertEquals(prefix + i + suffix, string(da.readToken(rids[i])));
-    final long selectTime = System.currentTimeMillis() - selectStart;
-    System.out.println("Select: " + selectTime +  " ms");
+    }
+    Util.outln("Select: " + Performance.getTimer(System.nanoTime() - sel, 1));
   }
 }
