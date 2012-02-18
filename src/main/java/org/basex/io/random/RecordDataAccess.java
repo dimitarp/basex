@@ -2,10 +2,9 @@ package org.basex.io.random;
 
 import static org.basex.util.BlockAccessUtil.*;
 
-import java.io.File;
 import java.io.IOException;
 
-import org.basex.io.IO;
+import org.basex.io.*;
 import org.basex.util.Num;
 
 /**
@@ -74,7 +73,7 @@ public class RecordDataAccess {
    * @param f file
    * @throws IOException I/O exception
    */
-  public RecordDataAccess(final File f) throws IOException {
+  public RecordDataAccess(final IOFile f) throws IOException {
     header.da = block.da = new BlockDataAccess(f);
     if(header.da.length() == 0) {
       header.addr = header.da.createBlock();

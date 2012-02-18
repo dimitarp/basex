@@ -4,6 +4,8 @@ import static org.basex.util.Token.*;
 import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
+
+import org.basex.io.*;
 import org.basex.io.random.DataAccess;
 import org.basex.io.random.RecordDataAccess;
 import org.basex.util.Performance;
@@ -19,7 +21,7 @@ import org.junit.Test;
  */
 public class RecordDataAccessTest {
   /** Test file. */
-  private File file;
+  private IOFile file;
   /** Object under test. */
   private RecordDataAccess sut;
 
@@ -29,8 +31,8 @@ public class RecordDataAccessTest {
    */
   @Before
   public void setUp() throws IOException {
-    file = File.createTempFile("ra-test", ".basex");
-    file.deleteOnExit();
+    file = new IOFile(File.createTempFile("ra-test", ".basex"));
+    file.file().deleteOnExit();
     sut = new RecordDataAccess(file);
   }
 
@@ -175,7 +177,7 @@ public class RecordDataAccessTest {
       rids[i] = sut.insert(token(prefix + i + suffix));
     }
     sut.close();
-    Util.outln("Insert: " + Performance.getTimer(System.nanoTime() - ins, 1));
+    Util.outln("Insert: " + Performance.getTime(System.nanoTime() - ins, 1));
 
     // verify
     final long sel = System.currentTimeMillis();
@@ -184,7 +186,7 @@ public class RecordDataAccessTest {
       assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
     }
     sut.close();
-    Util.outln("Select: " + Performance.getTimer(System.nanoTime() - sel, 1));
+    Util.outln("Select: " + Performance.getTime(System.nanoTime() - sel, 1));
   }
 
   /**
@@ -204,7 +206,7 @@ public class RecordDataAccessTest {
       rids[i] = sut.append(token(prefix + i + suffix));
     }
     sut.close();
-    Util.outln("Append: " + Performance.getTimer(System.nanoTime() - ins, 1));
+    Util.outln("Append: " + Performance.getTime(System.nanoTime() - ins, 1));
 
     // verify
     final long sel = System.currentTimeMillis();
@@ -213,7 +215,7 @@ public class RecordDataAccessTest {
       assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
     }
     sut.close();
-    Util.outln("Select: " + Performance.getTimer(System.nanoTime() - sel, 1));
+    Util.outln("Select: " + Performance.getTime(System.nanoTime() - sel, 1));
   }
 
   /**
@@ -237,7 +239,7 @@ public class RecordDataAccessTest {
       da.writeToken(token(prefix + i + suffix));
     }
     da.close();
-    Util.outln("Select: " + Performance.getTimer(System.nanoTime() - ins, 1));
+    Util.outln("Select: " + Performance.getTime(System.nanoTime() - ins, 1));
 
     // verify
     final long sel = System.currentTimeMillis();
@@ -245,6 +247,6 @@ public class RecordDataAccessTest {
     for(int i = 0; i < num; ++i) {
       assertEquals(prefix + i + suffix, string(da.readToken(rids[i])));
     }
-    Util.outln("Select: " + Performance.getTimer(System.nanoTime() - sel, 1));
+    Util.outln("Select: " + Performance.getTime(System.nanoTime() - sel, 1));
   }
 }

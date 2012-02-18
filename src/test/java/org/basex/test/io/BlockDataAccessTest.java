@@ -5,7 +5,7 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import org.basex.io.IO;
+import org.basex.io.*;
 import org.basex.io.random.BlockDataAccess;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,8 +20,8 @@ public final class BlockDataAccessTest extends DataAccessTest {
   @Override
   @Before
   public void setUp() throws IOException {
-    file = File.createTempFile("page", ".basex");
-    final RandomAccessFile f = new RandomAccessFile(file, "rw");
+    file = new IOFile(File.createTempFile("page", ".basex"));
+    final RandomAccessFile f = new RandomAccessFile(file.file(), "rw");
     try {
       f.seek(IO.BLOCKSIZE);
       initialContent(f);
@@ -49,7 +49,7 @@ public final class BlockDataAccessTest extends DataAccessTest {
     assertEquals(initialBlocks, bda.createBlock());
     bda.flush();
 
-    final RandomAccessFile f = new RandomAccessFile(file, "r");
+    final RandomAccessFile f = new RandomAccessFile(file.file(), "r");
     try {
       assertEquals(setFirst(initialBlocks + 1), f.read());
     } finally {
@@ -70,7 +70,7 @@ public final class BlockDataAccessTest extends DataAccessTest {
       assertEquals(b, bda.createBlock());
     bda.flush();
 
-    final RandomAccessFile f = new RandomAccessFile(file, "r");
+    final RandomAccessFile f = new RandomAccessFile(file.file(), "r");
     try {
       // the first header block should be full
       for(int i = 0; i < IO.BLOCKSIZE; ++i)
@@ -97,7 +97,7 @@ public final class BlockDataAccessTest extends DataAccessTest {
     bda.deleteBlock(8L);
     bda.flush();
 
-    final RandomAccessFile f = new RandomAccessFile(file, "r");
+    final RandomAccessFile f = new RandomAccessFile(file.file(), "r");
     try {
       // hacky!
       assertEquals(BITMASK, f.read()); // 11 11 11 11
@@ -117,7 +117,7 @@ public final class BlockDataAccessTest extends DataAccessTest {
   @Override
   protected void assertContent(final long pos, final int[] bytes)
       throws IOException {
-    final RandomAccessFile f = new RandomAccessFile(file, "r");
+    final RandomAccessFile f = new RandomAccessFile(file.file(), "r");
     try {
       f.seek(physicalPosition(pos));
       for(int i = 0; i < bytes.length; ++i) assertEquals(bytes[i], f.read());

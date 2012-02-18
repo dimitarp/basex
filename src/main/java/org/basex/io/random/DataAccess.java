@@ -345,7 +345,7 @@ public class DataAccess {
     cursor(p);
     writeToken(v);
   }
-  
+
   /**
    * Write a token to the file.
    * @param v byte array to be written
@@ -384,7 +384,7 @@ public class DataAccess {
    * Appends a value to the file and return it's offset.
    * @param v number to be appended
    */
-  private void writeNum(final int v) {
+  public void writeNum(final int v) {
     if(v < 0 || v > 0x3FFFFFFF) {
       write(0xC0); write(v >>> 24); write(v >>> 16); write(v >>> 8); write(v);
     } else if(v > 0x3FFF) {

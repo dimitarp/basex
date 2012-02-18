@@ -1,10 +1,10 @@
 package org.basex.io.out;
 
 import static org.basex.util.BlockAccessUtil.*;
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import org.basex.io.IO;
+
+import java.io.*;
+
+import org.basex.io.*;
 
 /**
  * Implementation of {@link DataOutput} which however, adds additional blocks
@@ -14,7 +14,7 @@ import org.basex.io.IO;
  */
 public class BlockDataOutput extends DataOutput {
   /** Underlying file. */
-  private final File file;
+  private final IOFile file;
 
   /**
    * Constructor.
@@ -22,7 +22,7 @@ public class BlockDataOutput extends DataOutput {
    * @param bufs buffer size
    * @throws IOException I/O exception
    */
-  public BlockDataOutput(final File db, final int bufs)
+  public BlockDataOutput(final IOFile db, final int bufs)
       throws IOException {
     super(db, bufs);
     file = db;
@@ -72,7 +72,7 @@ public class BlockDataOutput extends DataOutput {
     final long wordPos = lastHeaderPos + (bit >>> 3);
     final int word = BITMASK >>> (Byte.SIZE - modulo2(bit, Byte.SIZE) - 1);
 
-    final RandomAccessFile f = new RandomAccessFile(file, "rw");
+    final RandomAccessFile f = new RandomAccessFile(file.file(), "rw");
     try {
       f.seek(wordPos);
       f.write(word);

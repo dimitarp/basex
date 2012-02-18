@@ -2,9 +2,8 @@ package org.basex.io.random;
 
 import static java.lang.Integer.*;
 import static org.basex.util.BlockAccessUtil.*;
-import java.io.File;
 import java.io.IOException;
-import org.basex.io.IO;
+import org.basex.io.*;
 
 /**
  * Access files block-wise.
@@ -20,7 +19,7 @@ public class BlockDataAccess extends DataAccess {
    * @param f the file to be read
    * @throws IOException I/O Exception
    */
-  public BlockDataAccess(final File f) throws IOException {
+  public BlockDataAccess(final IOFile f) throws IOException {
     super(f);
     blocks = blocks(super.length());
   }
