@@ -1,11 +1,12 @@
 package org.basex.io.random;
 
 import static org.basex.util.BlockAccessUtil.*;
+import static org.basex.io.IO.*;
 
 import java.io.IOException;
 
 import org.basex.io.*;
-import org.basex.util.Num;
+import org.basex.util.*;
 
 /**
  * Storage of variable-length records.
@@ -63,6 +64,8 @@ import org.basex.util.Num;
  * </ol>
  */
 public class RecordDataAccess {
+  /** Size of a record identifier in bytes. */
+  public static final int RID_SIZE = 5;
   /** Current data block. */
   private final DataBlock block = new DataBlock();
   /** Current header block. */
@@ -108,10 +111,34 @@ public class RecordDataAccess {
    * @return record data
    */
   public byte[] select(final long rid) {
-    block.gotoBlock(getBlockAddr(block(rid)));
+    block.gotoBlock(header.lookup(block(rid)));
+
+    if(block.size == DataBlock.NIL) return readChunked();
 
     block.da.off = block.slots[slot(rid)];
     return block.da.readToken();
+  }
+
+  /**
+   * Retrieve a chunked record starting from the current data block.
+   * @return record data
+   */
+  private byte[] readChunked() {
+    final TokenBuilder builder = new TokenBuilder(DataBlock.CHUNK_SIZE);
+    final byte[] buf = new byte[DataBlock.CHUNK_SIZE];
+
+    long next = 0L;
+    while(block.size == DataBlock.NIL) {
+      block.da.readBytes(buf);
+      builder.add(buf);
+      next = block.da.read5();
+      block.gotoBlock(header.lookup(block(next)));
+    }
+
+    block.da.off = block.slots[slot(next)];
+    builder.add(block.da.readToken());
+
+    return builder.finish();
   }
 
   /**
@@ -122,7 +149,7 @@ public class RecordDataAccess {
     final int slot = slot(rid);
     final int blockNum = block(rid);
     final int blockIndex = blockNum % HeaderBlock.BLOCKS;
-    block.gotoBlock(getBlockAddr(blockNum));
+    block.gotoBlock(header.lookup(blockNum));
 
     // read the record length
     block.da.off = block.slots[slot];
@@ -154,20 +181,46 @@ public class RecordDataAccess {
   }
 
   /**
+   * Insert a record.
+   * @param record record data
+   * @return record id
+   */
+  public long insert(final byte[] record) {
+    header.gotoHeader(0);
+    header.last = 0;
+    return append(record);
+  }
+
+  /**
    * Insert a record into the next possible area starting from the current
    * position (i.e. does not traverse all headers).
    * @param record record data
    * @return record id
    */
   public long append(final byte[] record) {
-    final int blockNum = findBlock(record.length);
+    return append(record, 0, record.length);
+  }
+
+  /**
+   * Insert a record into the next possible area starting from the current
+   * position (i.e. does not traverse all headers).
+   * @param buf buffer, containing the record
+   * @param offset offset in the buffer where the record starts
+   * @param length record length
+   * @return record id
+   */
+  public long append(final byte[] buf, final int offset, final int length) {
+    if(length > DataBlock.MAX_SIZE) return appendChunked(buf, offset, length);
+
+    final int blockNum = findBlock(length);
     final int blockIndex = header.last = blockNum % HeaderBlock.BLOCKS;
     block.gotoBlock(header.blocks[blockIndex]);
 
     // write the record data
-    final int len = Num.length(record.length) + record.length;
+    final int len = Num.length(length) + length;
     final int off = block.da.off = block.allocate(len);
-    block.da.writeToken(record);
+    block.da.writeToken(buf, offset, length);
+
     // increase size
     block.size += len;
 
@@ -187,18 +240,63 @@ public class RecordDataAccess {
     block.slots[slot] = off;
     block.dirty = true;
 
-    return (((long) blockNum) << IO.BLOCKPOWER) | slot;
+    return rid(blockNum, slot);
   }
 
   /**
-   * Insert a record.
-   * @param record record data
+   * Split a record into chunks and store the chunks in separate blocks as a
+   * linked list.
+   * The rid of the next chunk is stored at the end of the previous chunk.
+   * The last chunk is stored as a normal record.
+   * The rid of the first chunk is the rid of the whole record.
+   * @param buf buffer with the record data
+   * @param offset offset in the buffer where the record starts
+   * @param length record length
    * @return record id
    */
-  public long insert(final byte[] record) {
-    header.gotoHeader(0);
-    header.last = 0;
-    return append(record);
+  private long appendChunked(final byte[] buf, final int offset, final int length) {
+
+    final int last = length % DataBlock.CHUNK_SIZE;
+    int p = offset + length - last;
+
+    // chunks need to be stored in reverse order, so that the rid's are known
+    long rid = append(buf, p, last);
+
+    for(p -= DataBlock.CHUNK_SIZE; offset <= p; p -= DataBlock.CHUNK_SIZE) {
+      rid = appendChunk(buf, p, rid);
+    }
+
+    return rid;
+  }
+
+  /**
+   * Store a chunk. A chunk occupies a whole data block and has the record id of
+   * the next chunk. A data block which has a chunk has
+   * SIZE = {@link DataBlock#NIL} and NUM = 0.
+   * @param buf buffer with the record data
+   * @param offset offset in the buffer where the record starts
+   * @param rid record id of the next chunk
+   * @return record id of the stored chunk
+   */
+  private long appendChunk(final byte[] buf, final int offset, final long rid) {
+    final int blockNum = findBlock(DataBlock.CHUNK_SIZE);
+    final int blockIndex = header.last = blockNum % HeaderBlock.BLOCKS;
+    block.gotoBlock(header.blocks[blockIndex]);
+
+    // assume the block is empty: write directly the chunk and the next rid
+    block.da.writeBytes(buf, offset, DataBlock.CHUNK_SIZE);
+    block.da.write5(rid);
+
+    // update the meta-data of the block
+    header.used[blockIndex] = DataBlock.NIL;
+    header.dirty = true;
+
+    // data blocks with chunks are recognized as follows:
+    block.size = DataBlock.NIL;
+    block.num = 0;
+    block.dirty = true;
+
+    return rid(blockNum, 0);
   }
 
   /**
@@ -210,10 +308,10 @@ public class RecordDataAccess {
    * @return data block index which has enough space
    */
   private int findBlock(final int rsize) {
-    // space needed is record + record length + slot
-    final int size = rsize + Num.length(rsize) + 2;
+    // space needed is record + record length + slot + SIZE + NUM
+    final int size = rsize + Num.length(rsize) + 2 + 3;
     // max used space in a block in order to be able to store the record
-    final int max = IO.BLOCKSIZE - size;
+    final int max = BLOCKSIZE - size;
 
     // search existing header blocks for a data block with enough space
     long headerAddr = header.addr;
@@ -225,7 +323,6 @@ public class RecordDataAccess {
           if(header.blocks[i] == HeaderBlock.NIL) {
             // the reference is empty: allocate new data block
             header.blocks[i] = block.da.createBlock();
-            header.used[i] = 3;
             header.dirty = true;
           }
           return i + header.num * HeaderBlock.BLOCKS;
@@ -242,20 +339,9 @@ public class RecordDataAccess {
     // allocate the first data block of the new header block
     header.gotoBlock(header.next);
     header.blocks[0] = block.da.createBlock();
-    header.used[0] = 3;
     header.dirty = true;
 
     return header.num * HeaderBlock.BLOCKS;
-  }
-
-  /**
-   * Get the address of a data block with a given index.
-   * @param blockIndex data block index
-   * @return block address
-   */
-  private long getBlockAddr(final int blockIndex) {
-    header.gotoHeader(blockIndex / HeaderBlock.BLOCKS);
-    return header.blocks[blockIndex % HeaderBlock.BLOCKS];
   }
 
   /**
@@ -264,7 +350,7 @@ public class RecordDataAccess {
    * @return block index
    */
   private static int block(final long rid) {
-    return (int) (rid >>> IO.BLOCKPOWER);
+    return (int) (rid >>> BLOCKPOWER);
   }
 
   /**
@@ -273,7 +359,17 @@ public class RecordDataAccess {
    * @return slot index
    */
   private static int slot(final long rid) {
-    return (int) (rid & DataBlock.SLOTMASK);
+    return (int) (rid & DataBlock.SLOT_MASK);
+  }
+
+  /**
+   * Construct a record identifier from block number and slot.
+   * @param block block number
+   * @param slot slot
+   * @return record identifier
+   */
+  private static long rid(final int block, final int slot) {
+    return (((long) block) << BLOCKPOWER) | slot;
   }
 }
 
@@ -290,15 +386,15 @@ abstract class Block {
 /** Header block. */
 class HeaderBlock extends Block {
   /** Size of a block reference in bytes. */
-  static final int REFSIZE = 5;
+  static final int REF_SIZE = 5;
   /** Size of a block reference in bits. */
-  static final int REFSIZEBITS = REFSIZE << 3;
+  static final int REF_SIZE_BITS = REF_SIZE << 3;
   /**
    * Number of data blocks per header; a ref (40 bits) and number of used bytes
    * (12 bits) are stored. The first ref in the block is the next header.
    */
-  static final int BLOCKS = ((IO.BLOCKSIZE << 3) - REFSIZEBITS) /
-      (REFSIZEBITS + IO.BLOCKPOWER);
+  static final int BLOCKS = ((BLOCKSIZE << 3) - REF_SIZE_BITS) /
+      (REF_SIZE_BITS + BLOCKPOWER);
   /** Invalid block reference. */
   static final long NIL = 0L;
 
@@ -312,8 +408,21 @@ class HeaderBlock extends Block {
   long next = NIL;
   /** Id numbers of blocks managed by this header block. */
   final long[] blocks = new long[BLOCKS];
-  /** Used space in each block. */
+  /**
+   * Used space in each block. The actual used space is +3 bytes, since the last
+   * 3 bytes of each data block are occupied.
+   */
   final int[] used = new int[BLOCKS];
+
+  /**
+   * Get the address of a data block with a given index.
+   * @param blockIndex data block index
+   * @return block address
+   */
+  long lookup(final int blockIndex) {
+    gotoHeader(blockIndex / BLOCKS);
+    return blocks[blockIndex % BLOCKS];
+  }
 
   /**
    * Go to a header block.
@@ -355,7 +464,7 @@ class HeaderBlock extends Block {
     for(int i = 0; i < HeaderBlock.BLOCKS; ++i) blocks[i] = da.read5();
 
     // USED are stored next
-    int p = (HeaderBlock.BLOCKS + 1) * HeaderBlock.REFSIZE;
+    int p = (HeaderBlock.BLOCKS + 1) * HeaderBlock.REF_SIZE;
     final int n = HeaderBlock.BLOCKS - 1;
     for(int i = 0; i < n; i += 2, ++p) {
       used[i] = da.readLow12Bits(p, ++p);
@@ -375,7 +484,7 @@ class HeaderBlock extends Block {
     for(int i = 0; i < HeaderBlock.BLOCKS; ++i) da.write5(blocks[i]);
 
     // USED are stored next
-    int p = (HeaderBlock.BLOCKS + 1) * HeaderBlock.REFSIZE;
+    int p = (HeaderBlock.BLOCKS + 1) * HeaderBlock.REF_SIZE;
     final int n = HeaderBlock.BLOCKS - 1;
     for(int i = 0; i < n; i += 2, ++p) {
       da.writeLow12Bits(p, ++p, used[i]);
@@ -389,15 +498,19 @@ class HeaderBlock extends Block {
 /** Data block. */
 class DataBlock extends Block {
   /** Bit mask used to extract the slot number from a record id. */
-  static final long SLOTMASK = (1L << IO.BLOCKPOWER) - 1L;
+  static final long SLOT_MASK = (1L << BLOCKPOWER) - 1L;
   /** Size of an offset within a block in bits. */
-  static final int OFFSET_SIZE = IO.BLOCKPOWER;
+  static final int OFFSET_SIZE = BLOCKPOWER;
   /** Maximal number of records in a data block. */
-  private static final int MAX_RECORDS = IO.BLOCKSIZE >>> 1;
+  private static final int MAX_RECORDS = BLOCKSIZE >>> 1;
+  /** Maximal length of a record (|SIZE + NUM + slot| = 5). */
+  static final int MAX_SIZE = BLOCKSIZE - Num.length(BLOCKSIZE) - 5;
+  /** Size of a chunk (|SIZE + NUM| = 3). */
+  static final int CHUNK_SIZE = BLOCKSIZE - RecordDataAccess.RID_SIZE - 3;
   /** Empty slot marker. */
-  static final int NIL = (int) SLOTMASK;
+  static final int NIL = (int) SLOT_MASK;
 
-  /** Size of the meta data of the current block. */
+  /** Size of the meta data of the current block in bits. */
   int metaDataSize;
 
   // fields stored in the block:
@@ -428,12 +541,12 @@ class DataBlock extends Block {
     da.gotoBlock(addr);
 
     // DATA AREA SIZE is stored at 12 bits the end of each block
-    size = da.readLow12Bits(IO.BLOCKSIZE - 1, IO.BLOCKSIZE - 2);
+    size = da.readLow12Bits(BLOCKSIZE - 1, BLOCKSIZE - 2);
     // NUMBER OF SLOTS is stored the next 12 bits
-    num = da.readHigh12Bits(IO.BLOCKSIZE - 2, IO.BLOCKSIZE - 3);
+    num = da.readHigh12Bits(BLOCKSIZE - 2, BLOCKSIZE - 3);
 
     // SLOTS are stored next
-    int p = IO.BLOCKSIZE - 4;
+    int p = BLOCKSIZE - 4;
     final boolean odd = (num & 1) == 1;
     final int n = odd ? num - 1 : num;
     for(int i = 0; i < n; i += 2, --p) {
@@ -450,12 +563,12 @@ class DataBlock extends Block {
     da.gotoBlock(addr);
 
     // DATA AREA SIZE is stored at 12 bits the end of each block
-    da.writeLow12Bits(IO.BLOCKSIZE - 1, IO.BLOCKSIZE - 2, size);
+    da.writeLow12Bits(BLOCKSIZE - 1, BLOCKSIZE - 2, size);
     // NUMBER OF SLOTS is stored the next 12 bits
-    da.writeHigh12Bits(IO.BLOCKSIZE - 2, IO.BLOCKSIZE - 3, num);
+    da.writeHigh12Bits(BLOCKSIZE - 2, BLOCKSIZE - 3, num);
 
     // SLOTS are stored next
-    int p = IO.BLOCKSIZE - 4;
+    int p = BLOCKSIZE - 4;
     final boolean odd = (num & 1) == 1;
     final int n = odd ? num - 1 : num;
     for(int i = 0; i < n; i += 2, --p) {
@@ -482,7 +595,7 @@ class DataBlock extends Block {
    */
   int allocate(final int l) {
     // re-organize records, if not enough space
-    if(l > IO.BLOCKSIZE - size - (int) divRoundUp(metaDataSize, 8)) compact();
+    if(l > BLOCKSIZE - size - (int) divRoundUp(metaDataSize, 8)) compact();
     return size;
   }
 
