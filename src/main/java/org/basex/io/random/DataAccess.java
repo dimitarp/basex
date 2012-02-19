@@ -193,22 +193,30 @@ public class DataAccess {
    * @return byte array
    */
   public synchronized byte[] readBytes(final int n) {
-    int l = n;
-    int ll = IO.BLOCKSIZE - off;
-    final byte[] b = new byte[l];
+    return readBytes(new byte[n]);
+  }
 
-    System.arraycopy(buffer(false).data, off, b, 0, Math.min(l, ll));
+  /**
+   * Fills the given buffer with bytes from the file.
+   * @param buf buffer
+   * @return the buffer
+   */
+  public byte[] readBytes(final byte[] buf) {
+    int l = buf.length;
+    int ll = IO.BLOCKSIZE - off;
+
+    System.arraycopy(buffer(false).data, off, buf, 0, Math.min(l, ll));
     if(l > ll) {
       l -= ll;
       while(l > IO.BLOCKSIZE) {
-        System.arraycopy(buffer(true).data, 0, b, ll, IO.BLOCKSIZE);
+        System.arraycopy(buffer(true).data, 0, buf, ll, IO.BLOCKSIZE);
         ll += IO.BLOCKSIZE;
         l -= IO.BLOCKSIZE;
       }
-      System.arraycopy(buffer(true).data, 0, b, ll, l);
+      System.arraycopy(buffer(true).data, 0, buf, ll, l);
     }
     off += l;
-    return b;
+    return buf;
   }
 
   /**
@@ -216,8 +224,18 @@ public class DataAccess {
    * @param b byte array
    */
   public synchronized void writeBytes(final byte[] b) {
-    System.arraycopy(b, 0, bm.current().data, off, b.length);
-    off += b.length;
+    writeBytes(b, 0, b.length);
+  }
+
+  /**
+   * Write the given bytes to the current position and move the cursor.
+   * @param buf buffer containing the data
+   * @param offset offset in the buffer where the data start
+   * @param length data length
+   */
+  public void writeBytes(final byte[] buf, final int offset, final int length) {
+    System.arraycopy(buf, offset, bm.current().data, off, length);
+    off += length;
   }
 
   /**
