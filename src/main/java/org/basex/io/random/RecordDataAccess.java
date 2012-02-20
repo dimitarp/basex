@@ -4,6 +4,7 @@ import static org.basex.util.BlockAccessUtil.*;
 import static org.basex.io.IO.*;
 
 import java.io.IOException;
+import java.util.*;
 
 import org.basex.io.*;
 import org.basex.util.*;
@@ -151,7 +152,10 @@ public class RecordDataAccess {
     final int blockIndex = blockNum % HeaderBlock.BLOCKS;
     block.gotoBlock(header.lookup(blockNum));
 
-    if(block.size == DataBlock.NIL) deleteChunked();
+    if(block.size == DataBlock.NIL) {
+      deleteChunked();
+      return;
+    }
 
     // read the record length
     final int off = block.da.off = block.slots[slot];
@@ -234,7 +238,7 @@ public class RecordDataAccess {
     // chunks need to be stored in reverse order, so that the rid's are known
     long rid = append(buf, p, last);
 
-    for(p -= DataBlock.CHUNK_SIZE; offset <= p; p -= DataBlock.CHUNK_SIZE) {
+    for(p -= DataBlock.CHUNK_SIZE; p >= offset; p -= DataBlock.CHUNK_SIZE) {
       rid = appendChunk(buf, p, rid);
     }
 
@@ -637,27 +641,45 @@ class DataBlock extends Block {
 
   /** Compact records in a contiguous area. */
   private void compact() {
-    int pos = 0;
-    for(int i = 0; i < num; ++i) {
-      // read the length of the record (size + data)
-      da.off = slots[i];
-      int len = da.readNum();
-      len += Num.length(len);
+    // order the slots by offsets they have
+    final int[] idx = createOrder(num, slots);
 
-      if(slots[i] > pos) {
-        // there is unused space: shift the record (size + data) forwards
-        da.off = slots[i];
-        final byte[] record = da.readBytes(len);
-        da.off = pos;
-        da.writeBytes(record);
-        slots[i] = pos;
-      } else if(slots[i] < pos) {
-        throw new RuntimeException("Not expected");
-      }
-      // next position should be right after the current record
-      pos += len;
+    int ins = da.off = 0;
+    for(int i = 0; i < num; ++i) {
+      final int off = slots[idx[i]];
+      if(off == NIL) break;
+
+      // read the record from the old position
+      da.off = off;
+      final byte[] record = da.readToken();
+      // set the new position and write the record
+      slots[idx[i]] = da.off = ins;
+      da.writeToken(record);
+      // set the next insert position at the end of the record
+      ins = da.off;
     }
-    // adjust the size value
-    size = pos;
+    size = ins;
+  }
+
+  /**
+   * Create a list of indexes sorted by the values stored in an array.
+   * @param n number of values from the beginning of the array
+   * @param array array with values
+   * @return list of indexes of the array
+   */
+  private static int[] createOrder(final int n, final int[] array) {
+    final Integer[] idx = new Integer[n];
+    for(int i = 0; i < n; ++i) idx[i] = Integer.valueOf(i);
+
+    Arrays.sort(idx, new Comparator<Integer>() {
+      @Override
+      public int compare(final Integer o1, final Integer o2) {
+        return array[o1.intValue()] - array[o2.intValue()];
+      }
+    });
+
+    final int[] result = new int[idx.length];
+    for(int i = 0; i < idx.length; ++i) result[i] = idx[i].intValue();
+    return result;
   }
 }
