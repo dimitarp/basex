@@ -4,6 +4,7 @@ import static org.basex.util.Token.*;
 import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.*;
 
 import org.basex.io.*;
 import org.basex.io.random.DataAccess;
@@ -125,7 +126,7 @@ public class RecordDataAccessTest {
 
     // verify file length
     final long lenAfterInsert = file.length();
-    assertTrue(lenAfterInsert > 4096);
+    assertTrue(lenAfterInsert > IO.BLOCKSIZE);
 
 
     // delete
@@ -248,5 +249,39 @@ public class RecordDataAccessTest {
       assertEquals(prefix + i + suffix, string(da.readToken(rids[i])));
     }
     Util.outln("Select: " + Performance.getTime(System.nanoTime() - sel, 1));
+  }
+
+  @Test
+  public void testRandom() throws IOException {
+    Random r = new Random(System.nanoTime());
+
+    HashMap<Long, byte[]> existing = new HashMap<Long, byte[]>();
+    HashSet<Long> deleted = new HashSet<Long>();
+
+    for(int i = 0; i < 10000; ++i) {
+      if(existing.isEmpty() || r.nextBoolean()) {
+        //final byte[] bytes = new byte[r.nextInt(15000)];
+        final byte[] bytes = new byte[r.nextInt(4089)];
+        r.nextBytes(bytes);
+
+        final long rid = sut.insert(bytes);
+        existing.put(rid, bytes);
+        deleted.remove(rid);
+      } else {
+        long rid = 0L;
+        int k = r.nextInt(existing.size());
+        for(final Iterator<Long> s = existing.keySet().iterator(); k >= 0; --k) {
+          rid = s.next();
+        }
+        sut.delete(rid);
+
+        existing.remove(rid);
+        deleted.add(rid);
+      }
+    }
+
+    for(Long rid : existing.keySet()) {
+      assertArrayEquals(existing.get(rid), sut.select(rid));
+    }
   }
 }
