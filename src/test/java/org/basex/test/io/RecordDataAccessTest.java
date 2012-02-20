@@ -251,8 +251,9 @@ public class RecordDataAccessTest {
     Util.outln("Select: " + Performance.getTime(System.nanoTime() - sel, 1));
   }
 
+  /** Test using random operations with random strings. */
   @Test
-  public void testRandom() throws IOException {
+  public void testRandom() {
     Random r = new Random(System.nanoTime());
 
     HashMap<Long, byte[]> existing = new HashMap<Long, byte[]>();
@@ -260,8 +261,7 @@ public class RecordDataAccessTest {
 
     for(int i = 0; i < 10000; ++i) {
       if(existing.isEmpty() || r.nextBoolean()) {
-        //final byte[] bytes = new byte[r.nextInt(15000)];
-        final byte[] bytes = new byte[r.nextInt(4089)];
+        final byte[] bytes = new byte[r.nextInt(15000)];
         r.nextBytes(bytes);
 
         final long rid = sut.insert(bytes);
