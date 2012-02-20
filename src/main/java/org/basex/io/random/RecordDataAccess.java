@@ -151,6 +151,8 @@ public class RecordDataAccess {
     final int blockIndex = blockNum % HeaderBlock.BLOCKS;
     block.gotoBlock(header.lookup(blockNum));
 
+    if(block.size == DataBlock.NIL) deleteChunked();
+
     // read the record length
     final int off = block.da.off = block.slots[slot];
     int len = block.da.readNum();
@@ -179,6 +181,17 @@ public class RecordDataAccess {
       header.used[blockIndex] = 0;
     }
     header.dirty = true;
+  }
+
+  /** Delete a chunked record starting from the current data block. */
+  private void deleteChunked() {
+    long next = 0L;
+    while(block.size == DataBlock.NIL) {
+      block.da.off = DataBlock.CHUNK_SIZE;
+      next = block.da.read5();
+      block.gotoBlock(header.lookup(block(next)));
+    }
+    delete(next);
   }
 
   /**
