@@ -4,7 +4,6 @@ import static org.basex.util.BlockAccessUtil.*;
 import static org.basex.io.IO.*;
 
 import java.io.IOException;
-import java.util.*;
 
 import org.basex.io.*;
 import org.basex.util.*;
@@ -652,9 +651,11 @@ class DataBlock extends Block {
       // read the record from the old position
       da.off = off;
       final byte[] record = da.readToken();
-      // set the new position and write the record
-      slots[idx[i]] = da.off = ins;
-      da.writeToken(record);
+      if(ins < off) {
+        // set the new position and write the record
+        slots[idx[i]] = da.off = ins;
+        da.writeToken(record);
+      }
       // set the next insert position at the end of the record
       ins = da.off;
     }
@@ -668,18 +669,8 @@ class DataBlock extends Block {
    * @return list of indexes of the array
    */
   private static int[] createOrder(final int n, final int[] array) {
-    final Integer[] idx = new Integer[n];
-    for(int i = 0; i < n; ++i) idx[i] = Integer.valueOf(i);
-
-    Arrays.sort(idx, new Comparator<Integer>() {
-      @Override
-      public int compare(final Integer o1, final Integer o2) {
-        return array[o1.intValue()] - array[o2.intValue()];
-      }
-    });
-
-    final int[] result = new int[idx.length];
-    for(int i = 0; i < idx.length; ++i) result[i] = idx[i].intValue();
-    return result;
+    final int[] tmp = new int[n];
+    System.arraycopy(array, 0, tmp, 0, n);
+    return Array.createOrder(tmp, true);
   }
 }
