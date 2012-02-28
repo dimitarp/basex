@@ -2,17 +2,14 @@ package org.basex.test.io;
 
 import static org.basex.util.Token.*;
 import static org.junit.Assert.*;
-import java.io.File;
-import java.io.IOException;
+
+import java.io.*;
 import java.util.*;
 
 import org.basex.io.*;
-import org.basex.io.random.DataAccess;
-import org.basex.io.random.RecordDataAccess;
-import org.basex.util.Performance;
-import org.basex.util.Util;
-import org.junit.Before;
-import org.junit.Test;
+import org.basex.io.random.*;
+import org.basex.util.*;
+import org.junit.*;
 
 /**
  * Test class for record storage.
@@ -181,7 +178,7 @@ public class RecordDataAccessTest {
     Util.outln("Insert: " + Performance.getTime(System.nanoTime() - ins, 1));
 
     // verify
-    final long sel = System.currentTimeMillis();
+    final long sel = System.nanoTime();
     sut = new RecordDataAccess(file);
     for(int i = 0; i < num; ++i) {
       assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
@@ -210,7 +207,7 @@ public class RecordDataAccessTest {
     Util.outln("Append: " + Performance.getTime(System.nanoTime() - ins, 1));
 
     // verify
-    final long sel = System.currentTimeMillis();
+    final long sel = System.nanoTime();
     sut = new RecordDataAccess(file);
     for(int i = 0; i < num; ++i) {
       assertEquals(prefix + i + suffix, string(sut.select(rids[i])));
@@ -243,7 +240,7 @@ public class RecordDataAccessTest {
     Util.outln("Select: " + Performance.getTime(System.nanoTime() - ins, 1));
 
     // verify
-    final long sel = System.currentTimeMillis();
+    final long sel = System.nanoTime();
     da = new DataAccess(file);
     for(int i = 0; i < num; ++i) {
       assertEquals(prefix + i + suffix, string(da.readToken(rids[i])));
@@ -259,7 +256,7 @@ public class RecordDataAccessTest {
     HashMap<Long, byte[]> existing = new HashMap<Long, byte[]>();
     HashSet<Long> deleted = new HashSet<Long>();
 
-    for(int i = 0; i < 10000; ++i) {
+    for(int i = 0; i < 100000; ++i) {
       if(existing.isEmpty() || r.nextBoolean()) {
         final byte[] bytes = new byte[r.nextInt(15000)];
         r.nextBytes(bytes);

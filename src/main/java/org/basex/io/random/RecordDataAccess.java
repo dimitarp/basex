@@ -1,9 +1,10 @@
 package org.basex.io.random;
 
-import static org.basex.util.BlockAccessUtil.*;
 import static org.basex.io.IO.*;
+import static org.basex.util.BlockAccessUtil.*;
 
-import java.io.IOException;
+import java.io.*;
+import java.util.*;
 
 import org.basex.io.*;
 import org.basex.util.*;
@@ -127,6 +128,7 @@ public class RecordDataAccess {
     final TokenBuilder builder = new TokenBuilder(DataBlock.CHUNK_SIZE);
     final byte[] buf = new byte[DataBlock.CHUNK_SIZE];
 
+    // read all blocks, which store chunks
     long next = 0L;
     while(block.size == DataBlock.NIL) {
       block.da.readBytes(buf);
@@ -135,6 +137,7 @@ public class RecordDataAccess {
       block.gotoBlock(header.lookup(block(next)));
     }
 
+    // the last chunk is stored as a normal record
     block.da.off = block.slots[slot(next)];
     builder.add(block.da.readToken());
 
@@ -152,48 +155,45 @@ public class RecordDataAccess {
     block.gotoBlock(header.lookup(blockNum));
 
     if(block.size == DataBlock.NIL) {
-      deleteChunked();
+      deleteChunked(blockIndex);
       return;
     }
 
-    // read the record length
-    final int off = block.da.off = block.slots[slot];
-    int len = block.da.readNum();
-    len += Num.length(len);
+    final int deleted = block.delete(slot);
 
-    // decrease SIZE if the record is at the end of the DATA AREA
-    if(off + len == block.size) block.size -= len;
-
-    // mark slot as empty
-    block.slots[slot] = DataBlock.NIL;
-
-    // clean up empty slots
-    for(; block.num > 0; --block.num) {
-      if(block.slots[block.num - 1] != DataBlock.NIL) break;
-    }
-
-    if(block.num > 0) {
-      final int newMetaDataSize = (block.num + 2) * DataBlock.OFFSET_SIZE;
-      header.used[blockIndex] -= len + ((block.metaDataSize - newMetaDataSize) >> 3);
-      block.metaDataSize = newMetaDataSize;
-      block.dirty = true;
-    } else {
+    if(deleted == IO.BLOCKSIZE) {
       // all records are deleted: delete the whole block
       block.delete();
-      header.blocks[blockIndex] = HeaderBlock.NIL;
-      header.used[blockIndex] = 0;
+      header.delete(blockIndex);
+    } else {
+      header.used[blockIndex] -= deleted;
+      header.dirty = true;
     }
-    header.dirty = true;
   }
 
-  /** Delete a chunked record starting from the current data block. */
-  private void deleteChunked() {
+  /**
+   * Delete a chunked record starting from the current data block.
+   * @param dataBlockIndex index of the current data block in the current header
+   */
+  private void deleteChunked(final int dataBlockIndex) {
     long next = 0L;
+    int blockIndex = dataBlockIndex;
+
+    // delete all blocks, which store chunks
     while(block.size == DataBlock.NIL) {
       block.da.off = DataBlock.CHUNK_SIZE;
       next = block.da.read5();
-      block.gotoBlock(header.lookup(block(next)));
+
+      block.delete();
+      header.delete(blockIndex);
+
+      // goto next chunk
+      final int blockNum = block(next);
+      blockIndex = blockNum % HeaderBlock.BLOCKS;
+      block.gotoBlock(header.lookup(blockNum));
     }
+
+    // the last chunk is stored as a normal record
     delete(next);
   }
 
@@ -216,6 +216,35 @@ public class RecordDataAccess {
    */
   public long append(final byte[] record) {
     return append(record, 0, record.length);
+  }
+
+  /**
+   * Insert a record into the next possible area starting from the current
+   * position (i.e. does not traverse all headers).
+   * @param buf buffer, containing the record
+   * @param offset offset in the buffer where the record starts
+   * @param length record length
+   * @return record id
+   */
+  public long append(final byte[] buf, final int offset, final int length) {
+    if(length > DataBlock.MAX_SIZE) return appendChunked(buf, offset, length);
+
+    // space needed is record length + |record length| + |slot| + |SIZE| + |NUM|
+    final int blockIndex = header.findBlock(length + Num.length(length) + 2 + 3);
+
+    // create a new block, if the current pointer is NIL
+    if(header.blocks[blockIndex] == HeaderBlock.NIL)
+      header.blocks[blockIndex] = block.create();
+
+    final int blockNum = blockIndex + header.num * HeaderBlock.BLOCKS;
+
+    block.gotoBlock(header.blocks[blockIndex]);
+    final int slot = block.findEmptySlot();
+
+    header.used[blockIndex] += block.insert(slot, buf, offset, length);
+    header.dirty = true;
+
+    return rid(blockNum, slot);
   }
 
   /**
@@ -245,48 +274,6 @@ public class RecordDataAccess {
   }
 
   /**
-   * Insert a record into the next possible area starting from the current
-   * position (i.e. does not traverse all headers).
-   * @param buf buffer, containing the record
-   * @param offset offset in the buffer where the record starts
-   * @param length record length
-   * @return record id
-   */
-  public long append(final byte[] buf, final int offset, final int length) {
-    if(length > DataBlock.MAX_SIZE) return appendChunked(buf, offset, length);
-    final int len = Num.length(length) + length;
-
-    final int blockNum = findBlock(length);
-    final int blockIndex = header.last = blockNum % HeaderBlock.BLOCKS;
-    block.gotoBlock(header.blocks[blockIndex]);
-
-    // write the record data
-    final int off = block.da.off = block.allocate(len);
-    block.da.writeToken(buf, offset, length);
-
-    // increase size
-    block.size += len;
-
-    final int slot = block.findEmptySlot();
-    if(slot == block.num) {
-      // new slot will be allocated
-      ++block.num;
-      // increase the size of the meta data
-      block.metaDataSize += DataBlock.OFFSET_SIZE;
-      // if slot is even, then 1 new byte will be allocated; else 2 bytes
-      header.used[blockIndex] += (block.num & 1) == 0 ? 1 : 2;
-    }
-
-    block.slots[slot] = off;
-    block.dirty = true;
-
-    header.used[blockIndex] += len;
-    header.dirty = true;
-
-    return rid(blockNum, slot);
-  }
-
-  /**
    * Store a chunk. A chunk occupies a whole data block and has the record id of
    * the next chunk. A data block which has a chunk has
    * SIZE = {@link DataBlock#NIL} and NUM = 0.
@@ -296,70 +283,23 @@ public class RecordDataAccess {
    * @return record id of the stored chunk
    */
   private long appendChunk(final byte[] buf, final int offset, final long rid) {
-    final int blockNum = findBlock(DataBlock.CHUNK_SIZE);
-    final int blockIndex = header.last = blockNum % HeaderBlock.BLOCKS;
-    block.gotoBlock(header.blocks[blockIndex]);
 
-    // assume the block is empty: write directly the chunk and the next rid
-    block.da.writeBytes(buf, offset, DataBlock.CHUNK_SIZE);
-    block.da.write5(rid);
+    final int blockIndex = header.findBlock(DataBlock.CHUNK_SIZE);
 
-    // data blocks with chunks are recognized as follows:
-    block.size = DataBlock.NIL;
-    block.num = 0;
-    block.dirty = true;
+    // create a new block, if the current pointer is NIL
+    if(header.blocks[blockIndex] == HeaderBlock.NIL)
+      header.blocks[blockIndex] = block.create();
+
+    final int blockNum = blockIndex + header.num * HeaderBlock.BLOCKS;
+
+    block.writeChunk(header.blocks[blockIndex], buf, offset, rid);
 
     // update the meta-data of the block
     header.used[blockIndex] = DataBlock.NIL;
+    header.last = blockIndex;
     header.dirty = true;
 
     return rid(blockNum, 0);
-  }
-
-  /**
-   * Find a data block with enough free space; if no existing data block has
-   * enough space, then a new data block is allocated; if a data block cannot
-   * be allocated in one of the existing header blocks, a new header block will
-   * be allocated.
-   * @param rsize record size
-   * @return data block index which has enough space
-   */
-  private int findBlock(final int rsize) {
-    // space needed is record + record length + slot + SIZE + NUM
-    final int size = rsize + Num.length(rsize) + 2 + 3;
-    // max used space in a block in order to be able to store the record
-    final int max = BLOCKSIZE - size;
-
-    // search existing header blocks for a data block with enough space
-    long headerAddr = header.addr;
-    do {
-      header.gotoBlock(headerAddr);
-      // check the data blocks of the header for enough space
-      for(int i = header.last; i < header.used.length; ++i) {
-        if(header.used[i] <= max) {
-          if(header.blocks[i] == HeaderBlock.NIL) {
-            // the reference is empty: allocate new data block
-            header.blocks[i] = block.create();
-            header.dirty = true;
-          }
-          return i + header.num * HeaderBlock.BLOCKS;
-        }
-      }
-      ++header.num;
-      headerAddr = header.next;
-    } while(headerAddr != HeaderBlock.NIL);
-
-    // no header block has empty data blocks: allocate a new header block
-    header.next = header.da.createBlock();
-    header.dirty = true;
-
-    // allocate the first data block of the new header block
-    // TODO re-initialize the new header block, if header deletion is supported
-    header.gotoBlock(header.next);
-    header.blocks[0] = block.create();
-    header.dirty = true;
-
-    return header.num * HeaderBlock.BLOCKS;
   }
 
   /**
@@ -432,6 +372,14 @@ class HeaderBlock extends Block {
    */
   final int[] used = new int[BLOCKS];
 
+  /** Initialize the current header. */
+  void init() {
+    last = 0;
+    next = NIL;
+    Arrays.fill(blocks, NIL);
+    Arrays.fill(used, 0);
+  }
+
   /**
    * Get the address of a data block with a given index.
    * @param blockIndex data block index
@@ -463,11 +411,59 @@ class HeaderBlock extends Block {
    * Go to the header block at the specified address.
    * @param blockAddr block address
    */
-  void gotoBlock(final long blockAddr) {
+  private void gotoBlock(final long blockAddr) {
     if(addr == blockAddr) return;
     if(dirty) write();
     addr = blockAddr;
     read();
+  }
+
+  /**
+   * Remove the data block with the given index from the header.
+   * @param blockIndex data block index in the header
+   */
+  void delete(final int blockIndex) {
+    blocks[blockIndex] = HeaderBlock.NIL;
+    used[blockIndex] = 0;
+    dirty = true;
+  }
+
+  /**
+   * Find a data block with enough free space; if no existing data block has
+   * enough space, then a new data block is allocated; if a data block cannot
+   * be allocated in one of the existing header blocks, a new header block will
+   * be allocated.
+   * @param size free space needed
+   * @return data block index which has enough space
+   */
+  int findBlock(final int size) {
+    // max used space in a block in order to be able to store the record
+    final int max = BLOCKSIZE - size;
+
+    // search existing header blocks for a data block with enough space
+    long headerAddr = addr;
+    do {
+      gotoBlock(headerAddr);
+      // check the data blocks of the header for enough space
+      for(int i = last; i < used.length; ++i) {
+        if(used[i] <= max) {
+          last = i;
+          return last;
+        }
+      }
+      ++num;
+      headerAddr = next;
+    } while(headerAddr != HeaderBlock.NIL);
+
+    // no header block has empty data blocks: allocate a new header block
+    next = da.createBlock();
+    dirty = true;
+
+    gotoBlock(next);
+    init();
+
+    last = 0;
+    return last;
   }
 
   /** Read the header data from the underlying storage. */
@@ -561,6 +557,68 @@ class DataBlock extends Block {
   }
 
   /**
+   * Delete a record from a given slot.
+   * @param slot record slot
+   * @return number of deleted bytes or {@link IO#BLOCKSIZE} if block is empty
+   */
+  int delete(final int slot) {
+    // read the record length
+    final int off = da.off = slots[slot];
+    int len = da.readNum();
+    len += Num.length(len);
+
+    // decrease SIZE if the record is at the end of the DATA AREA
+    if(off + len == size) size -= len;
+
+    // mark slot as empty
+    slots[slot] = NIL;
+
+    // clean up empty slots
+    for(; num > 0; --num) if(slots[num - 1] != NIL) break;
+
+    if(num == 0) return IO.BLOCKSIZE;
+
+    final int newMetaDataSize = (num + 2) * OFFSET_SIZE;
+    final int diff = len + ((metaDataSize - newMetaDataSize) >> 3);
+    metaDataSize = newMetaDataSize;
+    dirty = true;
+
+    return diff;
+  }
+
+  /**
+   * Insert a record at the given slot.
+   * @param slot record slot
+   * @param buf buffer with record data
+   * @param offset offset in the buffer where the record starts
+   * @param length length of the record
+   * @return number of bytes used to store the record
+   */
+  int insert(final int slot, final byte[] buf, final int offset, final int length) {
+    int len = Num.length(length) + length;
+
+    // write the record data
+    final int off = da.off = allocate(len);
+    da.writeToken(buf, offset, length);
+
+    // increase size
+    size += len;
+    if(slot == num) {
+      // new slot will be allocated
+      ++num;
+      // increase the size of the meta data
+      metaDataSize += DataBlock.OFFSET_SIZE;
+      // if slot is even, then 1 new byte will be allocated; else 2 bytes
+      len += (num & 1) == 0 ? 1 : 2;
+    }
+
+    slots[slot] = off;
+    dirty = true;
+
+    return len;
+  }
+
+  /**
    * Go to the data block at the specified address.
    * @param blockAddr block address
    */
@@ -573,6 +631,28 @@ class DataBlock extends Block {
     if(dirty) writeMetaData();
     addr = blockAddr;
     readMetaData();
+  }
+
+  /**
+   * Write a chunk to a block.
+   * @param blockAddr block address
+   * @param buf buffer
+   * @param off offset in the buffer
+   * @param next record id of the next chunk
+   */
+  void writeChunk(final long blockAddr, final byte[] buf, final int off,
+      final long next) {
+
+    gotoBlock(blockAddr);
+
+    // assume the block is empty: write directly the chunk and the next rid
+    da.writeBytes(buf, off, DataBlock.CHUNK_SIZE);
+    da.write5(next);
+
+    // data blocks with chunks are recognized as follows:
+    size = DataBlock.NIL;
+    num = 0;
+    dirty = true;
   }
 
   /** Read the meta-data of a data block. */
