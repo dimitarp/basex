@@ -493,7 +493,7 @@ public abstract class Data {
       table.write1(pre, kind == ELEM ? 3 : 11, nuri);
       // write name reference
       table.write2(pre, 1, (nsFlag(pre) ? 1 << 15 : 0) |
-        (kind == ELEM ? tagindex : atnindex).index(name, null, false));
+        (kind == ELEM ? tagindex : atnindex).index(name, null, true));
       // write namespace flag
       table.write2(npre, 1, (ne || nsFlag(npre) ? 1 << 15 : 0) | name(npre));
     }
@@ -533,7 +533,7 @@ public abstract class Data {
 
     if(meta.updindex) {
       // update index
-      indexDelete(rpre, rsize);
+      deleteValue(rpre, rsize);
       indexBegin();
     }
 
@@ -552,7 +552,7 @@ public abstract class Data {
         case ELEM:
           // add element
           byte[] nm = data.name(dpre, dkind);
-          elem(dis, tagindex.index(nm, null, false), data.attSize(dpre, dkind),
+          elem(dis, tagindex.index(nm, null, true), data.attSize(dpre, dkind),
               data.size(dpre, dkind), nspaces.uri(nm, true), false);
           break;
         case TEXT:
@@ -564,7 +564,7 @@ public abstract class Data {
         case ATTR:
           // add attribute
           nm = data.name(dpre, dkind);
-          attr(pre, dis, atnindex.index(nm, null, false),
+          attr(pre, dis, atnindex.index(nm, null, true),
               data.text(dpre, false), nspaces.uri(nm, false), false);
           break;
       }
@@ -619,7 +619,7 @@ public abstract class Data {
 
     if(meta.updindex) {
       // delete child records from indexes
-      indexDelete(pre, s);
+      deleteValue(pre, s);
     }
 
     /// explicitly delete text or attribute value
@@ -808,7 +808,7 @@ public abstract class Data {
           }
           nspaces.open();
           byte[] nm = data.name(dpre, dkind);
-          elem(dis, tagindex.index(nm, null, false), data.attSize(dpre, dkind),
+          elem(dis, tagindex.index(nm, null, true), data.attSize(dpre, dkind),
               data.size(dpre, dkind), nspaces.uri(nm, true), ne);
           preStack.push(pre);
           break;
@@ -832,7 +832,7 @@ public abstract class Data {
             // here as direct table access would interfere with the buffer
             flagPres.add(par);
           }
-          attr(pre, dis, atnindex.index(nm, null, false),
+          attr(pre, dis, atnindex.index(nm, null, true),
               data.text(dpre, false), nspaces.uri(nm, false), false);
           break;
       }
@@ -1113,7 +1113,20 @@ public abstract class Data {
    * @param pre pre value of the node to delete
    * @param size number of descendants
    */
-  protected abstract void indexDelete(final int pre, final int size);
+  protected abstract void deleteValue(final int pre, final int size);
+
+  /**
+   * Delete a tag or attribute name.
+   * @param pre pre value of the node to delete
+   * @param kind node kind
+   */
+  private void deleteName(final int pre, final int kind) {
+    switch(kind) {
+      case Data.ELEM: tagindex.delete(name(pre)); break;
+      case Data.ATTR: atnindex.delete(name(pre)); break;
+      default: break;
+    }
+  }
 
   /**
    * Returns a string representation of the specified table range. Can be called

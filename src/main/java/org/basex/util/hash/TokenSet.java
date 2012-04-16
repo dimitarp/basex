@@ -133,6 +133,14 @@ public class TokenSet implements Iterable<byte[]> {
   }
 
   /**
+   * Delete a key with the specified id.
+   * @param id key id
+   */
+  public void delete(final int id) {
+    keys[id] = null;
+  }
+
+  /**
    * Checks if the set contains the specified key.
    * @param key key to be found
    * @return result of check

@@ -64,13 +64,18 @@ public final class Names extends TokenSet implements Index {
    */
   public int index(final byte[] n, final byte[] v, final boolean st) {
     final int i = Math.abs(add(n));
-    if(st) {
+    if(st && meta.updindex) {
       if(stats[i] == null) stats[i] = new Stats();
       final Stats stat = stats[i];
       if(v != null) stat.add(v, meta);
       stat.count++;
     }
     return i;
+  }
+
+  @Override
+  public void delete(final int id) {
+    super.delete(id);
   }
 
   /**

@@ -119,7 +119,7 @@ public final class MemData extends Data {
   }
 
   @Override
-  protected void indexDelete(final int pre, final int size) {
+  protected void deleteValue(final int pre, final int size) {
     final int l = pre + size;
     for(int p = pre; p < l; ++p) {
       final int k = kind(p);

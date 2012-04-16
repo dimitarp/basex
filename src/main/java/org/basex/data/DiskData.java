@@ -428,7 +428,7 @@ public final class DiskData extends Data {
   }
 
   @Override
-  protected void indexDelete(final int pre, final int size) {
+  protected void deleteValue(final int pre, final int size) {
     if(!(meta.textindex || meta.attrindex)) return;
 
     // collect all keys and ids
