@@ -142,41 +142,38 @@ public class RecordDataAccess {
    */
   public void delete(final long rid) {
     final int slot = slot(rid);
-    final int blockNum = block(rid);
-    final int blockIndex = blockNum % Directory.BLOCKS;
-    data.gotoBlock(directory.lookupDataBlock(blockNum));
+    final int blockNumber = block(rid);
+
+    data.gotoBlock(directory.lookupDataBlock(blockNumber));
 
     if(data.isCurrentBlockChunk()) {
-      deleteChunked(blockIndex);
-      return;
-    }
-
-    final int deleted = data.delete(slot);
-
-    if(deleted == IO.BLOCKSIZE) {
-      directory.deleteDataBlock(blockIndex);
+      deleteChunked(blockNumber);
     } else {
-      directory.updateDataBlockUsed(blockIndex, -deleted);
+      final int deleted = data.delete(slot);
+      if(deleted == IO.BLOCKSIZE) {
+        directory.deleteDataBlock(blockNumber);
+      } else {
+        directory.updateDataBlockUsed(blockNumber, -deleted);
+      }
     }
   }
 
   /**
    * Delete a chunked record starting from the current data block.
-   * @param dataBlockIndex index of the current data block in the current directory block
+   * @param dataBlockNumber logical data block number
    */
-  private void deleteChunked(final int dataBlockIndex) {
+  private void deleteChunked(final int dataBlockNumber) {
     long next = 0L;
-    int blockIndex = dataBlockIndex;
+    int blockNumber = dataBlockNumber;
 
     // delete all blocks, which store chunks
     while(data.isCurrentBlockChunk()) {
       next = data.deleteChunk();
-      directory.deleteDataBlock(blockIndex);
+      directory.deleteDataBlock(blockNumber);
 
       // goto next chunk
-      final int blockNum = block(next);
-      blockIndex = blockNum % Directory.BLOCKS;
-      data.gotoBlock(directory.lookupDataBlock(blockNum));
+      blockNumber = block(next);
+      data.gotoBlock(directory.lookupDataBlock(blockNumber));
     }
 
     // the last chunk is stored as a normal record
@@ -215,20 +212,21 @@ public class RecordDataAccess {
     if(length > DataBlock.MAX_SIZE) return appendChunked(buf, offset, length);
 
     // space needed is: record length + |record length| + |slot| + |SIZE| + |NUM|
-    final int blockIndex = directory.findDataBlock(length + Num.length(length) + 2 + 3);
+    final int blockNumber = directory.findDataBlock(length + Num.length(length) + 2 + 3);
 
-    // create a new block, if the current pointer is NIL
-    if(directory.blocks[blockIndex] == Directory.NIL)
-      directory.blocks[blockIndex] = data.createBlock();
+    long blockAddress = directory.lookupDataBlock(blockNumber);
+    if(blockAddress == Directory.NIL) {
+      // create a new block, if the current pointer is NIL
+      blockAddress = data.createBlock();
+      directory.insertDataBlock(blockNumber, blockAddress);
+    }
 
-    final int blockNum = directory.getDataBlockNumber(blockIndex);
-
-    data.gotoBlock(directory.blocks[blockIndex]);
+    data.gotoBlock(blockAddress);
     final int slot = data.findEmptySlot();
     final int inserted = data.insert(slot, buf, offset, length);
-    directory.updateDataBlockUsed(blockIndex, inserted);
+    directory.updateDataBlockUsed(blockNumber, inserted);
 
-    return rid(blockNum, slot);
+    return rid(blockNumber, slot);
   }
 
   /**
@@ -241,17 +239,17 @@ public class RecordDataAccess {
    */
   private long appendChunk(final byte[] buf, final int offset, final long rid) {
 
-    final int blockIndex = directory.findDataBlock(DataBlock.CHUNK_SIZE);
+    final int blockNumber = directory.findDataBlock(DataBlock.CHUNK_SIZE);
 
-    // create a new block, if the current pointer is NIL
-    if(directory.blocks[blockIndex] == Directory.NIL)
-      directory.blocks[blockIndex] = data.createBlock();
+    long blockAddress = directory.lookupDataBlock(blockNumber);
+    if(blockAddress == Directory.NIL) {
+      // create a new block, if the current pointer is NIL
+      blockAddress = data.createBlock();
+      directory.insertDataBlock(blockNumber, blockAddress);
+    }
 
-    final int blockNumber = directory.getDataBlockNumber(blockIndex);
-
-    data.writeChunk(directory.blocks[blockIndex], buf, offset, rid);
-
-    directory.setDataBlockChunk(blockIndex);
+    data.writeChunk(blockAddress, buf, offset, rid);
+    directory.setChunkDataBlock(blockNumber);
 
     return rid(blockNumber, 0);
   }
@@ -282,9 +280,9 @@ public class RecordDataAccess {
   }
 
   /**
-   * Extract the block index from a record id.
+   * Extract the logical block number from a record id.
    * @param rid record id
-   * @return block index
+   * @return logical block number
    */
   private static int block(final long rid) {
     return (int) (rid >>> BLOCKPOWER);
@@ -358,7 +356,8 @@ final class Directory extends Block {
    * Number of data blocks per directory block; a ref (40 bits) and number of used bytes
    * (12 bits) are stored. The first ref in the block is the next directory block.
    */
-  static final int BLOCKS = (BLOCKSIZE * 8 - REFSIZEBITS) / (REFSIZEBITS + BLOCKPOWER);
+  private static final int BLOCKS = (BLOCKSIZE * 8 - REFSIZEBITS)
+      / (REFSIZEBITS + BLOCKPOWER);
   /** Invalid block reference. */
   static final long NIL = 0L;
 
@@ -376,7 +375,7 @@ final class Directory extends Block {
    */
   private final int[] used = new int[BLOCKS];
   /** Id numbers of blocks managed by the current directory block. */
-  final long[] blocks = new long[BLOCKS];
+  private final long[] blocks = new long[BLOCKS];
 
   /**
    * Constructor.
@@ -391,27 +390,20 @@ final class Directory extends Block {
   }
 
   /**
-   * Get the logical block number of the data block with the given index.
-   * @param blockIndex data block index
-   * @return logical block number
-   */
-  int getDataBlockNumber(final int blockIndex) {
-    return blockIndex + num * Directory.BLOCKS;
-  }
-
-  /**
    * Mark that the given data block has a chunk. A data block which has a chunk has SIZE
    * = {@link DataBlock#EMPTYSLOT}.
-   * @param blockIndex data block index
+   * @param blockNumber logical data block number
    */
-  void setDataBlockChunk(final int blockIndex) {
+  void setChunkDataBlock(final int blockNumber) {
+    gotoDirectoryBlock(blockNumber / BLOCKS);
+    final int blockIndex = blockNumber % BLOCKS;
     used[blockIndex] = DataBlock.EMPTYSLOT;
     last = blockIndex;
     dirty = true;
   }
 
   /**
-   * Get the address of a data block with a given index.
+   * Get the address of a data block with a given logical number.
    * @param blockNumber logical data block number
    * @return data block address
    */
@@ -421,10 +413,25 @@ final class Directory extends Block {
   }
 
   /**
-   * Remove the data block with the given index from the directory block.
-   * @param blockIndex data block index in the directory block
+   * Add the data block with the given address and logical number.
+   * @param blockNumber logical data block number
+   * @param blockAddress physical data block address
    */
-  void deleteDataBlock(final int blockIndex) {
+  void insertDataBlock(final int blockNumber, final long blockAddress) {
+    gotoDirectoryBlock(blockNumber / BLOCKS);
+    final int blockIndex = blockNumber % BLOCKS;
+    blocks[blockIndex] = blockAddress;
+    used[blockIndex] = 0;
+    dirty = true;
+  }
+
+  /**
+   * Remove the data block with the given logical number.
+   * @param blockNumber logical data block number
+   */
+  void deleteDataBlock(final int blockNumber) {
+    gotoDirectoryBlock(blockNumber / BLOCKS);
+    final int blockIndex = blockNumber % BLOCKS;
     blocks[blockIndex] = Directory.NIL;
     used[blockIndex] = 0;
     dirty = true;
@@ -432,10 +439,12 @@ final class Directory extends Block {
 
   /**
    * Update the number of used bytes for a data block.
-   * @param blockIndex data block index
+   * @param blockNumber logical data block number
    * @param increment number of used bytes to add (can be negative)
    */
-  void updateDataBlockUsed(final int blockIndex, final int increment) {
+  void updateDataBlockUsed(final int blockNumber, final int increment) {
+    gotoDirectoryBlock(blockNumber / BLOCKS);
+    final int blockIndex = blockNumber % BLOCKS;
     used[blockIndex] += increment;
     dirty = true;
   }
@@ -445,7 +454,7 @@ final class Directory extends Block {
    * then a new data block is allocated; if a data block cannot be allocated in one of the
    * existing directory blocks, a new directory block will be allocated.
    * @param size free space needed
-   * @return data block index which has enough space
+   * @return logical data block number which has enough space
    */
   int findDataBlock(final int size) {
     // max used space in a block in order to be able to store the record
@@ -459,7 +468,7 @@ final class Directory extends Block {
       for(int i = last; i < used.length; ++i) {
         if(used[i] <= max) {
           last = i;
-          return last;
+          return last + num * BLOCKS;
         }
       }
       ++num;
@@ -473,8 +482,7 @@ final class Directory extends Block {
     gotoBlock(next);
     init();
 
-    last = 0;
-    return last;
+    return num * BLOCKS;
   }
 
   /**
