@@ -395,8 +395,7 @@ final class Directory extends Block {
    * @param blockNumber logical data block number
    */
   void setChunkDataBlock(final int blockNumber) {
-    gotoDirectoryBlock(blockNumber / BLOCKS);
-    final int blockIndex = blockNumber % BLOCKS;
+    final int blockIndex = gotoDataBlock(blockNumber);
     used[blockIndex] = DataBlock.EMPTYSLOT;
     last = blockIndex;
     dirty = true;
@@ -408,8 +407,8 @@ final class Directory extends Block {
    * @return data block address
    */
   long lookupDataBlock(final int blockNumber) {
-    gotoDirectoryBlock(blockNumber / BLOCKS);
-    return blocks[blockNumber % BLOCKS];
+    final int blockIndex = gotoDataBlock(blockNumber);
+    return blocks[blockIndex];
   }
 
   /**
@@ -418,8 +417,7 @@ final class Directory extends Block {
    * @param blockAddress physical data block address
    */
   void insertDataBlock(final int blockNumber, final long blockAddress) {
-    gotoDirectoryBlock(blockNumber / BLOCKS);
-    final int blockIndex = blockNumber % BLOCKS;
+    final int blockIndex = gotoDataBlock(blockNumber);
     blocks[blockIndex] = blockAddress;
     used[blockIndex] = 0;
     dirty = true;
@@ -430,11 +428,7 @@ final class Directory extends Block {
    * @param blockNumber logical data block number
    */
   void deleteDataBlock(final int blockNumber) {
-    gotoDirectoryBlock(blockNumber / BLOCKS);
-    final int blockIndex = blockNumber % BLOCKS;
-    blocks[blockIndex] = Directory.NIL;
-    used[blockIndex] = 0;
-    dirty = true;
+    insertDataBlock(blockNumber, Directory.NIL);
   }
 
   /**
@@ -443,8 +437,7 @@ final class Directory extends Block {
    * @param increment number of used bytes to add (can be negative)
    */
   void updateDataBlockUsed(final int blockNumber, final int increment) {
-    gotoDirectoryBlock(blockNumber / BLOCKS);
-    final int blockIndex = blockNumber % BLOCKS;
+    final int blockIndex = gotoDataBlock(blockNumber);
     used[blockIndex] += increment;
     dirty = true;
   }
@@ -500,6 +493,17 @@ final class Directory extends Block {
     next = NIL;
     Arrays.fill(blocks, NIL);
     Arrays.fill(used, 0);
+  }
+
+  /**
+   * Go to the directory block containing the reference to the data block with the given
+   * logical block number and return the data block index.
+   * @param blockNumber logical data block number
+   * @return data block index in the directory block
+   */
+  private int gotoDataBlock(final int blockNumber) {
+    gotoDirectoryBlock(blockNumber / BLOCKS);
+    return blockNumber % BLOCKS;
   }
 
   /**
