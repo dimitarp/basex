@@ -3,7 +3,10 @@ package org.basex.io.random;
 import static java.lang.Integer.*;
 import static org.basex.util.BlockAccessUtil.*;
 import java.io.IOException;
+import java.util.*;
+
 import org.basex.io.*;
+import org.basex.util.*;
 
 /**
  * Access files block-wise.
@@ -13,6 +16,7 @@ import org.basex.io.*;
 public class BlockDataAccess extends DataAccess {
   /** Number of blocks (both header and data) allocated in the file. */
   private long blocks;
+  private final BitSet fullSegments;
 
   /**
    * Constructor, initializing the file reader.
@@ -22,6 +26,16 @@ public class BlockDataAccess extends DataAccess {
   public BlockDataAccess(final IOFile f) throws IOException {
     super(f);
     blocks = blocks(super.length());
+    fullSegments = new BitSet();
+    findFullSegments();
+  }
+
+  private void findFullSegments() {
+    final int headers = (int) segments(blocks);
+    for(int h = 0; h < headers; ++h) {
+      if(findFree(position(headerBlock(h))) < 0) fullSegments.set(h);
+    }
+    cursor(0L);
   }
 
   @Override
@@ -63,6 +77,7 @@ public class BlockDataAccess extends DataAccess {
    * @param n logical block number
    */
   public void deleteBlock(final long n) {
+    fullSegments.clear((int) segments(n));
     setFree(position(headerBlockFor(n)), dataBlockOffset(n));
   }
 
@@ -74,18 +89,24 @@ public class BlockDataAccess extends DataAccess {
     final long headers = segments(blocks);
 
     // check headers for a free data block
-    for(long h = 0L; h < headers; ++h) {
+    final long h = fullSegments.nextClearBit(0);
+    if(h < headers) {
       final long header = headerBlock(h);
-      final int b = getFree(position(header));
+      final long headerAddr = position(header);
+      final int b = getFree(headerAddr);
       if(b >= 0) {
         final long block = b + (h << SEGMENTBLOCKPOWER);
         if(block + headers >= blocks) ++blocks;
+        if(b == IO.BLOCKSIZE - 1 || findFree(headerAddr) < 0) fullSegments.set((int) h);
         return block;
       }
+      Util.err("Not expected: header was not marked as full, but is!");
+      fullSegments.set((int) h);
     }
 
     // no free blocks: create new header block + new data block
     initHeader(position(blocks));
+    fullSegments.clear((int) blocks);
 
     // logical number of the new block will be:
     // block = (blocks + 2) - (headers + 1) - 1 = blocks - headers
@@ -120,6 +141,18 @@ public class BlockDataAccess extends DataAccess {
 
     super.cursor(wordPos);
     super.write(clear(word, n));
+  }
+
+  private int findFree(final long pos) {
+    super.cursor(pos);
+    for(int p = 0; p < IO.BLOCKSIZE; ++p) {
+      final int word = super.read();
+      if(word != BITMASK) {
+        return numberOfTrailingZeros(~word) + (p << 3);
+      }
+    }
+    // no free blocks
+    return -1;
   }
 
   /**
