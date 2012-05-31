@@ -8,6 +8,7 @@ import java.util.*;
 
 import org.basex.io.*;
 import org.basex.util.*;
+import org.basex.util.list.*;
 
 /**
  * Storage of variable-length records.
@@ -365,6 +366,8 @@ final class Directory extends Block {
   private int num = -1;
   /** Data block last used for insertion. */
   private int last;
+  /** Cache  the addresses of all directory block, to avoid linear scans. */
+  private final LongList addressCache = new LongList();
 
   // data stored on disk
   /** Next directory block; {@link #NIL} if the last one. */
@@ -387,6 +390,17 @@ final class Directory extends Block {
       addr = da.createBlock();
       num = 0;
     }
+    initAddressCache();
+  }
+
+  /** Scan all directory blocks and put their addresses in cache. */
+  private void initAddressCache() {
+    long a = 0L;
+    do {
+      addressCache.add(a);
+      gotoBlock(a);
+      a = next;
+    } while(a != NIL);
   }
 
   /**
@@ -470,6 +484,7 @@ final class Directory extends Block {
 
     // no directory block has empty data blocks: allocate a new directory block
     next = da.createBlock();
+    addressCache.add(next);
     dirty = true;
 
     gotoBlock(next);
@@ -512,15 +527,8 @@ final class Directory extends Block {
    */
   private void gotoDirectoryBlock(final int n) {
     if(num == n) return;
-    // start from the beginning, if n is smaller than the current directory block index
-    if(num > n) {
-      gotoBlock(0L);
-      num = 0;
-    }
-    // scan directory, until the required index is reached
-    // TODO
-    //for(; num < n && next != Directory.NIL; ++num) gotoBlock(next);
-    for(; num < n; ++num) gotoBlock(next);
+    gotoBlock(addressCache.get(n));
+    num = n;
   }
 
   /**
