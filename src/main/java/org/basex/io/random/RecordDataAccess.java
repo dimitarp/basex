@@ -409,7 +409,7 @@ final class Directory extends Block {
    * @param blockNumber logical data block number
    */
   void setChunkDataBlock(final int blockNumber) {
-    final int blockIndex = gotoDataBlock(blockNumber);
+    final int blockIndex = gotoDirectoryBlockFor(blockNumber);
     used[blockIndex] = DataBlock.EMPTYSLOT;
     last = blockIndex;
     dirty = true;
@@ -421,8 +421,20 @@ final class Directory extends Block {
    * @return data block address
    */
   long lookupDataBlock(final int blockNumber) {
-    final int blockIndex = gotoDataBlock(blockNumber);
-    return blocks[blockIndex];
+    final int directoryBlockNum = blockNumber / BLOCKS;
+    final int blockIndex = blockNumber % BLOCKS;
+
+    if(directoryBlockNum == num) return blocks[blockIndex];
+
+    final long directoryBlockAddr = addressCache.get(directoryBlockNum);
+    final long oldPos = da.blockPos();
+
+    da.gotoBlock(directoryBlockAddr);
+    da.off = (blockIndex + 1) * REFSIZE;
+    final long blockAddr = da.read5();
+    da.cursor(oldPos);
+
+    return blockAddr;
   }
 
   /**
@@ -431,7 +443,7 @@ final class Directory extends Block {
    * @param blockAddress physical data block address
    */
   void insertDataBlock(final int blockNumber, final long blockAddress) {
-    final int blockIndex = gotoDataBlock(blockNumber);
+    final int blockIndex = gotoDirectoryBlockFor(blockNumber);
     blocks[blockIndex] = blockAddress;
     used[blockIndex] = 0;
     dirty = true;
@@ -451,7 +463,7 @@ final class Directory extends Block {
    * @param increment number of used bytes to add (can be negative)
    */
   void updateDataBlockUsed(final int blockNumber, final int increment) {
-    final int blockIndex = gotoDataBlock(blockNumber);
+    final int blockIndex = gotoDirectoryBlockFor(blockNumber);
     used[blockIndex] += increment;
     dirty = true;
   }
@@ -516,7 +528,7 @@ final class Directory extends Block {
    * @param blockNumber logical data block number
    * @return data block index in the directory block
    */
-  private int gotoDataBlock(final int blockNumber) {
+  private int gotoDirectoryBlockFor(final int blockNumber) {
     gotoDirectoryBlock(blockNumber / BLOCKS);
     return blockNumber % BLOCKS;
   }
