@@ -37,9 +37,12 @@ abstract class Buffer {
     return null;
   }
 
+  public void setByteBuffer(final ByteBuffer b) {
+  }
+
   /**
    * Set the byte value at the given position in the buffer.
-   * @param index buffer posisiton
+   * @param index buffer position
    * @param b byte value to set
    */
   public final void set(int index, byte b) {
