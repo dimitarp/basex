@@ -10,7 +10,7 @@ import java.nio.ByteBuffer;
  */
 final class BlockBuffer extends Buffer {
   /** Buffer data. */
-  private final ByteBuffer buffer;
+  private ByteBuffer buffer;
 
   /**
    * Constructor.
@@ -23,6 +23,11 @@ final class BlockBuffer extends Buffer {
   @Override
   public ByteBuffer getByteBuffer() {
     return buffer;
+  }
+
+  @Override
+  public void setByteBuffer(final ByteBuffer buffer) {
+    this.buffer = buffer;
   }
 
   @Override
