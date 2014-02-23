@@ -16,7 +16,7 @@ import org.basex.util.list.*;
 /**
  * This class serializes data as CSV.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class CsvDirectSerializer extends CsvSerializer {
@@ -46,8 +46,8 @@ public final class CsvDirectSerializer extends CsvSerializer {
     super(os, opts);
     header = copts.get(CsvOptions.HEADER);
     headers = header ? new TokenList() : null;
-    lax = copts.get(CsvOptions.LAX);
     atts = copts.get(CsvOptions.FORMAT) == CsvFormat.ATTRIBUTES;
+    lax = copts.get(CsvOptions.LAX) || atts;
   }
 
   @Override

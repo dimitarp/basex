@@ -15,7 +15,7 @@ import org.basex.util.hash.*;
 /**
  * Or expression.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class Or extends Logical {
@@ -93,7 +93,7 @@ public final class Or extends Logical {
       if(it.bool(info)) {
         final double s = it.score();
         if(s == 0) return Bln.TRUE;
-        d = Scoring.or(d, s);
+        d = Scoring.merge(d, s);
         f = true;
       }
     }

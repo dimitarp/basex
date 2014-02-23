@@ -5,7 +5,7 @@ import static org.basex.util.Token.*;
 /**
  * XQuery Unit tests.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public interface Constants {
@@ -34,8 +34,6 @@ public interface Constants {
   byte[] TESTCASE = token("testcase");
   /** Name: failure. */
   byte[] FAILURE = token("failure");
-  /** Name: URI. */
-  byte[] URI = token("uri");
   /** Name: line. */
   byte[] LINE = token("line");
   /** Name: column. */

@@ -44,7 +44,7 @@ import org.basex.util.*;
  *   {@link #MENUITEMS} menu structure</li>
  * </ul>
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class GUIConstants {
@@ -192,11 +192,7 @@ public final class GUIConstants {
   public static final Color GRAY = new Color(160, 160, 160);
   /** Background color. */
   public static final Color DGRAY = new Color(64, 64, 64);
-  /** Background color. */
-  public static final Color DGRAYA = new Color(0, 0, 0, 32);
 
-  /** Bright GUI color. */
-  public static final Color WHITE = Color.white;
   /** Color for control characters. */
   public static final Color RED = new Color(208, 0, 0);
   /** Color for highlighting errors. */

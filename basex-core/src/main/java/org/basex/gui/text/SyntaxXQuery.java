@@ -16,7 +16,7 @@ import org.basex.util.options.*;
 /**
  * This class defines syntax highlighting for XQuery files.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class SyntaxXQuery extends Syntax {
@@ -75,7 +75,8 @@ public final class SyntaxXQuery extends Syntax {
   }
 
   @Override
-  public void init() {
+  public void init(final Color color) {
+    super.init(color);
     quote = 0;
     var = false;
     comment = 0;
@@ -137,7 +138,7 @@ public final class SyntaxXQuery extends Syntax {
     }
 
     // letters and numbers
-    return TEXT;
+    return plain;
   }
 
   @Override

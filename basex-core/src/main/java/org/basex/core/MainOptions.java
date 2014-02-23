@@ -9,7 +9,7 @@ import org.basex.util.options.*;
 /**
  * This class contains database options which are used all around the project.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class MainOptions extends Options {
@@ -129,7 +129,7 @@ public final class MainOptions extends Options {
 
   /** Flag for serializing query results. */
   public static final BooleanOption SERIALIZE = new BooleanOption("SERIALIZE", true);
-  /** Exporter serialization parameters. */
+  /** Serialization parameters. */
   public static final OptionsOption<SerializerOptions> SERIALIZER =
       new OptionsOption<SerializerOptions>("SERIALIZER", new SerializerOptions());
   /** Exporter serialization parameters. */

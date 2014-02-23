@@ -11,7 +11,7 @@ import org.basex.util.hash.*;
 /**
  * Filter expression.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 final class CachedFilter extends Filter {
@@ -42,7 +42,11 @@ final class CachedFilter extends Filter {
       for(int s = 0; s < is; ++s) {
         final Item it = val.itemAt(s);
         ctx.value = it;
-        if(p.test(ctx, info) != null) vb.add(it);
+        final Item i = p.test(ctx, info);
+        if(i != null) {
+          it.score(i.score());
+          vb.add(it);
+        }
         ctx.pos++;
       }
       // save memory
@@ -81,8 +85,7 @@ final class CachedFilter extends Filter {
   }
 
   @Override
-  public Filter copy(final QueryContext ctx, final VarScope scp,
-      final IntObjMap<Var> vs) {
+  public Filter copy(final QueryContext ctx, final VarScope scp, final IntObjMap<Var> vs) {
     final Filter f = new CachedFilter(info, root == null ? null : root.copy(ctx, scp, vs),
         Arr.copyAll(ctx, scp, vs, preds));
     f.pos = pos;

@@ -16,13 +16,12 @@ import org.basex.query.value.node.*;
 import org.basex.query.value.type.*;
 import org.basex.query.var.*;
 import org.basex.util.*;
-import org.basex.util.ft.*;
 import org.basex.util.hash.*;
 
 /**
  * FLWOR {@code let} clause, binding an expression to a variable.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Leo Woerteler
  */
 public final class Let extends GFLWOR.Clause {
@@ -86,7 +85,7 @@ public final class Let extends GFLWOR.Clause {
     double sum = 0;
     int sz = 0;
     for(Item it; (it = iter.next()) != null; sum += it.score(), sz++);
-    return Dbl.get(Scoring.let(sum, sz));
+    return Dbl.get(sum / sz);
   }
 
   @Override

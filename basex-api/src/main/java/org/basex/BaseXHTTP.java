@@ -23,7 +23,7 @@ import org.eclipse.jetty.xml.*;
 /**
  * This is the main class for the starting the database HTTP services.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  * @author Dirk Kirsten
  */
@@ -368,8 +368,7 @@ public final class BaseXHTTP {
   private static boolean ping(final String host, final int port, final boolean ssl) {
     try {
       // create connection
-      final URL url = new URL((ssl ? "https://" : "http://") + host + ':' + port);
-      url.openConnection().getInputStream();
+      new URL((ssl ? "https://" : "http://") + host + ':' + port).openConnection().getInputStream();
       return true;
     } catch(final IOException ex) {
       // if page is not found, server is running

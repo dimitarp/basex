@@ -23,7 +23,7 @@ import org.basex.util.hash.*;
 /**
  * A static user-defined function.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Leo Woerteler
  */
 public final class StaticFunc extends StaticDecl implements XQFunction {
@@ -241,13 +241,14 @@ public final class StaticFunc extends StaticDecl implements XQFunction {
   public void checkUp() throws QueryException {
     final boolean u = expr.has(Flag.UPD);
     if(u) expr.checkUp();
+    final InputInfo ii = expr instanceof ParseExpr ? ((ParseExpr) expr).info : info;
     if(updating) {
       // updating function
       if(declType != null) throw UPFUNCTYPE.get(info);
-      if(!u && !expr.isVacuous()) throw UPEXPECTF.get(info);
+      if(!u && !expr.isVacuous()) throw UPEXPECTF.get(ii);
     } else if(u) {
       // uses updates, but is not declared as such
-      throw UPNOT.get(info, description());
+      throw UPNOT.get(ii, description());
     }
   }
 

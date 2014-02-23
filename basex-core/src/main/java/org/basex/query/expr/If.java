@@ -17,7 +17,7 @@ import org.basex.util.hash.*;
 /**
  * If expression.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class If extends Arr {
@@ -164,8 +164,9 @@ public final class If extends Arr {
   }
 
   @Override
-  public Expr inline(final QueryContext ctx, final VarScope scp,
-      final Var v, final Expr e) throws QueryException {
+  public Expr inline(final QueryContext ctx, final VarScope scp, final Var v, final Expr e)
+      throws QueryException {
+
     final Expr sub = cond.inline(ctx, scp, v, e);
     if(sub != null) cond = sub;
     boolean te = false;

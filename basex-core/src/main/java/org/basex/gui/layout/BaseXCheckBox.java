@@ -10,12 +10,10 @@ import org.basex.util.options.*;
 /**
  * Project specific CheckBox implementation.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class BaseXCheckBox extends JCheckBox {
-  /** Initial value. */
-  private final boolean initial;
   /** Options. */
   private Options options;
   /** Boolean option. */
@@ -45,7 +43,6 @@ public final class BaseXCheckBox extends JCheckBox {
     super(label, sel);
     setOpaque(false);
     setMargin(new Insets(0, 0, 0, 0));
-    initial = sel;
 
     BaseXLayout.addInteraction(this, win);
     if(!(win instanceof BaseXDialog)) return;
@@ -84,12 +81,5 @@ public final class BaseXCheckBox extends JCheckBox {
    */
   public void assign() {
     options.set(option, isSelected());
-  }
-
-  /**
-   * Assigns the original value to the option specified in the constructor.
-   */
-  public void reset() {
-    options.set(option, initial);
   }
 }

@@ -10,12 +10,10 @@ import org.basex.util.options.*;
 /**
  * Project specific ComboBox implementation.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class BaseXCombo extends JComboBox {
-  /** Initial value. */
-  private Object initial;
   /** Options. */
   private Options options;
   /** Option. */
@@ -28,23 +26,10 @@ public final class BaseXCombo extends JComboBox {
    * @param opts options
    * @param win parent window
    */
-  public BaseXCombo(final Window win, final StringOption opt, final Options opts,
-      final String... ch) {
-    this(win, (Option<?>) opt, opts, ch);
-    setSelectedItem(initial);
-  }
-
-  /**
-   * Constructor.
-   * @param ch combobox choices
-   * @param opt option
-   * @param opts options
-   * @param win parent window
-   */
   public BaseXCombo(final Window win, final NumberOption opt, final Options opts,
       final String... ch) {
     this(win, (Option<?>) opt, opts, ch);
-    setSelectedIndex((Integer) initial);
+    setSelectedIndex(opts.get(opt));
   }
 
   /**
@@ -59,7 +44,6 @@ public final class BaseXCombo extends JComboBox {
     this(win, ch);
     options = opts;
     option = opt;
-    initial = opts.get(opt);
   }
 
   /**
@@ -109,17 +93,6 @@ public final class BaseXCombo extends JComboBox {
       options.set((NumberOption) option, getSelectedIndex());
     } else {
       options.set((StringOption) option, getSelectedItem());
-    }
-  }
-
-  /**
-   * Assigns the original value to the option specified in the constructor.
-   */
-  public void reset() {
-    if(option instanceof NumberOption) {
-      options.set((NumberOption) option, (Integer) initial);
-    } else {
-      options.set((StringOption) option, (String) initial);
     }
   }
 }

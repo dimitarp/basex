@@ -5,7 +5,7 @@ import static javax.servlet.http.HttpServletResponse.*;
 /**
  * Enumeration with HTTP codes and error messages.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public enum HTTPCode {
@@ -18,8 +18,6 @@ public enum HTTPCode {
   ONEOP(SC_BAD_REQUEST, "Only one operation can be specified."),
   /** Error 400, "Unknown parameter: '%'". */
   UNKNOWN_PARAM_X(SC_BAD_REQUEST, "Unknown parameter: '%'."),
-  /** Error 400, "Invalid parameters: '%'". */
-  INVALID_PARAM_X(SC_BAD_REQUEST, "Parameters cannot be decoded: %."),
   /** Error 400, "Multiple context items specified.". */
   MULTIPLE_CONTEXT_X(SC_BAD_REQUEST, "Multiple context items specified."),
 
