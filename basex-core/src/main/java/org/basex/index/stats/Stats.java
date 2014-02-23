@@ -26,8 +26,7 @@ public final class Stats {
   public double max;
   /** Number of occurrences. */
   public int count;
-  /** Leaf node flag. This flag indicates if a node has children other than
-   * texts and attributes. */
+  /** Leaf node flag. This flag indicates if a node has children other than texts and attributes. */
   private boolean leaf;
 
   /**
