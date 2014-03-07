@@ -1,7 +1,6 @@
 package org.basex.io.in;
 
 import java.io.*;
-import java.util.zip.*;
 
 import org.basex.io.*;
 import org.basex.util.list.*;
@@ -9,7 +8,7 @@ import org.basex.util.list.*;
 /**
  * This class uses an internal buffer to speed up input stream processing.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public class BufferInput extends InputStream {
@@ -141,7 +140,7 @@ public class BufferInput extends InputStream {
 
   @Override
   public final void close() throws IOException {
-    if(in != null && !(in instanceof ZipInputStream)) in.close();
+    if(in != null && !(in instanceof FilterInputStream)) in.close();
   }
 
   /**

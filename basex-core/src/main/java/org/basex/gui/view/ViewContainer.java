@@ -15,7 +15,7 @@ import org.basex.util.*;
  * This class manages all visible and invisible views and allows drag and
  * drop operations inside the panel.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class ViewContainer extends BaseXBack {
@@ -101,7 +101,7 @@ public final class ViewContainer extends BaseXBack {
     final Insets i = getInsets();
 
     if(gui.gopts.get(GUIOptions.GRADIENT)) {
-      BaseXLayout.fill(g, WHITE, color1, i.left, i.top, w - i.right, h - i.bottom);
+      BaseXLayout.fill(g, Color.white, color1, i.left, i.top, w - i.right, h - i.bottom);
     }
     if(w < 150 || h < 160) return;
 

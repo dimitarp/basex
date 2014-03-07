@@ -23,7 +23,6 @@ import org.basex.util.hash.*;
  *        the descendants of a deleted node).</li>
  *   <li> Resolution of text node adjacency.</li>
  *   <li> Merging of atomic updates to reduce number of I/Os. </li>
- *   // [LK] Lazy Replace..
  * </ol>
  *
  * <p>To avoid ambiguity it is not allowed to add:</p>
@@ -43,7 +42,7 @@ import org.basex.util.hash.*;
  * remembered. This avoids additional traversals of the AUC during consistency checks and
  * further optimizations.</p>
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Lukas Kircher
  */
 public final class AtomicUpdateCache {

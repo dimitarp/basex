@@ -18,7 +18,7 @@ import org.basex.util.options.*;
 /**
  * This panel provides search and replace facilities.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class SearchBar extends BaseXBack {
@@ -279,7 +279,7 @@ public final class SearchBar extends BaseXBack {
     final boolean nohits = sc.nr == 0;
     final boolean empty = sc.search.isEmpty();
     rplc.setEnabled(!nohits && !empty);
-    search.setBackground(nohits && !empty ? GUIConstants.LRED : GUIConstants.WHITE);
+    search.setBackground(nohits && !empty ? GUIConstants.LRED : Color.white);
   }
 
   // PRIVATE METHODS ====================================================================

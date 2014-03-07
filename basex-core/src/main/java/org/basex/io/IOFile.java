@@ -16,7 +16,7 @@ import org.xml.sax.*;
 /**
  * {@link IO} reference, representing a local file or directory path.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class IOFile extends IO {
@@ -131,14 +131,6 @@ public final class IOFile extends IO {
     final IO io = IO.get(f);
     if(!(io instanceof IOFile) || f.contains(":") || f.startsWith("/")) return io;
     return new IOFile(dir(), f);
-  }
-
-  /**
-   * Checks if the file is hidden.
-   * @return result of check
-   */
-  public boolean hidden() {
-    return file.isHidden();
   }
 
   /**

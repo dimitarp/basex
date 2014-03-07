@@ -8,7 +8,7 @@ import org.basex.core.*;
  * This class assembles text string and tokens required by the XQuery processor
  * implementation.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public interface QueryText {
@@ -24,8 +24,6 @@ public interface QueryText {
   String AND = "and";
   /** Parser token. */
   String ANY = "any";
-  /** Parser token. */
-  String ARRAY = "array";
   /** Parser token. */
   String AS = "as";
   /** Parser token. */

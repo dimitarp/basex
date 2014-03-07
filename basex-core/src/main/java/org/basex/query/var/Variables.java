@@ -17,7 +17,7 @@ import org.basex.util.*;
 /**
  * Container of global variables of a module.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Leo Woerteler
  */
 public final class Variables extends ExprInfo implements Iterable<StaticVar> {
@@ -81,15 +81,6 @@ public final class Variables extends ExprInfo implements Iterable<StaticVar> {
     final StringBuilder sb = new StringBuilder();
     for(final VarEntry v : vars.values()) sb.append(v.var);
     return sb.toString();
-  }
-
-  /**
-   * Checks if a variable with the given name exists.
-   * @param nm variable name
-   * @return result of check
-   */
-  public boolean exists(final QNm nm) {
-    return vars.get(nm) != null;
   }
 
   /**

@@ -5,7 +5,7 @@ import static org.basex.util.Token.*;
 /**
  * This class assembles texts which are used in the data classes.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public interface DataText {
@@ -162,9 +162,9 @@ public interface DataText {
   /** Comment output. */
   byte[] COMM_C = token("-->");
   /** XQuery comment. */
-  byte[] XQCOMM_O = token("(:");
+  byte[] XQCOMM_O = token("(: ");
   /** XQuery comment. */
-  byte[] XQCOMM_C = token(":)");
+  byte[] XQCOMM_C = token(" :)");
 
   /** PI output. */
   byte[] PI_O = token("<?");

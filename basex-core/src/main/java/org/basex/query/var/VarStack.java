@@ -1,7 +1,5 @@
 package org.basex.query.var;
 
-import java.util.*;
-
 import org.basex.query.value.item.*;
 import org.basex.util.*;
 import org.basex.util.list.*;
@@ -9,7 +7,7 @@ import org.basex.util.list.*;
 /**
  * Variable stack.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  * @author Leo Woerteler
  */
@@ -50,11 +48,5 @@ public final class VarStack extends ElementList {
   public Var get(final QNm name) {
     for(int i = size; i-- > 0;) if(name.eq(vars[i].name)) return vars[i];
     return null;
-  }
-
-  /** Empties this stack. */
-  public void clear() {
-    Arrays.fill(vars, null);
-    size = 0;
   }
 }

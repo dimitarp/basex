@@ -22,7 +22,7 @@ import org.basex.util.list.*;
  * operations that are initiated within a snapshot. Regarding the XQUF specification it
  * fulfills the purpose of a 'pending update list'.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Lukas Kircher
  */
 final class DatabaseUpdates {
@@ -193,7 +193,7 @@ final class DatabaseUpdates {
     if(data.inMemory() && !data.meta.original.isEmpty() &&
         data.meta.options.get(MainOptions.WRITEBACK)) {
       try {
-        Export.export(data, data.meta.original, data.meta.options.get(MainOptions.EXPORTER), null);
+        Export.export(data, data.meta.original, null);
       } catch(final IOException ex) {
         throw UPPUTERR.get(null, data.meta.original);
       }

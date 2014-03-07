@@ -16,7 +16,7 @@ import org.basex.gui.layout.*;
 /**
  * Dialog window for displaying information about the project.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public final class DialogAbout extends BaseXDialog {
@@ -28,7 +28,6 @@ public final class DialogAbout extends BaseXDialog {
     super(main, ABOUT);
 
     BaseXBack p = new BaseXBack(new BorderLayout(12, 0));
-    p.setBackground(Color.white);
     p.setBorder(new CompoundBorder(new EtchedBorder(), new EmptyBorder(10, 10, 15, 22)));
 
     final BaseXLabel label = new BaseXLabel();

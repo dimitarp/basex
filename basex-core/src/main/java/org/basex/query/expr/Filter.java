@@ -14,7 +14,7 @@ import org.basex.util.*;
 /**
  * Abstract filter expression.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public abstract class Filter extends Preds {
@@ -172,8 +172,9 @@ public abstract class Filter extends Preds {
   }
 
   @Override
-  public Expr inline(final QueryContext ctx, final VarScope scp,
-      final Var v, final Expr e) throws QueryException {
+  public Expr inline(final QueryContext ctx, final VarScope scp, final Var v, final Expr e)
+      throws QueryException {
+
     final boolean pr = super.inline(ctx, scp, v, e) != null;
     final Expr rt = root == null ? null : root.inline(ctx, scp, v, e);
     if(rt != null) root = rt;

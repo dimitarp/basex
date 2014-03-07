@@ -11,7 +11,7 @@ import org.basex.gui.GUIConstants.Fill;
 /**
  * Panel background, extending the {@link JPanel}.
  *
- * @author BaseX Team 2005-13, BSD License
+ * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
 public class BaseXBack extends JPanel {
@@ -57,7 +57,7 @@ public class BaseXBack extends JPanel {
   @Override
   public void paintComponent(final Graphics g) {
     if(mode == Fill.GRADIENT) {
-      final Color c1 = GUIConstants.WHITE;
+      final Color c1 = Color.white;
       final Color c2 = GUIConstants.color1;
       BaseXLayout.fill(g, c1, c2, 0, 0, getWidth(), getHeight());
     } else {
