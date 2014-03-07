@@ -12,8 +12,6 @@ import org.basex.util.*;
  * @author Christian Gruen
  */
 public final class DataAccess {
-  /** Buffer manager. */
-  private final Buffers bm = new Buffers();
   /** Reference to the data input stream. */
   private final BlockFileAccess file;
   /** File length. */
@@ -46,7 +44,7 @@ public final class DataAccess {
    */
   public synchronized void flush() {
     try {
-      for(final Buffer b : bm.all()) if(b.isDirty()) writeBlock(b);
+      file.flush();
       if(changed) {
         file.setLength(len);
         changed = false;
@@ -234,17 +232,7 @@ public final class DataAccess {
    */
   public void cursor(final long p) {
     off = (int) (p & IO.BLOCKSIZE - 1);
-    final long b = p - off;
-    if(!bm.cursor(b)) return;
-
-    final Buffer bf = bm.current();
-    try {
-      if(bf.isDirty()) writeBlock(bf);
-      bf.setPos(b);
-      file.read(bf, (int) Math.min(len - b, IO.BLOCKSIZE));
-    } catch(final IOException ex) {
-      Util.stack(ex);
-    }
+    file.readBlock(p - off);
   }
 
   /**
@@ -373,7 +361,7 @@ public final class DataAccess {
     }
 
     // adjust file size if needed
-    final long nl = bm.current().getPos() + off;
+    final long nl = file.currentBuffer().getPos() + off;
     if(nl > len) length(nl);
   }
 
@@ -436,21 +424,12 @@ public final class DataAccess {
   // PRIVATE METHODS ==========================================================
 
   /**
-   * Writes the specified block to disk.
-   * @param bf buffer to write
-   * @throws IOException I/O exception
-   */
-  private void writeBlock(final Buffer bf) throws IOException {
-    file.write(bf);
-  }
-
-  /**
    * Returns the current or next buffer.
    * @param next next block
    * @return buffer
    */
   private Buffer buffer(final boolean next) {
-    if(next) cursor(bm.current().getPos() + IO.BLOCKSIZE);
-    return bm.current();
+    if(next) cursor(file.currentBuffer().getPos() + IO.BLOCKSIZE);
+    return file.currentBuffer();
   }
 }

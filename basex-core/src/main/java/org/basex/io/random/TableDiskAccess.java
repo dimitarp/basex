@@ -23,8 +23,6 @@ import org.basex.util.*;
  * @author Tim Petrowsky
  */
 public final class TableDiskAccess extends TableAccess {
-  /** Buffer manager. */
-  private final Buffers bm = new Buffers();
   /** File storing all blocks. */
   private final BlockFileAccess file;
   /** Bitmap storing free (=0) and used (=1) pages. */
@@ -117,7 +115,7 @@ public final class TableDiskAccess extends TableAccess {
 
   @Override
   public synchronized void flush() throws IOException {
-    for(final Buffer b : bm.all()) if(b.isDirty()) writeBlock(b);
+    file.flush();
     if(!dirty) return;
 
     final DataOutput out = new DataOutput(meta.dbfile(DATATBL + 'i'));
@@ -192,56 +190,56 @@ public final class TableDiskAccess extends TableAccess {
   @Override
   public synchronized int read1(final int pre, final int off) {
     final int o = off + cursor(pre);
-    return bm.current().read1(o);
+    return file.currentBuffer().read1(o);
   }
 
   @Override
   public synchronized int read2(final int pre, final int off) {
     final int o = off + cursor(pre);
-    return bm.current().read2(o);
+    return file.currentBuffer().read2(o);
   }
 
   @Override
   public synchronized int read4(final int pre, final int off) {
     final int o = off + cursor(pre);
-    return bm.current().read4(o);
+    return file.currentBuffer().read4(o);
   }
 
   @Override
   public synchronized long read5(final int pre, final int off) {
     final int o = off + cursor(pre);
-    return bm.current().read5(o);
+    return file.currentBuffer().read5(o);
   }
 
   @Override
   public void write1(final int pre, final int off, final int v) {
     final int o = off + cursor(pre);
-    bm.current().write1(o, v);
+    file.currentBuffer().write1(o, v);
   }
 
   @Override
   public void write2(final int pre, final int off, final int v) {
     final int o = off + cursor(pre);
-    bm.current().write2(o, v);
+    file.currentBuffer().write2(o, v);
   }
 
   @Override
   public void write4(final int pre, final int off, final int v) {
     final int o = off + cursor(pre);
-    bm.current().write4(o, v);
+    file.currentBuffer().write4(o, v);
   }
 
   @Override
   public void write5(final int pre, final int off, final long v) {
     final int o = off + cursor(pre);
-    bm.current().write5(o, v);
+    file.currentBuffer().write5(o, v);
   }
 
   @Override
   protected void copy(final byte[] entries, final int pre, final int last) {
     for(int o = 0, i = pre; i < last; ++i, o += IO.NODESIZE) {
       final int off = cursor(i);
-      bm.current().copyFrom(off, entries, o, IO.NODESIZE);
+      file.currentBuffer().copyFrom(off, entries, o, IO.NODESIZE);
     }
   }
 
@@ -294,7 +292,7 @@ public final class TableDiskAccess extends TableAccess {
     // if the last block is empty, clear the corresponding bit
     readBlock(pages[page]);
     if(npre == last) {
-      usedPages.clear((int) (bm.current().getPos() / IO.BLOCKSIZE));
+      usedPages.clear((int) (file.currentBuffer().getPos() / IO.BLOCKSIZE));
       ++unused;
       if(page < used - 1) readPage(page + 1);
       else ++page;
@@ -347,7 +345,7 @@ public final class TableDiskAccess extends TableAccess {
     final int moved = nold - split;
 
     // special case: all entries fit in the current block
-    Buffer bf = bm.current();
+    Buffer bf = file.currentBuffer();
     if(nold + nnew <= IO.BLOCKSIZE) {
       bf.move(split, nnew, moved);
       bf.copyFrom(split, entries, 0, nnew);
@@ -384,7 +382,7 @@ public final class TableDiskAccess extends TableAccess {
         if(remain <= IO.BLOCKSIZE - o) {
           // copy the last records
           readPage(page + 1);
-          bf = bm.current();
+          bf = file.currentBuffer();
           bf.move(0, remain, o);
           bf.copyFrom(0, all, all.length - remain, remain);
           // reduce the pre value, since it will be later incremented with nr
@@ -419,7 +417,7 @@ public final class TableDiskAccess extends TableAccess {
       freeBlock();
       nrem += write(all, nrem);
       fpres[page] = fpres[page - 1] + IO.ENTRIES;
-      pages[page] = (int) (bm.current().getPos() / IO.BLOCKSIZE);
+      pages[page] = (int) (file.currentBuffer().getPos() / IO.BLOCKSIZE);
     }
 
     // increment all fpre values after the last modified block
@@ -525,21 +523,8 @@ public final class TableDiskAccess extends TableAccess {
    * @param b block to fetch
    */
   private void readBlock(final int b) {
-    final long p = b * IO.BLOCKSIZE;
-    if(!bm.cursor(p)) return;
-
-    final Buffer bf = bm.current();
-    try {
-      if(bf.isDirty()) writeBlock(bf);
-      bf.setPos(p);
-      if(b >= blocks) {
-        blocks = b + 1;
-      } else {
-        file.read(bf);
-      }
-    } catch(final IOException ex) {
-      Util.stack(ex);
-    }
+    if(b >= blocks) blocks = b + 1;
+    file.readBlock(b * IO.BLOCKSIZE);
   }
 
   /**
@@ -551,15 +536,6 @@ public final class TableDiskAccess extends TableAccess {
     readBlock(b);
     ++used;
     ++page;
-  }
-
-  /**
-   * Writes the specified block to disk and resets the dirty flag.
-   * @param bf buffer to write
-   * @throws IOException I/O exception
-   */
-  private void writeBlock(final Buffer bf) throws IOException {
-    file.write(bf);
   }
 
   /**
@@ -580,7 +556,7 @@ public final class TableDiskAccess extends TableAccess {
    * @param l source length
    */
   private void copy(final int sp, final int dp, final int l) {
-    bm.current().move(sp << IO.NODEPOWER, (dp - sp) << IO.NODEPOWER, l << IO.NODEPOWER);
+    file.currentBuffer().move(sp << IO.NODEPOWER, (dp - sp) << IO.NODEPOWER, l << IO.NODEPOWER);
   }
 
   /**
@@ -592,7 +568,7 @@ public final class TableDiskAccess extends TableAccess {
    */
   private int write(final byte[] s, final int o) {
     final int len = Math.min(IO.BLOCKSIZE, s.length - o);
-    bm.current().copyFrom(0, s, o, len);
+    file.currentBuffer().copyFrom(0, s, o, len);
     return len;
   }
 

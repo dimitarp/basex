@@ -8,13 +8,13 @@ import org.basex.util.Performance;
 import org.basex.util.Util;
 import org.junit.*;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Random;
 
+@Ignore
 public class BlockFileAccessPerfTest {
   private static final IOFile FILE = IOFile.get("block-file-access");
 

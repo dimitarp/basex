@@ -6,6 +6,7 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 
 import org.basex.io.IOFile;
+import org.basex.util.Util;
 
 /**
  * Block-wise file access.
@@ -14,6 +15,8 @@ import org.basex.io.IOFile;
  * @author Dimitar Popov
  */
 abstract class BlockFileAccess {
+  /** Buffer manager. */
+  private final Buffers bm = new Buffers();
 
   /**
    * Open a file and create a new {@link BlockFileAccess}.
@@ -85,4 +88,40 @@ abstract class BlockFileAccess {
    * @return file channel
    */
   public abstract FileChannel getChannel();
+
+  /**
+   * Flush dirty buffers to the file.
+   * @throws IOException I/O exception
+   */
+  public void flush() throws IOException {
+    for(final Buffer b : bm.all()) if(b.isDirty()) write(b);
+  }
+
+  /**
+   * Read the block at the given position.
+   * @param blockPosition block position
+   * @return buffer with the data from the block
+   */
+  public Buffer readBlock(long blockPosition) {
+    final boolean changed = bm.cursor(blockPosition);
+    final Buffer bf = bm.current();
+    if(changed) {
+      try {
+        if(bf.isDirty()) write(bf);
+        bf.setPos(blockPosition);
+        read(bf);
+      } catch(final IOException ex) {
+        Util.stack(ex);
+      }
+    }
+    return bf;
+  }
+
+  /**
+   * Get the current buffer.
+   * @return current buffer
+   */
+  public Buffer currentBuffer() {
+    return bm.current();
+  }
 }
