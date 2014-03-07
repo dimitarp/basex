@@ -1,9 +1,10 @@
-package org.basex.io.random;
+package org.basex.io.random.file;
 
 import static org.junit.Assert.*;
 
 import org.basex.io.IO;
 import org.basex.io.IOFile;
+import org.basex.io.random.file.*;
 import org.basex.util.Performance;
 import org.basex.util.Util;
 import org.junit.*;

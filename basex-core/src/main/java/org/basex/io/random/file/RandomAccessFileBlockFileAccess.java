@@ -1,12 +1,8 @@
-package org.basex.io.random;
+package org.basex.io.random.file;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
-
-import org.basex.io.IO;
-import org.basex.io.IOFile;
 
 /**
  * Implementation of {@link BlockFileAccess} using {@link RandomAccessFile}.

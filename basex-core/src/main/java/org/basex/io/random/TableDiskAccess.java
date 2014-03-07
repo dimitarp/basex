@@ -11,6 +11,8 @@ import org.basex.data.*;
 import org.basex.io.*;
 import org.basex.io.in.DataInput;
 import org.basex.io.out.DataOutput;
+import org.basex.io.random.file.BlockFileAccess;
+import org.basex.io.random.file.Buffer;
 import org.basex.util.*;
 
 /**

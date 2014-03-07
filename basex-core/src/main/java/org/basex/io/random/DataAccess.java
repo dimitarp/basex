@@ -3,6 +3,8 @@ package org.basex.io.random;
 import java.io.*;
 
 import org.basex.io.*;
+import org.basex.io.random.file.BlockFileAccess;
+import org.basex.io.random.file.Buffer;
 import org.basex.util.*;
 
 /**

@@ -1,4 +1,4 @@
-package org.basex.io.random;
+package org.basex.io.random.file;
 
 public class ByteArrayBufferTest extends BufferTest {
   @Override

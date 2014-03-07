@@ -1,4 +1,4 @@
-package org.basex.io.random;
+package org.basex.io.random.file;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -14,7 +14,7 @@ import org.basex.util.Util;
  * @author BaseX Team 2005-14, BSD License
  * @author Dimitar Popov
  */
-abstract class BlockFileAccess {
+public abstract class BlockFileAccess {
   /** Buffer manager. */
   private final Buffers bm = new Buffers();
 

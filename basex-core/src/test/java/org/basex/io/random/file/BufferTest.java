@@ -1,9 +1,9 @@
-package org.basex.io.random;
+package org.basex.io.random.file;
 
 import static org.junit.Assert.*;
 
+import org.basex.io.random.file.Buffer;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 public abstract class BufferTest {
   private static final int SIZE = 10;

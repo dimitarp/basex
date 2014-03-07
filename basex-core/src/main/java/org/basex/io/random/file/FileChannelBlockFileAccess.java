@@ -1,4 +1,4 @@
-package org.basex.io.random;
+package org.basex.io.random.file;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

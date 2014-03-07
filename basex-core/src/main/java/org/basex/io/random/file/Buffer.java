@@ -1,4 +1,4 @@
-package org.basex.io.random;
+package org.basex.io.random.file;
 
 import java.nio.ByteBuffer;
 
@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
  * @author BaseX Team 2005-14, BSD License
  * @author Christian Gruen
  */
-abstract class Buffer {
+public abstract class Buffer {
   /** Disk offset, or block position. */
   private long pos = -1L;
   /** Dirty flag. */
