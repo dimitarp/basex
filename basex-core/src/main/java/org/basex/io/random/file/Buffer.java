@@ -16,29 +16,10 @@ public abstract class Buffer {
 
   /**
    * Get the byte value at the given position in the buffer.
-   * @param index buffer posisiton
+   * @param index buffer position
    * @return the byte value at the given position
    */
   public abstract byte get(int index);
-
-  /**
-   * Get reference to the underlying byte array.
-   * @return byte array storing the buffer data
-   */
-  public byte[] getData() {
-    return null;
-  }
-
-  /**
-   * Get reference to the underlying {@link ByteBuffer}.
-   * @return byte buffer storing the data
-   */
-  public ByteBuffer getByteBuffer() {
-    return null;
-  }
-
-  public void setByteBuffer(final ByteBuffer b) {
-  }
 
   /**
    * Set the byte value at the given position in the buffer.
@@ -62,7 +43,7 @@ public abstract class Buffer {
    * Set the position in the file loaded in this buffer.
    * @param p new file position
    */
-  public final void setPos(long p) {
+  final void setPos(long p) {
     pos = p;
   }
 
@@ -70,7 +51,7 @@ public abstract class Buffer {
    * Shows if the buffer is dirty.
    * @return {@code true} if buffer data is not stored to disk
    */
-  public final boolean isDirty() {
+  final boolean isDirty() {
     return dirty;
   }
 
@@ -78,8 +59,27 @@ public abstract class Buffer {
    * Set the dirty flag.
    * @param d dirty flag
    */
-  public final void setDirty(boolean d){
+  final void setDirty(boolean d){
     dirty = d;
+  }
+
+  /**
+   * Get reference to the underlying byte array.
+   * @return byte array storing the buffer data
+   */
+  byte[] getData() {
+    return null;
+  }
+
+  /**
+   * Get reference to the underlying {@link ByteBuffer}.
+   * @return byte buffer storing the data
+   */
+  ByteBuffer getByteBuffer() {
+    return null;
+  }
+
+  void setByteBuffer(final ByteBuffer b) {
   }
 
   /**
@@ -128,35 +128,21 @@ public abstract class Buffer {
    * @param i buffer position
    * @return short value
    */
-  public int read2(int i) {
-    return ((get(i)     & 0xFF) << 8) +
-            (get(i + 1) & 0xFF);
-  }
+  public abstract int read2(int i);
 
   /**
    * Reads an integer value.
    * @param i buffer position
    * @return integer value
    */
-  public int read4(int i) {
-    return ((get(i)     & 0xFF) << 24) +
-           ((get(i + 1) & 0xFF) << 16) +
-           ((get(i + 2) & 0xFF) << 8) +
-            (get(i + 3) & 0xFF);
-  }
+  public abstract int read4(int i);
 
   /**
    * Reads a 5-byte value and returns it as a long value.
    * @param i buffer position
    * @return long value
    */
-  public long read5(int i) {
-    return ((long) (get(i)     & 0xFF) << 32) +
-           ((long) (get(i + 1) & 0xFF) << 24) +
-                  ((get(i + 2) & 0xFF) << 16) +
-                  ((get(i + 3) & 0xFF) << 8) +
-                   (get(i + 4) & 0xFF);
-  }
+  public abstract long read5(int i);
 
   /**
    * Writes a byte value to the specified position.

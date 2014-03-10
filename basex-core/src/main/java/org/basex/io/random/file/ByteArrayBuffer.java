@@ -21,6 +21,29 @@ final class ByteArrayBuffer extends Buffer {
   }
 
   @Override
+  public int read2(int i) {
+    return ((get(i)     & 0xFF) << 8) +
+            (get(i + 1) & 0xFF);
+  }
+
+  @Override
+  public int read4(int i) {
+    return ((get(i)     & 0xFF) << 24) +
+           ((get(i + 1) & 0xFF) << 16) +
+           ((get(i + 2) & 0xFF) << 8) +
+            (get(i + 3) & 0xFF);
+  }
+
+  @Override
+  public long read5(int i) {
+    return ((long) (get(i)     & 0xFF) << 32) +
+           ((long) (get(i + 1) & 0xFF) << 24) +
+                  ((get(i + 2) & 0xFF) << 16) +
+                  ((get(i + 3) & 0xFF) << 8) +
+                   (get(i + 4) & 0xFF);
+  }
+
+  @Override
   public byte[] getData() {
     return data;
   }
