@@ -5,6 +5,10 @@ import org.basex.query.func.*;
 import org.basex.query.iter.*;
 import org.basex.query.value.item.*;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.concurrent.*;
+
 /**
  * Function implementation.
  *
@@ -12,56 +16,55 @@ import org.basex.query.value.item.*;
  * @author Christian Gruen
  */
 public final class ParallelForEach extends StandardFunc {
+
+  private final ExecutorService executorService = Executors.newCachedThreadPool();
+
   @Override
   public Iter iter(final QueryContext qc) throws QueryException {
     final int threads = (int) toLong(exprs[1], qc);
-    final ValueBuilder[] values = new ValueBuilder[threads];
-    final Thread[] evals = new Thread[threads];
-    final boolean[] finished = new boolean[threads];
+    final ArrayList<Future<ValueBuilder>> values = new ArrayList<>(threads);
 
     // create and start threads
     for(int i = 0; i < threads; i++) {
-      final int c = i;
-      values[c] = new ValueBuilder();
-      evals[c] = new Thread() {
+      values.add(executorService.submit(new Callable<ValueBuilder>() {
         @Override
-        public void run() {
+        public ValueBuilder call() throws Exception {
           try {
-            // cache all values
             final Iter ir = exprs[0].iter(qc);
-            for(Item it; (it = ir.next()) != null;) values[c].add(it);
-            finished[c] = true;
+            final ValueBuilder result = new ValueBuilder();
+            for (Item it; (it = ir.next()) != null; ) result.add(it);
+            return result;
           } catch(final QueryException ex) {
             throw new QueryRTException(ex);
           }
         }
-      };
+      }));
     }
-    for(final Thread e : evals) e.start();
+    final Iterator<Future<ValueBuilder>> valueIterator = values.iterator();
 
     return new Iter() {
       /** Currently returned values. */
       ValueBuilder vb;
-      /** Current thread counter. */
-      int c = -1;
 
       @Override
       public Item next() throws QueryException {
         do {
-          if(vb == null) {
-            // check if more threads exist
-            if(++c == threads) return null;
-            // wait until current thread has finished
-            while(!finished[c]) Thread.yield();
-            // assign next value builder, invalidate original reference
-            vb = values[c];
-            values[c] = null;
+          if (vb == null) {
+            if (valueIterator.hasNext()) vb = nextThreadResult();
+            else return null;
           }
-          // return next result or invalidate current builder
           final Item it = vb.next();
-          if(it != null) return it;
+          if (it != null) return it;
           vb = null;
-        } while(true);
+        } while (true);
+      }
+
+      private ValueBuilder nextThreadResult() throws QueryException {
+        try {
+          return valueIterator.next().get();
+        } catch (Exception e) {
+          throw new QueryException(e);
+        }
       }
     };
   }
