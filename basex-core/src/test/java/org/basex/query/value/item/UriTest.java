@@ -35,7 +35,7 @@ public class UriTest {
   @Test
   public void isValid() {
     // [DP] #928
-    //assertUriIsValid("x:", true);
+    assertUriIsValid("x:", true);
     assertUriIsValid("x", true);
     assertUriIsValid("", true);
     assertUriIsValid("//localhost:80", true);

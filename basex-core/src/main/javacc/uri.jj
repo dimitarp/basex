@@ -1,0 +1,564 @@
+
+options {
+  STATIC = false;
+  JDK_VERSION = "1.7";
+}
+
+PARSER_BEGIN(UriParser)
+
+package org.basex.query.util.uri.parse;
+
+import static org.basex.util.Strings.UTF8;
+
+import java.io.ByteArrayInputStream;
+
+/**
+ * A parser for RFC 3986 URIs.
+ *
+ * @author BaseX Team 2005-15, BSD License
+ * @author Dimitar Popov
+ */
+public class UriParser {
+  /**
+   * Construct a new RFC 3986 URI parser.
+   * @param uri the uri to parse
+   */
+  public UriParser(final byte[] uri) {
+    this(new ByteArrayInputStream(uri), UTF8);
+  }
+
+  public static final class ParsedUri {
+    public final String scheme;
+    public final String authority;
+    public final String userInfo;
+    public final String host;
+    public final int port;
+    public final String path;
+    public final String query;
+    public final String fragment;
+
+    private ParsedUri(String scheme, String authority, String userInfo, String host, int port, String path, String query, String fragment) {
+      this.scheme = scheme;
+      this.authority = authority;
+      this.userInfo = userInfo;
+      this.host = host;
+      this.port = port;
+      this.path = path;
+      this.query = query;
+      this.fragment = fragment;
+    }
+
+    @Override
+    public String toString() {
+      return "ParsedUri{" +
+              "scheme='" + scheme + "'" +
+              ", authority='" + authority + "'" +
+              ", userInfo='" + userInfo + "'" +
+              ", host='" + host + "'" +
+              ", port=" + port +
+              ", path='" + path + "'" +
+              ", query='" + query + "'" +
+              ", fragment='" + fragment + "'" +
+              '}';
+    }
+
+    private static final class Builder {
+      private String scheme;
+      private String authority;
+      private String userInfo;
+      private String host;
+      private int port = -1;
+      private String path;
+      private String query;
+      private String fragment;
+
+      Builder() {}
+
+      public Builder scheme(String scheme) {
+        this.scheme = scheme;
+        return this;
+      }
+
+      public Builder authority(String authority) {
+        this.authority = authority;
+        return this;
+      }
+
+      public Builder userInfo(String userInfo) {
+        this.userInfo = userInfo;
+        return this;
+      }
+
+      public Builder host(String host) {
+        this.host = host;
+        return this;
+      }
+
+      public Builder port(int port) {
+        this.port = port;
+        return this;
+      }
+
+      public Builder path(String path) {
+        this.path = path;
+        return this;
+      }
+
+      public Builder query(String query) {
+        this.query = query;
+        return this;
+      }
+
+      public Builder fragment(String fragment) {
+        this.fragment = fragment;
+        return this;
+      }
+
+      public Builder but() {
+        return new Builder()
+            .authority(authority)
+            .scheme(scheme)
+            .host(host)
+            .port(port)
+            .path(path)
+            .query(query)
+            .fragment(fragment);
+      }
+
+      public ParsedUri build() {
+        return new ParsedUri(
+            scheme,
+            authority,
+            userInfo,
+            host,
+            port,
+            path,
+            query,
+            fragment);
+      }
+    }
+  }
+}
+
+PARSER_END(UriParser)
+
+
+/**
+ * RFC 2234: Augmented BNF for Syntax Specifications: ABNF
+ */
+
+/**
+ * ALPHA = %x41-5A / %x61-7A ; A-Z / a-z
+ */
+TOKEN: {
+  <#ALPHA: ["A"-"Z", "a"-"z"]>
+}
+
+/**
+ * DIGIT = %x30-39 ; 0-9
+ */
+TOKEN: {
+  <#DIGIT: ["0"-"9"]>
+}
+
+/**
+ * HEXDIG =  DIGIT / "A" / "B" / "C" / "D" / "E" / "F"
+ */
+TOKEN: {
+  <#HEXDIG: <DIGIT> | "A" | "B" | "C" | "D" | "E" | "F">
+}
+
+
+
+/**
+ * RFC 3986: Uniform Resource Identifier (URI): Generic Syntax
+ */
+
+/**
+ * <pre>
+ * sub-delims = "!" / "$" / "&" / "'" / "(" / ")"
+ *            / "*" / "+" / "," / ";" / "="
+ * </pre>
+ */
+TOKEN: {
+  <#SUB_DELIMS: "!" | "$" | "&" | "'" | "(" | ")" | "*" | "+" | "," | ";" | "=">
+}
+
+/**
+ * <pre>gen-delims = ":" / "/" / "?" / "#" / "[" / "]" / "@"</pre>
+ */
+TOKEN: {
+  <#GEN_DELIMS: ":" | "/" | "?" | "#" | "[" | "]" | "@">
+}
+
+/**
+ * <pre>reserved = gen-delims / sub-delims</pre>
+ */
+TOKEN: {
+  <#RESERVED: <GEN_DELIMS> | <SUB_DELIMS>>
+}
+
+/**
+ * <pre>unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"</pre>
+ */
+TOKEN: {
+  <#UNRESERVED: <ALPHA> | <DIGIT> | "-" | "." | "_" | "~">
+}
+
+/**
+ * <pre>pct-encoded = "%" HEXDIG HEXDIG</pre>
+ */
+TOKEN: {
+  <#PCT_ENCODED: "%" <HEXDIG> <HEXDIG>>
+}
+
+/**
+ * <pre>pchar = unreserved / pct-encoded / sub-delims / ":" / "@"</pre>
+ */
+TOKEN: {
+  <#PCHAR: <UNRESERVED> | <PCT_ENCODED> | <SUB_DELIMS> | ":" | "@">
+}
+
+/**
+ * <pre>fragment = *( pchar / "/" / "?" )</pre>
+ */
+TOKEN: {
+  <FRAGMENT: ( <PCHAR> | "/" | "?" )*>
+}
+
+/**
+ * <pre>query = *( pchar / "/" / "?" )</pre>
+ */
+TOKEN: {
+  <QUERY: ( <PCHAR> | "/" | "?" )*>
+}
+
+/**
+ * <pre>
+ * segment-nz-nc = 1*( unreserved / pct-encoded / sub-delims / "@" )
+ *                 ; non-zero-length segment without any colon ":"
+ * </pre>
+ */
+TOKEN: {
+  <#SEGMENT_NZ_NC: ( <UNRESERVED> | <PCT_ENCODED> | <SUB_DELIMS> | "@" )+>
+}
+
+/**
+ * <pre>segment-nz = 1*pchar</pre>
+ */
+TOKEN: {
+  <#SEGMENT_NZ: ( <PCHAR> )+>
+}
+
+/**
+ * <pre>segment = *pchar</pre>
+ */
+TOKEN: {
+  <#SEGMENT: ( <PCHAR> )*>
+}
+
+/**
+ * <pre>path-empty = 0<pchar></pre>
+ */
+// TODO: not used
+//TOKEN: {
+//  <PATH_EMPTY: "">
+//}
+
+/**
+ * <pre>path-rootless = segment-nz *( "/" segment )</pre>
+ */
+TOKEN: {
+  <PATH_ROOTLESS: <SEGMENT_NZ> ( "/" <SEGMENT> )*>
+}
+
+/**
+ * <pre>path-noscheme = segment-nz-nc *( "/" segment )</pre>
+ */
+TOKEN: {
+  <#PATH_NOSCHEME: <SEGMENT_NZ_NC> ("/" <SEGMENT>)*>
+}
+
+/**
+ * <pre>path-absolute = "/" [ segment-nz *( "/" segment ) ]</pre>
+ */
+TOKEN: {
+  <PATH_ABSOLUTE: "/" (<SEGMENT_NZ> ("/" <SEGMENT>)*)?>
+}
+
+/**
+ * <pre>path-abempty  = *( "/" segment )</pre>
+ */
+TOKEN: {
+  <PATH_ABEMPTY: ( "/" <SEGMENT> )*>
+}
+
+/**
+ * <pre>
+ * path = path-abempty    ; begins with "/" or is empty
+ *      / path-absolute   ; begins with "/" but not "//"
+ *      / path-noscheme   ; begins with a non-colon segment
+ *      / path-rootless   ; begins with a segment
+ *      / path-empty      ; zero characters
+ * </pre>
+ */
+// TODO: not used
+//TOKEN: {
+//  <#PATH: <PATH_ABEMPTY>
+//        | <PATH_ABSOLUTE>
+//        | <PATH_NOSCHEME>
+//        | <PATH_ROOTLESS>
+//        | <PATH_EMPTY>>
+//}
+
+/**
+ * <pre>reg-name = *( unreserved / pct-encoded / sub-delims )</pre>
+ */
+TOKEN: {
+  <#REG_NAME: (<UNRESERVED> | <PCT_ENCODED> | <SUB_DELIMS>)*>
+}
+
+/**
+ * <pre>
+ * dec-octet = DIGIT                 ; 0-9
+ *           / %x31-39 DIGIT         ; 10-99
+ *           / "1" 2DIGIT            ; 100-199
+ *           / "2" %x30-34 DIGIT     ; 200-249
+ *           / "25" %x30-35          ; 250-255
+ * </pre>
+ */
+TOKEN: {
+  <#DEC_OCTET: <DIGIT>
+             | ["1"-"9"] <DIGIT>
+             | "1" <DIGIT> <DIGIT>
+             | "2" ["0"-"4"] <DIGIT>
+             | "25" ["0"-"4"]>
+}
+
+/**
+ * <pre>IPv4address = dec-octet "." dec-octet "." dec-octet "." dec-octet</pre>
+ */
+TOKEN: {
+  <#IPv4_ADDRESS: <DEC_OCTET> "." <DEC_OCTET> "." <DEC_OCTET> "." <DEC_OCTET>>
+}
+
+/**
+ * <pre>ls32 = ( h16 ":" h16 ) / IPv4address</pre>
+ */
+TOKEN: {
+  <#LS32: (<H16> ":" <H16>) | <IPv4_ADDRESS>>
+}
+
+/**
+ * <pre>h16 = 1*4HEXDIG</pre>
+ */
+TOKEN: {
+  <#H16: (<HEXDIG>){1, 4}>
+}
+
+/**
+ * <pre>
+ * IPv6address =                            6( h16 ":" ) ls32
+ *             /                       "::" 5( h16 ":" ) ls32
+ *             / [               h16 ] "::" 4( h16 ":" ) ls32
+ *             / [ *1( h16 ":" ) h16 ] "::" 3( h16 ":" ) ls32
+ *             / [ *2( h16 ":" ) h16 ] "::" 2( h16 ":" ) ls32
+ *             / [ *3( h16 ":" ) h16 ] "::"    h16 ":"   ls32
+ *             / [ *4( h16 ":" ) h16 ] "::"              ls32
+ *             / [ *5( h16 ":" ) h16 ] "::"              h16
+ *             / [ *6( h16 ":" ) h16 ] "::"
+ * </pre>
+ */
+TOKEN: {
+  <#IPv6_ADDRESS:                                 (<H16> ":"){6} <LS32>
+                |                            "::" (<H16> ":"){5} <LS32>
+                | (                  <H16>)? "::" (<H16> ":"){4} <LS32>
+                | ((<H16> ":"){0, 1} <H16>)? "::" (<H16> ":"){3} <LS32>
+                | ((<H16> ":"){0, 2} <H16>)? "::" (<H16> ":"){2} <LS32>
+                | ((<H16> ":"){0, 3} <H16>)? "::"  <H16> ":"     <LS32>
+                | ((<H16> ":"){0, 4} <H16>)? "::"                <LS32>
+                | ((<H16> ":"){0, 5} <H16>)? "::"                <H16>
+                | ((<H16> ":"){0, 6} <H16>)? "::"
+                >
+}
+
+/**
+ * <pre>IPvFuture = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )</pre>
+ */
+TOKEN: {
+  <#IPvFUTURE: "v" (<HEXDIG>)+ "." (<UNRESERVED> | <SUB_DELIMS> | ":")+ >
+}
+
+/**
+ * <pre>IP-literal = "[" ( IPv6address / IPvFuture  ) "]"</pre>
+ */
+TOKEN: {
+  <#IP_LITERAL: "[" (<IPv6_ADDRESS> | <IPvFUTURE>) "]" >
+}
+
+/**
+ * <pre>port = *DIGIT</pre>
+ */
+TOKEN: {
+  <PORT: (<DIGIT>)*>
+}
+
+/**
+ * <pre>host = IP-literal / IPv4address / reg-name</pre>
+ */
+TOKEN: {
+  <HOST: <IP_LITERAL> | <IPv4_ADDRESS> | <REG_NAME>>
+}
+
+/**
+ * <pre>userinfo = *( unreserved / pct-encoded / sub-delims / ":" )</pre>
+ */
+TOKEN: {
+  <USERINFO: (<UNRESERVED> | <PCT_ENCODED> | <SUB_DELIMS> | ":")*>
+}
+
+/**
+ * <pre>scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) </pre>
+ */
+TOKEN: {
+  <SCHEME: <ALPHA> (<ALPHA> | <DIGIT> | "+" | "-" | ".")*>
+}
+
+  ParsedUri.Builder fragment(ParsedUri.Builder builder) : {
+    Token f;
+  } {
+    f=<FRAGMENT>
+    {
+      return builder.fragment(f.image);
+    }
+  }
+
+  ParsedUri.Builder query(ParsedUri.Builder builder) : {
+    Token q;
+  } {
+    q=<QUERY>
+    {
+      return builder.query(q.image);
+    }
+  }
+
+  ParsedUri.Builder port(ParsedUri.Builder builder) : {
+    Token p;
+  } {
+    p=<PORT>
+    {
+      if (p.image != null && p.image.length() > 0)
+        builder.port(Integer.parseInt(p.image));
+      return builder;
+    }
+  }
+
+  ParsedUri.Builder userInfo(ParsedUri.Builder builder) : {
+    Token u;
+  } {
+    u=<USERINFO>
+    {
+      return builder.userInfo(u.image);
+    }
+  }
+
+  /**
+   * <pre>authority = [ userinfo "@" ] host [ ":" port ]</pre>
+   */
+  ParsedUri.Builder authority(ParsedUri.Builder builder) : {
+    Token h;
+  } {
+    (userInfo(builder) "@")? h=<HOST> (":" port(builder))?
+    {
+      return builder.host(h.image);
+    }
+  }
+
+  /**
+   * <pre>
+   * hier-part = "//" authority path-abempty
+   *           / path-absolute
+   *           / path-rootless
+   *           / path-empty
+   * </pre>
+   */
+  ParsedUri.Builder hierPart(ParsedUri.Builder builder) : {
+    Token p;
+  } {
+    ( "//" authority(builder) p=<PATH_ABEMPTY>
+    | p=<PATH_ABSOLUTE>
+    | p=<PATH_ROOTLESS> )
+    {
+      return builder.path(p.image);
+    }
+    | {}
+  }
+
+  /**
+   * <pre>URI = scheme ":" hier-part [ "?" query ] [ "#" fragment ]</pre>
+   */
+  ParsedUri uri() : {
+    ParsedUri.Builder builder = new ParsedUri.Builder();
+    Token s;
+  } {
+    s=<SCHEME> ":" hierPart(builder) ("?" query(builder))? ("#" fragment(builder))?
+    {
+      return builder.scheme(s).build();
+    }
+  }
+
+
+
+/**
+ * <pre>
+ * relative-part = "//" authority path-abempty
+ *               / path-absolute
+ *               / path-noscheme
+ *               / path-empty
+ * </pre>
+ */
+// TODO
+//TOKEN: {
+//  <#RELATIVE_PART: "//" <AUTHORITY> <PATH_ABEMPTY>
+//                 | <PATH_ABSOLUTE>
+//                 | <PATH_NOSCHEME>
+//                 | <PATH_EMPTY>>
+//}
+
+/**
+ * <pre>relative-ref = relative-part [ "?" query ] [ "#" fragment ]</pre>
+ */
+// TODO
+//TOKEN: {
+//  <#RELATIVE_REF: <RELATIVE_PART> ("?" <QUERY>)? ("#" <FRAGMENT>)?>
+//}
+
+/**
+ * <pre>URI-reference = URI / relative-ref</pre>
+ */
+// TODO
+//TOKEN: {
+//  <URI_REFERENCE: <URI> | <RELATIVE_REF>>
+//}
+
+/**
+ * <pre>absolute-URI  = scheme ":" hier-part [ "?" query ]</pre>
+ */
+// TODO
+//TOKEN: {
+//  <#ABSOLUTE_URI: <SCHEME> ":" <HIER_PART> ("?" <QUERY>)>
+//}
+
+  /**
+   * Parse the given URI.
+   * @return parsed URI
+   * @throws ParseException if the provided URI is not RFC 3986 conformant.
+   */
+  ParsedUri parse() : {
+    ParsedUri uri = null;
+  } {
+    uri = uri()
+    {
+      return uri;
+    }
+  }

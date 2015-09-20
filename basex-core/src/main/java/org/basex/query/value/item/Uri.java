@@ -5,6 +5,7 @@ import static org.basex.query.QueryError.*;
 import java.net.*;
 
 import org.basex.query.*;
+import org.basex.query.util.uri.parse.UriParser;
 import org.basex.query.value.type.*;
 import org.basex.util.*;
 
@@ -101,9 +102,11 @@ public final class Uri extends AStr {
    */
   public boolean isValid() {
     try {
-      new URI(Token.string(Token.uri(value, true)));
+      //new URI(Token.string(Token.uri(value, true)));
+      new UriParser(value).parse();
       return true;
-    } catch(final URISyntaxException ex) {
+    } catch(final Throwable ex) {
+      ex.printStackTrace();
       return false;
     }
   }

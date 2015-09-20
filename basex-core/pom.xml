@@ -56,6 +56,33 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>javacc-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>generate-regex-parser</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>javacc</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>src/main/java</outputDirectory>
+              <includes>
+                <include>**/regex.jj</include>
+              </includes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>generate-uri-parser</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>javacc</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>**/uri.jj</include>
+              </includes>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
