@@ -23,8 +23,9 @@ public class UriTest {
             {"x:", true, true},
             {"x", true, false},
             {"", true, false},
-            {"//fe80::216:ceff:fe86:3e33", true, false},
-            {"x+y://a:b@fe80::216:ceff:fe86:3e33:80/p/b/c?q=1&q=2#test?123", true, true}
+            {"//test.org:80", true, false},
+            {"//[fe80::216:ceff:fe86:3e33]", true, false},
+            {"x+y://a:b@[fe80::216:ceff:fe86:3e33]:80/p/b/c?q=1&q=2#test?123", true, true}
     };
   }
 
