@@ -190,13 +190,13 @@ TOKEN: {
  *           / "25" %x30-35          ; 250-255
  * </pre>
  */
-TOKEN: {
-  <DEC_OCTET: <DIGIT>
-            | ["1"-"9"] <DIGIT>
-            | "1" (<DIGIT>){2}
-            | "2" ["0"-"4"] <DIGIT>
-            | "25" ["0"-"4"]>
-}
+//TOKEN: {
+//  <DEC_OCTET: <DIGIT>
+//            | ["1"-"9"] <DIGIT>
+//            | "1" (<DIGIT>){2}
+//            | "2" ["0"-"4"] <DIGIT>
+//            | "25" ["0"-"4"]>
+//}
 
 /**
  * <pre>IPv4address = dec-octet "." dec-octet "." dec-octet "." dec-octet</pre>
@@ -215,9 +215,9 @@ TOKEN: {
 /**
  * <pre>h16 = 1*4HEXDIG</pre>
  */
-TOKEN: {
-  <H16: (<HEXDIG>){1, 4}>
-}
+//TOKEN: {
+//  <H16: (<HEXDIG>){1, 4}>
+//}
 
 /**
  * <pre>
@@ -265,7 +265,7 @@ TOKEN: {
    */
   ParsedUri.Builder uri(ParsedUri.Builder builder) : {
   } {
-    scheme(builder) ":" hierPart(builder) [ "?" query(builder) ] [ "#" fragment(builder) ]
+    scheme(builder) <COLON> hierPart(builder) [ "?" query(builder) ] [ "#" fragment(builder) ]
     {
       return builder;
     }
@@ -296,7 +296,8 @@ TOKEN: {
   ParsedUri uriReference() : {
     ParsedUri.Builder builder = new ParsedUri.Builder();
   } {
-    ( uri(builder) | relativeRef(builder) )
+    //( uri(builder) | relativeRef(builder) )
+    uri(builder)
     {
       return builder.build();
     }
@@ -308,7 +309,7 @@ TOKEN: {
   ParsedUri absoluteUri() : {
     ParsedUri.Builder builder = new ParsedUri.Builder();
   } {
-    scheme(builder) ":" hierPart(builder) [ "?" query(builder) ]
+    scheme(builder) <COLON> hierPart(builder) [ "?" query(builder) ]
     {
       return builder.build();
     }
@@ -360,7 +361,7 @@ TOKEN: {
    */
   ParsedUri.Builder authority(ParsedUri.Builder builder) : {
   } {
-    [ userInfo(builder) "@" ] host(builder) [ ":" port(builder) ]
+    [ userInfo(builder) "@" ] host(builder) [ <COLON> port(builder) ]
     {
       return builder;
     }
@@ -371,7 +372,7 @@ TOKEN: {
    */
   ParsedUri.Builder userInfo(ParsedUri.Builder builder) : {
   } {
-    ( unreserved() | <PCT_ENCODED> | subDelims() | ":" )*
+    ( unreserved() | <PCT_ENCODED> | subDelims() | <COLON> )*
     {
       return builder.userInfo(token.image);
     }
@@ -428,37 +429,91 @@ TOKEN: {
    *             / [ *6( h16 ":" ) h16 ] "::"
    * </pre>
    */
+//  void ipv6Address() : {} {
+//    ( (                                    <(<H16> ":"){6}> ls32() )
+//    | (                               "::" <(<H16> ":"){5}> ls32() )
+//    | ( [                     <H16> ] "::" <(<H16> ":"){4}> ls32() )
+//    | ( [ <(<H16> ":"){0, 1}> <H16> ] "::" <(<H16> ":"){3}> ls32() )
+//    | ( [ <(<H16> ":"){0, 2}> <H16> ] "::" <(<H16> ":"){2}> ls32() )
+//    | ( [ <(<H16> ":"){0, 3}> <H16> ] "::"   <H16> ":"      ls32() )
+//    | ( [ <(<H16> ":"){0, 4}> <H16> ] "::"                  ls32() )
+//    | ( [ <(<H16> ":"){0, 5}> <H16> ] "::"                  <H16>  )
+//    | ( [ <(<H16> ":"){0, 6}> <H16> ] "::"                         )
+//    )
+//  }
+
+TOKEN: {
+  <DCOLON: "::">
+}
+
+TOKEN: {
+  <COLON: ":">
+}
+
+
   void ipv6Address() : {} {
-    ( (                                    <(<H16> ":"){6}> ls32() )
-    | (                               "::" <(<H16> ":"){5}> ls32() )
-    | ( [                     <H16> ] "::" <(<H16> ":"){4}> ls32() )
-    | ( [ <(<H16> ":"){0, 1}> <H16> ] "::" <(<H16> ":"){3}> ls32() )
-    | ( [ <(<H16> ":"){0, 2}> <H16> ] "::" <(<H16> ":"){2}> ls32() )
-    | ( [ <(<H16> ":"){0, 3}> <H16> ] "::"   <H16> ":"      ls32() )
-    | ( [ <(<H16> ":"){0, 4}> <H16> ] "::"                  ls32() )
-    | ( [ <(<H16> ":"){0, 5}> <H16> ] "::"                  <H16>  )
-    | ( [ <(<H16> ":"){0, 6}> <H16> ] "::"                         )
+    ( (                                                                                                                                                          ( h16() <COLON> ) ( h16() <COLON> ) ( h16() <COLON> ) ( h16() <COLON> ) ( h16() <COLON> ) ( h16() <COLON> ) ls32() )
+    | (                                                                                                                                                 <DCOLON> ( h16() <COLON> ) ( h16() <COLON> ) ( h16() <COLON> ) ( h16() <COLON> ) ( h16() <COLON> )                   ls32() )
+    | ( [  h16()                                                                                                                                      ] <DCOLON> ( h16() <COLON> ) ( h16() <COLON> ) ( h16() <COLON> ) ( h16() <COLON> )                                     ls32() )
+    | ( [  h16() [  ( <COLON> h16() )                                                                                                               ] ] <DCOLON> ( h16() <COLON> ) ( h16() <COLON> ) ( h16() <COLON> )                                                       ls32() )
+    | ( [  h16() [  ( <COLON> h16() ) [ ( <COLON> h16() )                                                                                         ] ] ] <DCOLON> ( h16() <COLON> ) ( h16() <COLON> )                                                                         ls32() )
+    | ( [  h16() [  ( <COLON> h16() ) [ ( <COLON> h16() ) [ ( <COLON> h16() )                                                                   ] ] ] ] <DCOLON>   h16() <COLON>                                                                                             ls32() )
+    | ( [  h16() [  ( <COLON> h16() ) [ ( <COLON> h16() ) [ ( <COLON> h16() ) [ ( <COLON> h16() )                                             ] ] ] ] ] <DCOLON>                                                                                                             ls32() )
+    | ( [  h16() [  ( <COLON> h16() ) [ ( <COLON> h16() ) [ ( <COLON> h16() ) [ ( <COLON> h16() ) [ ( <COLON> h16() )                       ] ] ] ] ] ] <DCOLON>                                                                                                             h16()  )
+    | ( [  h16() [  ( <COLON> h16() ) [ ( <COLON> h16() ) [ ( <COLON> h16() ) [ ( <COLON> h16() ) [ ( <COLON> h16() ) [ ( <COLON> h16() ) ] ] ] ] ] ] ] <DCOLON>                                                                                                                    )
     )
   }
 
-  // TODO: h16
+//  void ipv6Address() : {} {
+//    ( (                                   ( h16() ":" ){6;} ls32() )
+//    | (                              "::" ( h16() ":" ){5;} ls32() )
+//    | ( [                    h16() ] "::" ( h16() ":" ){4;} ls32() )
+//    | ( [ ( h16() ":" ){0;1} h16() ] "::" ( h16() ":" ){3;} ls32() )
+//    | ( [ ( h16() ":" ){0;2} h16() ] "::" ( h16() ":" ){2;} ls32() )
+//    | ( [ ( h16() ":" ){0;3} h16() ] "::"   h16() ":"       ls32() )
+//    | ( [ ( h16() ":" ){0;4} h16() ] "::"                   ls32() )
+//    | ( [ ( h16() ":" ){0;5} h16() ] "::"                   h16()  )
+//    | ( [ ( h16() ":" ){0;6} h16() ] "::"                          )
+//    )
+//  }
+
+  /**
+   * <pre>h16 = 1*4HEXDIG</pre>
+   */
+  void h16() : {} {
+    <H16: (<HEXDIG>){1, 4}>
+  }
 
   /**
    * <pre>ls32 = ( h16 ":" h16 ) / IPv4address</pre>
    */
   void ls32() : {} {
-    (<H16> ":" <H16>) | ipv4Address()
+    ( h16() <COLON> h16() ) | ipv4Address()
   }
 
   /**
    * <pre>IPv4address = dec-octet "." dec-octet "." dec-octet "." dec-octet</pre>
    */
   void ipv4Address() : {} {
-    <DEC_OCTET> "." <DEC_OCTET> "." <DEC_OCTET> "." <DEC_OCTET>
+    decOctet() "." decOctet() "." decOctet() "." decOctet()
   }
 
-  // TODO
-
+  /**
+   * <pre>
+   * dec-octet = DIGIT                 ; 0-9
+   *           / %x31-39 DIGIT         ; 10-99
+   *           / "1" 2DIGIT            ; 100-199
+   *           / "2" %x30-34 DIGIT     ; 200-249
+   *           / "25" %x30-35          ; 250-255
+   * </pre>
+   */
+  void decOctet() : {} {
+      <DIGIT>
+    | <["1"-"9"]> <DIGIT>
+    | "1" <DIGIT> <DIGIT>
+    | "2" <["0"-"4"]> <DIGIT>
+    | "25" <["0"-"4"]>
+  }
 
 
 
@@ -567,7 +622,7 @@ TOKEN: {
    * <pre>pchar = unreserved / pct-encoded / sub-delims / ":" / "@"</pre>
    */
   void pchar() : {} {
-    unreserved() | <PCT_ENCODED> | subDelims() | ":" | "@"
+    unreserved() | <PCT_ENCODED> | subDelims() | <COLON> | "@"
   }
 
   /**
@@ -612,7 +667,7 @@ TOKEN: {
    * <pre>gen-delims = ":" / "/" / "?" / "#" / "[" / "]" / "@"</pre>
    */
   void genDelims() : {} {
-    ":" | "/" | "?" | "#" | "[" | "]" | "@"
+    <COLON> | "/" | "?" | "#" | "[" | "]" | "@"
   }
 
   /**
