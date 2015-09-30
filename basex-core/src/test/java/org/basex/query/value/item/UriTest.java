@@ -20,13 +20,14 @@ public class UriTest {
   @Parameters(name = "{index}: \"{0}\": valid = {1}, absolute = {2}")
   public static Object[][] sampleUris() {
     return new Object[][] {
-            {"x:", true, true},
-            {"x", true, false},
-            {"", true, false},
-            {"//test.org:80", true, false},
-            {"//[fe80::216:ceff:fe86:3e33]", true, false},
-            {"x+y://a:b@[fe80::216:ceff:fe86:3e33]:80/p/b/c?q=1&q=2#test?123", true, true},
-            {"x+y://a:b@254.254.254.254:80/p/b254/c?q=1&q=2#test?123", true, true}
+      {"x:", true, true},
+      {"x", true, false},
+      {"", true, false},
+      {"//test.org:80", true, false},
+      {"//[fe80::216:ceff:fe86:3e33]", true, false},
+      {"x+y://a:b@[fe80::216:ceff:fe86:3e33]:80/p/b/c?q=1&q=2#test?123", true, true},
+      {"x+y://a:b@254.254.254.254:80/p/b254/c?q=1&q=2#test?123", true, true},
+      {"1:", false, false}
     };
   }
 
