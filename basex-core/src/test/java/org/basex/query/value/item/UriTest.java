@@ -27,7 +27,30 @@ public class UriTest {
       {"//[fe80::216:ceff:fe86:3e33]", true, false},
       {"x+y://a:b@[fe80::216:ceff:fe86:3e33]:80/p/b/c?q=1&q=2#test?123", true, true},
       {"x+y://a:b@254.254.254.254:80/p/b254/c?q=1&q=2#test?123", true, true},
-      {"1:", false, false}
+      {"http://!$&amp;'()*+,;=/", true, true},
+      {"http://%0Ad%E2%9C%90%F0%98%9A%A0/", true, true},
+      {"odd-scheme+1.://www.example.org/", true, true},
+      {"http://www.example.org/%0Ad%E2%9C%90%F0%98%9A%A0/", true, true},
+      {"http://www.example.org/!/$/&/'/(/)/*/+/,/;/=/", true, true},
+      {"http://www.example.org/:/@/", true, true},
+      {"http://www.example.org/?%0Ad%E2%9C%90%F0%98%9A%A0/", true, true},
+      {"http://www.example.org/?!$&'()*+,;=", true, true},
+      {"http://www.example.org/?:@", true, true},
+      {"http://www.example.org/#%0Ad%E2%9C%90%F0%98%9A%A0/", true, true},
+      {"http://www.example.org/#!$&'()*+,;=", true, true},
+      {"http://www.example.org/#:@", true, true},
+
+      {"1:", false, false},
+      {"invalidURI%gg", false, false},
+      {"ttp:\\\\invalidURI\\someURI%gg", false, false},
+      {":/", false, false},
+      {"##invalid", false, false},
+      {"%gg", false, false},
+      {"%", false, false},
+      {"http://www.example.com/file%GF.html", false, false},
+      {":/cut.jpg", false, false},
+      {":/images/cut.png", false, false},
+      {"http:\\\\invalid%>URI\\someURI", false, false},
     };
   }
 

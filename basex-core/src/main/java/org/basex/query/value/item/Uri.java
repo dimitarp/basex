@@ -1,19 +1,16 @@
 package org.basex.query.value.item;
 
-import static org.basex.query.QueryError.*;
+import static org.basex.query.QueryError.URIARG_X;
 
-import static org.basex.util.Strings.UTF8;
-
-import java.io.ByteArrayInputStream;
-
-import java.io.ByteArrayInputStream;
-import java.net.*;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.basex.query.*;
-import org.basex.query.value.type.*;
-import org.basex.util.*;
+import org.basex.query.QueryException;
+import org.basex.query.value.type.AtomType;
+import org.basex.util.InputInfo;
+import org.basex.util.Token;
 
 /**
  * URI item ({@code xs:anyURI}).
@@ -26,6 +23,7 @@ public final class Uri extends AStr {
   public static final Uri EMPTY = new Uri(Token.EMPTY);
   /** String data. */
   private final byte[] value;
+  private final UriParser.ParsedUri parsed;
 
   /**
    * Constructor.
@@ -34,6 +32,7 @@ public final class Uri extends AStr {
   private Uri(final byte[] value) {
     super(AtomType.URI);
     this.value = value;
+    parsed = UriParser.parse(value);
   }
 
   /**
@@ -99,7 +98,7 @@ public final class Uri extends AStr {
    * @return result of check
    */
   public boolean isAbsolute() {
-    return Token.contains(value, ':');
+    return parsed.valid && parsed.scheme != null;
   }
 
   /**
@@ -107,14 +106,7 @@ public final class Uri extends AStr {
    * @return result of check
    */
   public boolean isValid() {
-    try {
-      //new URI(Token.string(Token.uri(value, true)));
-      final UriParser.ParsedUri parsed = UriParser.parse(Token.uri(value, true));
-      return true;
-    } catch(final Throwable ex) {
-      ex.printStackTrace();
-      return false;
-    }
+    return parsed.valid;
   }
 
   @Override
@@ -168,6 +160,7 @@ class UriParser {
   private static final String h16 = HEXDIG + "{1,4}";
   private static final String ls32 = "((" + h16 + ":" + h16 + ")|(" + ipv4Address + "))";
 
+  private static final String ipv6Address1 = "";
   private static final String ipv6Address = "("
   +  "("                               + "(" + h16 + ":){6}" + ls32 + ")"
   + "|("                             + "::(" + h16 + ":){5}" + ls32 + ")"
@@ -177,7 +170,7 @@ class UriParser {
   + "|(((" + h16 + ":){0,3}" + h16 + ")?::"  + h16 + ":"     + ls32 + ")"
   + "|(((" + h16 + ":){0,4}" + h16 + ")?::"                  + ls32 + ")"
   + "|(((" + h16 + ":){0,5}" + h16 + ")?::"                  + h16  + ")"
-  + "|(((" + h16 + ":){0,6}" + h16 + ")?::"
+  + "|(((" + h16 + ":){0,6}" + h16 + ")?::"                         + ")"
   + ")";
 
 
@@ -206,14 +199,15 @@ class UriParser {
    * @param uri the uri to parse
    * @return parsed URI
    */
-  public static ParsedUri parse(final byte[] uri) throws URISyntaxException{
+  public static ParsedUri parse(final byte[] uri) {
     final Matcher matcher = rfc3986.matcher(Token.string(uri));
-    if (!matcher.matches()) throw new URISyntaxException("Invalid URI", "");
+    if (!matcher.matches()) return ParsedUri.invalid;
     return new ParsedUri.Builder()
-      .scheme(matcher.group("scheme"))
+        .valid(true)
+        .scheme(matcher.group("scheme"))
       .authority(matcher.group("authority"))
-      //.host(matcher.group())
-      //.port()
+      .host(matcher.group("host"))
+      //.port(matche)
       .path(matcher.group("path"))
       .query(matcher.group("query"))
       .fragment(matcher.group("fragment"))
@@ -221,6 +215,8 @@ class UriParser {
   }
 
   public static final class ParsedUri {
+    static final ParsedUri invalid = new ParsedUri.Builder().build();
+
     public final String scheme;
     public final String authority;
     public final String userInfo;
@@ -229,8 +225,10 @@ class UriParser {
     public final String path;
     public final String query;
     public final String fragment;
+    public final boolean valid;
 
-    private ParsedUri(String scheme, String authority, String userInfo, String host, int port, String path, String query, String fragment) {
+    private ParsedUri(boolean valid, String scheme, String authority, String userInfo, String host, int port, String path, String query, String fragment) {
+      this.valid = valid;
       this.scheme = scheme;
       this.authority = authority;
       this.userInfo = userInfo;
@@ -256,6 +254,7 @@ class UriParser {
     }
 
     private static final class Builder {
+      private boolean valid;
       private String scheme;
       private String authority;
       private String userInfo;
@@ -266,6 +265,11 @@ class UriParser {
       private String fragment;
 
       Builder() {}
+
+      public Builder valid(boolean valid) {
+        this.valid = valid;
+        return this;
+      }
 
       public Builder scheme(String scheme) {
         this.scheme = scheme;
@@ -320,6 +324,7 @@ class UriParser {
 
       public ParsedUri build() {
         return new ParsedUri(
+          valid,
           scheme,
           authority,
           userInfo,
