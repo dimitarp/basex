@@ -32,7 +32,7 @@ public final class Uri extends AStr {
   private Uri(final byte[] value) {
     super(AtomType.URI);
     this.value = value;
-    parsed = UriParser.parse(value);
+    parsed = UriParser.parse(Token.string(value));
   }
 
   /**
@@ -142,7 +142,7 @@ public final class Uri extends AStr {
 class UriParser {
   private static final String ALPHA = "A-Za-z";
   private static final String DIGIT = "0-9";
-  private static final String HEXDIG = "[" + DIGIT + "A-F]";
+  private static final String HEXDIG = "[" + DIGIT + "A-Fa-f]";
 
   private static final String pctEncoded = "%" + HEXDIG + HEXDIG;
 
@@ -160,7 +160,6 @@ class UriParser {
   private static final String h16 = HEXDIG + "{1,4}";
   private static final String ls32 = "((" + h16 + ":" + h16 + ")|(" + ipv4Address + "))";
 
-  private static final String ipv6Address1 = "";
   private static final String ipv6Address = "("
   +  "("                               + "(" + h16 + ":){6}" + ls32 + ")"
   + "|("                             + "::(" + h16 + ":){5}" + ls32 + ")"
@@ -173,20 +172,29 @@ class UriParser {
   + "|(((" + h16 + ":){0,6}" + h16 + ")?::"                         + ")"
   + ")";
 
+  private static final String segment = "(" + pchar + ")*";
+  private static final String segmentNz = "(" + pchar + ")+";
+  private static final String segmentNzNc = "(" + unreserved + "|" + pctEncoded + "|" + subDelims + "|@)+";
+
+  private static final String pathAbempty = "(/" + segment + ")*";
+  private static final String pathAbsolute = "(/(" + segmentNz + "(/" + segment + ")*)?)";
+  private static final String pathNoScheme = "(" + segmentNzNc + "(/" + segment + ")*)";
+  private static final String pathRootless = "(" + segmentNz + "(/" + segment + ")*)";
+
 
   private static final String ipvFuture = "v" + HEXDIG + "+\\.(" + unreserved + "|" + subDelims + "|:)+";
   private static final String ipLiteral = "\\[(" + ipv6Address + "|" + ipvFuture + ")\\]";
-  private static final String scheme = "(?<scheme>[" + ALPHA + "][" + ALPHA + DIGIT + "+.-]*)";
+  private static final Pattern SCHEME = Pattern.compile("^[" + ALPHA + "][" + ALPHA + DIGIT + "+.-]*$");
   private static final String userinfo = "(?<userinfo>(" + unreserved + "|" + pctEncoded + "|" + subDelims + "|:)*)";
   private static final String host = "(?<host>(" + ipLiteral + "|" + ipv4Address + "|" + regName + "))";
-  private static final String port = "(?<port>" + DIGIT + "*)";
-  private static final String authority = "(?<authority>(" + userinfo + "@)?" + host + "(:" + port + "))";
-  private static final String path = "(?<path>[^?#]*)"; // TODO
-  private static final String query = "(?<query>(" + pchar + "|/|\\?)*)";
-  private static final String fragment = "(?<fragment>(" + pchar + "|/|\\?)*)";
+  private static final String port = "(?<port>[" + DIGIT + "]*)";
+  private static final Pattern AUTHORITY = Pattern.compile("^(" + userinfo + "@)?" + host + "(:" + port + ")?$");
+  private static final Pattern PATH = Pattern.compile("^(" + pathAbempty + "|" + pathAbsolute + "|" + pathNoScheme + "|" + pathRootless + ")?$");
+  private static final Pattern QUERY = Pattern.compile("^(" + pchar + "|/|\\?)*$");
+  private static final Pattern FRAGMENT = Pattern.compile("^(" + pchar + "|/|\\?)*$");
 
   private static final Pattern rfc3986 = Pattern.compile(
-    "^(" + scheme + ":)?(//" +  authority + ")?" + path + "(\\?" + query + ")?(#" + fragment + ")?");
+    "^((?<scheme>[^:/?#]+):)?(//(?<authority>[^/?#]*))?(?<path>[^?#]*)(\\?(?<query>[^#]*))?(#(?<fragment>.*))?");
 
   /**
    * Construct a new RFC 3986 URI parser.
@@ -199,18 +207,33 @@ class UriParser {
    * @param uri the uri to parse
    * @return parsed URI
    */
-  public static ParsedUri parse(final byte[] uri) {
-    final Matcher matcher = rfc3986.matcher(Token.string(uri));
+  public static ParsedUri parse(final String uri) {
+    final Matcher matcher = rfc3986.matcher(uri);
     if (!matcher.matches()) return ParsedUri.invalid;
+
+    final String scheme = matcher.group("scheme");
+    final String authority = matcher.group("authority");
+    final String path = matcher.group("path");
+    final String query = matcher.group("query");
+    final String fragment = matcher.group("fragment");
+
+    final boolean valid =
+        (scheme == null || SCHEME.matcher(scheme).matches()) &&
+        (authority == null || AUTHORITY.matcher(authority).matches()) &&
+        (path == null || PATH.matcher(path).matches()) &&
+        (query == null || QUERY.matcher(query).matches()) &&
+        (fragment == null || FRAGMENT.matcher(fragment).matches());
+    if (!valid) return ParsedUri.invalid;
+
     return new ParsedUri.Builder()
-        .valid(true)
-        .scheme(matcher.group("scheme"))
-      .authority(matcher.group("authority"))
-      .host(matcher.group("host"))
-      //.port(matche)
-      .path(matcher.group("path"))
-      .query(matcher.group("query"))
-      .fragment(matcher.group("fragment"))
+      .valid(true)
+      .scheme(scheme)
+      .authority(authority)
+      //.host(matcher.group("host"))
+      // .port(matche)
+      .path(path)
+      .query(query)
+      .fragment(fragment)
       .build();
   }
 
@@ -242,7 +265,8 @@ class UriParser {
     @Override
     public String toString() {
       return "ParsedUri{" +
-        "scheme='" + scheme + "'" +
+        "valid='" + valid + "'" +
+        ", scheme='" + scheme + "'" +
         ", authority='" + authority + "'" +
         ", userInfo='" + userInfo + "'" +
         ", host='" + host + "'" +
