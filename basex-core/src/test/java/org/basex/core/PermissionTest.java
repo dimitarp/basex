@@ -49,7 +49,7 @@ public final class PermissionTest extends SandboxTest {
    */
   @AfterAll public static void stop() {
     stopServer(server);
-    new IOFile(Prop.TEMPDIR, NAME + "-export").delete();
+    new IOFile(Env.TEMPDIR, NAME + "-export").delete();
   }
 
   /** Set up method. */
@@ -168,7 +168,7 @@ public final class PermissionTest extends SandboxTest {
     no(new DropIndex("SUMMARY"), testSession);
     no(new CreateUser(NAME, NAME), testSession);
     no(new DropUser(NAME), testSession);
-    no(new Export(Prop.TEMPDIR + NAME + "-export"), testSession);
+    no(new Export(Env.TEMPDIR + NAME + "-export"), testSession);
     no(new Kill("dada"), testSession);
     ok(new ShowUsers("Users"), testSession);
     no(new Grant("read", NAME), testSession);
@@ -221,7 +221,7 @@ public final class PermissionTest extends SandboxTest {
     no(new DropDB(NAME), testSession);
     no(new CreateUser(NAME, NAME), testSession);
     no(new DropUser(NAME), testSession);
-    no(new Export(Prop.TEMPDIR + NAME + "-export"), testSession);
+    no(new Export(Env.TEMPDIR + NAME + "-export"), testSession);
     no(new Kill("dada"), testSession);
     ok(new ShowUsers("Users"), testSession);
     no(new Grant("read", NAME), testSession);
@@ -243,7 +243,7 @@ public final class PermissionTest extends SandboxTest {
     for(final CmdIndex cmd : CmdIndex.values()) {
       ok(new CreateIndex(cmd), testSession);
     }
-    ok(new Export(Prop.TEMPDIR + NAME + "-export"), testSession);
+    ok(new Export(Env.TEMPDIR + NAME + "-export"), testSession);
 
     // repo stuff
     ok(new RepoInstall(REPO + "/pkg3.xar", null), testSession);

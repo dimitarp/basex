@@ -1,0 +1,10 @@
+{
+  "bundles":[
+    {"name":"com.thaiopensource.relaxng.pattern.resources.Messages"}
+  ],
+  "resources":[
+    {"pattern":"lang/.+lang$"},
+    {"pattern":"org/jline/utils/.*caps$"},
+    {"pattern":"org/jline/utils/capabilities\\.txt$"}
+  ]
+}

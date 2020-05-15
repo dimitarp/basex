@@ -1,5 +1,6 @@
 package org.basex.gui;
 
+import static org.basex.util.Env.*;
 import static org.basex.util.Prop.*;
 
 import java.awt.*;

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <artifactId>basex-parent</artifactId>
+    <groupId>org.basex</groupId>
+    <version>9.4-SNAPSHOT</version>
+  </parent>
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- https://www.graalvm.org/docs/reference-manual/native-image/ -->
+  <artifactId>basex-native</artifactId>
+
+  <name>BaseX Native</name>
+
+  <dependencies>
+    <dependency>
+      <groupId>jp.sourceforge.igo</groupId>
+      <artifactId>igo</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache</groupId>
+      <artifactId>lucene-stemmers</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.ccil.cowan.tagsoup</groupId>
+      <artifactId>tagsoup</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>xml-resolver</groupId>
+      <artifactId>xml-resolver</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jline</groupId>
+      <artifactId>jline-reader</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.relaxng</groupId>
+      <artifactId>jing</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.basex</groupId>
+      <artifactId>basex</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.graalvm.sdk</groupId>
+      <artifactId>graal-sdk</artifactId>
+      <version>${graalvm.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.graalvm.nativeimage</groupId>
+      <artifactId>svm</artifactId>
+      <version>${graalvm.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <properties>
+    <graalvm.version>20.1.0</graalvm.version>
+    <native-image-base-args>
+      --no-server -J-Xmx6g
+      <!-- &#45;&#45;static-->  <!-- only linux, but: https://github.com/oracle/graal/issues/571 -->
+      -H:Optimize=2
+      -H:+NativeArchitecture
+      <!-- -H:CPUFeatures=X8,CMOV,FXSR,HT,MMX,AMD_3DNOW_PREFETCH,SSE,SSE2,SSE3,SSSE3,SSE4A,SSE4_1,SSE4_2,POPCNT,LZCNT,TSC,TSCINV,AVX,AVX2,AES,ERMS,CLMUL,BMI1,BMI2,RTM,ADX,AVX512F,AVX512DQ,AVX512PF,AVX512ER,AVX512CD,AVX512BW -->
+      -R:MinHeapSize=64m -R:MaxHeapSize=2g -R:MaxNewSize=128m
+    </native-image-base-args>
+    <native-image-args>${native-image-base-args}</native-image-args>
+  </properties>
+
+  <profiles>
+    <profile>
+      <id>graalvm-ee</id>
+      <activation>
+        <property>
+          <name>graalvm-ee</name>
+        </property>
+      </activation>
+      <properties>
+        <native-image-ee-args>${native-image-base-args} -H:+LoopInversion<!-- -H:+VectorizeSIMD --> --pgo=/home/insane/Development/basex/basex/myclass.iprof</native-image-ee-args>
+        <native-image-args>${native-image-ee-args}</native-image-args>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>graalvm-ee-linux64</id>
+      <activation>
+        <property>
+          <name>graalvm-ee</name>
+        </property>
+        <os>
+          <name>linux</name>
+          <arch>amd64</arch>
+        </os>
+      </activation>
+      <properties>
+        <native-image-args>${native-image-ee-args} -H:+UseLowLatencyGC</native-image-args>
+      </properties>
+    </profile>
+  </profiles>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.graalvm.nativeimage</groupId>
+        <artifactId>native-image-maven-plugin</artifactId>
+        <version>${graalvm.version}</version>
+        <executions>
+          <execution>
+            <id>basex-cli</id>
+            <goals>
+              <goal>native-image</goal>
+            </goals>
+            <phase>package</phase>
+            <configuration>
+              <imageName>basex</imageName>
+              <mainClass>org.basex.BaseX</mainClass>
+            </configuration>
+          </execution>
+          <!-- AWT is not supported by GraalVM -->
+          <!--              <execution>-->
+          <!--                <id>basex-gui</id>-->
+          <!--                <goals>-->
+          <!--                  <goal>native-image</goal>-->
+          <!--                </goals>-->
+          <!--                <phase>package</phase>-->
+          <!--                <configuration>-->
+          <!--                  <imageName>basexgui</imageName>-->
+          <!--                  <mainClass>org.basex.BaseXGUI</mainClass>-->
+          <!--                </configuration>-->
+          <!--              </execution>-->
+        </executions>
+        <configuration>
+          <buildArgs>${native-image-args}</buildArgs>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+
+</project>

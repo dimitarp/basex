@@ -20,7 +20,7 @@ import org.junit.jupiter.api.*;
  */
 public final class FileModuleTest extends SandboxTest {
   /** Test path. */
-  private static final String PATH = Prop.TEMPDIR + NAME + '/';
+  private static final String PATH = Env.TEMPDIR + NAME + '/';
   /** Test path. */
   private static final String PATH1 = PATH + NAME;
   /** Test path. */
@@ -431,7 +431,7 @@ public final class FileModuleTest extends SandboxTest {
   @Test public void tempDir() {
     final Function func = _FILE_TEMP_DIR;
     // successful queries
-    assertEquals(query(func.args()), Prop.TEMPDIR);
+    assertEquals(query(func.args()), Env.TEMPDIR);
   }
 
   /** Test method. */

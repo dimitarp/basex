@@ -74,7 +74,7 @@ public class DataAccessTest {
    * @throws IOException I/O exception
    */
   @BeforeEach public void setUp() throws IOException {
-    file = new IOFile(Prop.TEMPDIR, "page" + IO.BASEXSUFFIX);
+    file = new IOFile(Env.TEMPDIR, "page" + IO.BASEXSUFFIX);
     try(RandomAccessFile f = new RandomAccessFile(file.file(), "rw")) {
       initialContent(f);
     }

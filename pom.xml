@@ -376,6 +376,12 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>native</id>
+      <modules>
+        <module>basex-native</module>
+      </modules>
+    </profile>
   </profiles>
 
   <!-- Build Settings -->

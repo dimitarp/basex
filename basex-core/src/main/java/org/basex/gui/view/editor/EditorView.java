@@ -401,7 +401,7 @@ public final class EditorView extends View {
     for(final IOFile file : files) open(file, true, false);
 
     // open temporary files
-    final IOFile[] children = new IOFile(Prop.TEMPDIR, Prop.PROJECT_NAME).children();
+    final IOFile[] children = new IOFile(Env.TEMPDIR, Prop.PROJECT_NAME).children();
     final EditorArea edit = getEditor();
     for(final IOFile file : children) {
       try {
@@ -1073,7 +1073,7 @@ public final class EditorView extends View {
     }
 
     // close application: remember opened files
-    final IOFile tmpDir = new IOFile(Prop.TEMPDIR, Prop.PROJECT_NAME);
+    final IOFile tmpDir = new IOFile(Env.TEMPDIR, Prop.PROJECT_NAME);
     if(edit == null && eas.length > 0 && tmpDir.md()) {
       try {
         int c = 0;

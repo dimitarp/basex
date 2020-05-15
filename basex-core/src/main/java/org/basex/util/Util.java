@@ -20,8 +20,6 @@ import org.basex.util.list.*;
  * @author Christian Gruen
  */
 public final class Util {
-  /** Flag for using default standard input. */
-  private static final boolean NOCONSOLE = System.console() == null;
 
   /** Hidden constructor. */
   private Util() { }
@@ -104,7 +102,7 @@ public final class Util {
    */
   public static String password() {
     // use standard input if no console if defined (such as in Eclipse)
-    if(NOCONSOLE) return input();
+    if(System.console() == null) return input();
     // hide password
     final char[] pw = System.console().readPassword();
     return pw != null ? new String(pw) : "";

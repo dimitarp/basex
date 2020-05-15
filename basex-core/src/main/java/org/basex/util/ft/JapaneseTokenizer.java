@@ -93,7 +93,7 @@ final class JapaneseTokenizer extends Tokenizer {
     if(Reflect.available(PATTERN)) {
       dic = new IOFile(LANG);
       if(!dic.exists()) {
-        dic = new IOFile(Prop.HOMEDIR, "etc/" + LANG);
+        dic = new IOFile(Env.HOMEDIR, "etc/" + LANG);
         if(!dic.exists()) available = false;
       }
     } else {

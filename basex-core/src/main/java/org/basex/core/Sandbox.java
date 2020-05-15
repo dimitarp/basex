@@ -310,7 +310,7 @@ public abstract class Sandbox {
    * @return database path
    */
   public static IOFile sandbox() {
-    return new IOFile(Prop.TEMPDIR, NAME + '/');
+    return new IOFile(Env.TEMPDIR, NAME + '/');
   }
 
   /**

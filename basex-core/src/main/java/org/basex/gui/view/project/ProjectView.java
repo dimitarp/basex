@@ -60,7 +60,7 @@ public final class ProjectView extends BaseXPanel {
     files = new ProjectFiles(this);
 
     final String project = gui.gopts.get(GUIOptions.PROJECTPATH);
-    final IOFile dir = new IOFile(project.isEmpty() ? Prop.HOMEDIR : project).normalize();
+    final IOFile dir = new IOFile(project.isEmpty() ? Env.HOMEDIR : project).normalize();
     root = new ProjectDir(dir, this);
 
     tree = new ProjectTree(this);

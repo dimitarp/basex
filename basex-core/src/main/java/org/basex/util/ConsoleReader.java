@@ -80,11 +80,11 @@ public abstract class ConsoleReader implements AutoCloseable, PasswordReader {
   private static class JLineConsoleReader extends ConsoleReader {
     /** JLine console reader class name. */
     private static final String JLINE_CONSOLE_READER = "org.jline.reader.LineReader";
-    /** Command history file. */
-    private static final File HISTORY_FILE = new File(Prop.HOMEDIR, IO.BASEXSUFFIX + "history");
     /** Password echo character. */
     private static final Character PASSWORD_ECHO = (char) 0;
 
+    /** Command history file. */
+    private final File historyFile = new File(Env.HOMEDIR, IO.BASEXSUFFIX + "history");
     /** Method to read the next line. */
     private final Method readLine;
     /** Method to read the next line with echoing a character. */
@@ -133,7 +133,7 @@ public abstract class ConsoleReader implements AutoCloseable, PasswordReader {
       final Object readerBuilder = builderC.getMethod("builder").invoke(null);
       builderCompleter.invoke(readerBuilder, completer);
       builderVariable.invoke(readerBuilder, "bell-style", "off");
-      builderVariable.invoke(readerBuilder, "history-file", HISTORY_FILE);
+      builderVariable.invoke(readerBuilder, "history-file", historyFile);
 
       reader = builderC.getMethod("build").invoke(readerBuilder);
     }

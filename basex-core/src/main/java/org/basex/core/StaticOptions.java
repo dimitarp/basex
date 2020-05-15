@@ -20,11 +20,11 @@ public final class StaticOptions extends Options {
   /** Debug mode. */
   public static final BooleanOption DEBUG = new BooleanOption("DEBUG", false);
   /** Database path. */
-  public static final StringOption DBPATH = new StringOption("DBPATH", Prop.HOMEDIR + "data");
+  public static final StringOption DBPATH = new StringOption("DBPATH", Env.HOMEDIR + "data");
   /** Log path (relative to database path). */
   public static final StringOption LOGPATH = new StringOption("LOGPATH", ".logs");
   /** Package repository path. */
-  public static final StringOption REPOPATH = new StringOption("REPOPATH", Prop.HOMEDIR + "repo");
+  public static final StringOption REPOPATH = new StringOption("REPOPATH", Env.HOMEDIR + "repo");
   /** Language name. */
   public static final StringOption LANG = new StringOption("LANG", Prop.language);
   /** Flag to include key names in the language strings. */
@@ -77,7 +77,7 @@ public final class StaticOptions extends Options {
   public static final Comment C_HTTP = new Comment("HTTP Services");
 
   /** Web path (cannot be specified in web.xml). */
-  public static final StringOption WEBPATH = new StringOption("WEBPATH", Prop.HOMEDIR + "webapp");
+  public static final StringOption WEBPATH = new StringOption("WEBPATH", Env.HOMEDIR + "webapp");
   /** Enable GZIP support (cannot be specified in web.xml). */
   public static final BooleanOption GZIP = new BooleanOption("GZIP", false);
 
@@ -115,7 +115,7 @@ public final class StaticOptions extends Options {
    * @param file if {@code true}, options will be read from disk
    */
   public StaticOptions(final boolean file) {
-    super(file ? new IOFile(Prop.HOMEDIR, IO.BASEXSUFFIX) : null);
+    super(file ? new IOFile(Env.HOMEDIR, IO.BASEXSUFFIX) : null);
     setSystem();
   }
 

@@ -15,7 +15,7 @@ import org.basex.util.*;
  */
 abstract class MainTest extends SandboxTest {
   /** Input file. */
-  static final IOFile INPUT = new IOFile(Prop.TEMPDIR + NAME + ".in");
+  static final IOFile INPUT = new IOFile(Env.TEMPDIR + NAME + ".in");
 
   /**
    * Runs a request with the specified arguments.
