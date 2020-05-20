@@ -47,7 +47,7 @@ public final class FTBuilder extends IndexBuilder {
 
     if(!Tokenizer.supportFor(fto.ln))
       throw new BaseXException(NO_TOKENIZER_X, fto.ln);
-    if(meta.stemming && !Stemmer.supportFor(fto.ln))
+    if(meta.stemming && !Stemmers.supportFor(fto.ln))
       throw new BaseXException(NO_STEMMER_X, fto.ln);
 
     lexer = new FTLexer(fto);

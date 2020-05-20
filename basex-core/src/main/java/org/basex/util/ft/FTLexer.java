@@ -68,15 +68,7 @@ public final class FTLexer extends FTIterator implements IndexSearch {
     // wrap original iterator
     if(ftOpt != null && ftOpt.is(ST)) {
       if(ftOpt.sd == null) {
-        // use default stemmer if specific stemmer is not available.
-        Stemmer st = Stemmer.IMPL.get(0);
-        for(final Stemmer stem : Stemmer.IMPL) {
-          if(stem.supports(lang)) {
-            st = stem;
-            break;
-          }
-        }
-        iter = st.get(lang, iter);
+        iter = Stemmers.getImpl(lang).get(lang, iter);
       } else {
         iter = new DictionaryStemmer(ftOpt.sd, iter);
       }
@@ -245,7 +237,7 @@ public final class FTLexer extends FTIterator implements IndexSearch {
    */
   public static StringList languages() {
     final TreeMap<Language, Stemmer> langs = new TreeMap<>();
-    for(final Stemmer stem : Stemmer.IMPL) {
+    for(final Stemmer stem : Stemmers.IMPL) {
       for(final Language l : stem.languages()) {
         if(langs.containsKey(l)) continue;
         for(final Tokenizer tknzr : Tokenizer.IMPL) {

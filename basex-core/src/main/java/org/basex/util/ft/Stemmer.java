@@ -1,7 +1,5 @@
 package org.basex.util.ft;
 
-import java.util.*;
-
 import org.basex.util.*;
 
 /**
@@ -11,26 +9,6 @@ import org.basex.util.*;
  * @author Dimitar Popov
  */
 public abstract class Stemmer extends LanguageImpl {
-  /** List of available stemmers. */
-  static final ArrayList<Stemmer> IMPL = new ArrayList<>();
-
-  /* Load stemmers and order them by precedence. */
-  static {
-    // built-in stemmers
-    IMPL.add(new EnglishStemmer(null));
-    IMPL.add(new GermanStemmer(null));
-    IMPL.add(new GreekStemmer(null));
-    IMPL.add(new IndonesianStemmer(null));
-    IMPL.add(new DummyStemmer(null));
-
-    if(SnowballStemmer.available()) IMPL.add(new SnowballStemmer());
-    if(LuceneStemmer.available()) IMPL.add(new LuceneStemmer());
-    if(WordnetStemmer.available()) IMPL.add(new WordnetStemmer());
-
-    // sort stemmers and tokenizers by precedence
-    Collections.sort(IMPL);
-  }
-
   /** Full-text iterator. */
   private final FTIterator iter;
 
@@ -47,18 +25,6 @@ public abstract class Stemmer extends LanguageImpl {
    */
   Stemmer(final FTIterator iter) {
     this.iter = iter;
-  }
-
-  /**
-   * Checks if the language is supported by the available stemmers.
-   * @param language language to be found
-   * @return result of check
-   */
-  public static boolean supportFor(final Language language) {
-    for(final Stemmer impl : IMPL) {
-      if(impl.supports(language)) return true;
-    }
-    return false;
   }
 
   /**

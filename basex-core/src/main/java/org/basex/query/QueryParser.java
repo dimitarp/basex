@@ -3405,7 +3405,7 @@ public class QueryParser extends InputParser {
     if(found) {
       if(fto.ln == null) fto.ln = Language.def();
       if(!Tokenizer.supportFor(fto.ln)) throw error(FTNOTOK_X, fto.ln);
-      if(fto.is(ST) && fto.sd == null && !Stemmer.supportFor(fto.ln))
+      if(fto.is(ST) && fto.sd == null && !Stemmers.supportFor(fto.ln))
         throw error(FTNOSTEM_X, fto.ln);
     }
 
